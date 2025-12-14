@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd pwa && npm run build",
+  "outputDirectory": "pwa/build",
+  "installCommand": "cd pwa && npm install"
+}
