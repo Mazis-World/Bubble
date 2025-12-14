@@ -26,7 +26,7 @@ const SlideUpCard = ({ isOpen, onClose, children, title }) => {
           onClick={onClose}
         />
         {title && (
-          <div className="px-4 sm:px-6 pb-4 border-b border-white/10">
+          <div className="px-4 sm:px-6 pt-4 sm:pt-2 pb-4 border-b border-white/10">
             <h3 className="text-xl font-bold gradient-text">{title}</h3>
           </div>
         )}

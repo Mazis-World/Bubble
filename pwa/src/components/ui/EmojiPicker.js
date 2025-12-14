@@ -50,7 +50,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
   const emojiWidth = 60;
   const emojiHeight = 60;
   const gap = 8;
-  const padding = 8;
+  const padding = 6;
   
   // Most commonly used emojis - show these first
   const COMMON_EMOJIS = [
@@ -138,7 +138,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
       
       // Load more when 80% scrolled
       if (scrollPercentage > 0.8 && visibleEmojis < COMMON_EMOJIS.length) {
-        setVisibleEmojis(prev => Math.min(prev + 64, COMMON_EMOJIS.length));
+        setVisibleEmojis(prev => Math.min(prev + 48, COMMON_EMOJIS.length));
       }
     };
 
@@ -201,7 +201,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
           ))}
         </div>
       </div>
-      <div className="text-center mt-3">
+      <div className="text-center mt-1.5">
         <p className="text-gray-400 text-xs font-medium">
           {displayEmojis.length} of {COMMON_EMOJIS.length} emojis • Swipe to see more
         </p>

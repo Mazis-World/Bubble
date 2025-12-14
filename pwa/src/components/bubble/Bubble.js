@@ -239,7 +239,7 @@ const Bubble = ({
             />
           </div>
           
-          <div className="border-t border-gray-800 pt-3">
+          <div className="border-t border-gray-800 pt-2.5">
             <p className="text-gray-300 text-sm mb-2 font-semibold">Add a quick message (optional):</p>
             <div className="relative">
               <input
@@ -284,7 +284,7 @@ const Bubble = ({
             <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
         </div>
-        <p className="text-gray-400 text-sm mt-4 text-center font-medium">
+        <p className="text-gray-400 text-sm mt-3 text-center font-medium">
           Everyone in your bubble will see your status and location instantly
         </p>
       </SlideUpCard>
