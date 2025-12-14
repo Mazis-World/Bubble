@@ -508,17 +508,37 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
             <div className="w-4 sm:w-6 h-0.5 bg-blue-500/80" style={{ transform: 'translateX(-50%)' }}></div>
             <div className="h-4 sm:h-6 w-0.5 bg-blue-500/80" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
           </div>
-          {/* Center dot */}
-          <div className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-cyan-400/90 bg-cyan-400/30 shadow-[0_0_8px_rgba(34,211,238,0.5),inset_0_0_6px_rgba(34,211,238,0.25)] sm:shadow-[0_0_12px_rgba(34,211,238,0.6),inset_0_0_8px_rgba(34,211,238,0.3)] radar-pulse" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
+          {/* Center dot - app-specific gradient colors */}
+          <div className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-purple-400/90 bg-gradient-to-br from-purple-500/40 via-blue-500/40 to-pink-500/40 shadow-[0_0_8px_rgba(168,85,247,0.5),0_0_4px_rgba(59,130,246,0.4),inset_0_0_6px_rgba(236,72,153,0.25)] sm:shadow-[0_0_12px_rgba(168,85,247,0.6),0_0_6px_rgba(59,130,246,0.5),inset_0_0_8px_rgba(236,72,153,0.3)] radar-pulse" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
         </div>
 
         {/* Glassmorphic overlay - z-index 9 (above rings, below bubbles) - reduced opacity so lines show through */}
         <div className="absolute inset-0 rounded-full glass-light pointer-events-none" style={{ zIndex: 9, opacity: 0.3 }}></div>
 
-        {/* Radar center glow effects - reduced on mobile for performance - z-index 0 (behind everything) - PERFECTLY CENTERED */}
-        <div className="absolute w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-r from-cyan-500/20 via-blue-500/15 to-cyan-500/20 rounded-full blur-2xl sm:blur-3xl pointer-events-none radar-pulse" style={{ zIndex: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
-        <div className="absolute w-24 h-24 sm:w-28 sm:h-28 bg-cyan-500/25 rounded-full blur-xl sm:blur-2xl pointer-events-none" style={{ zIndex: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
-        <div className="absolute w-12 h-12 sm:w-16 sm:h-16 bg-cyan-400/30 rounded-full blur-lg sm:blur-xl pointer-events-none" style={{ zIndex: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
+        {/* Radar center glow effects - app-specific gradient colors - z-index 0 (behind everything) - PERFECTLY CENTERED */}
+        <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full blur-2xl sm:blur-3xl pointer-events-none radar-pulse" style={{ 
+          zIndex: 0, 
+          left: '50%', 
+          top: '50%', 
+          transform: 'translate(-50%, -50%)',
+          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, rgba(59, 130, 246, 0.2) 50%, rgba(236, 72, 153, 0.25) 100%)',
+        }}></div>
+        <div className="absolute w-24 h-24 sm:w-28 sm:h-28 rounded-full blur-xl sm:blur-2xl pointer-events-none radar-pulse" style={{ 
+          zIndex: 0, 
+          left: '50%', 
+          top: '50%', 
+          transform: 'translate(-50%, -50%)',
+          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%)',
+          animationDelay: '0.5s',
+        }}></div>
+        <div className="absolute w-12 h-12 sm:w-16 sm:h-16 rounded-full blur-lg sm:blur-xl pointer-events-none radar-pulse" style={{ 
+          zIndex: 0, 
+          left: '50%', 
+          top: '50%', 
+          transform: 'translate(-50%, -50%)',
+          background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(168, 85, 247, 0.35) 100%)',
+          animationDelay: '1s',
+        }}></div>
 
         {/* Member bubbles positioned by location - z-index 10+ (on top of everything) */}
         {nodes.map((node, index) => {
