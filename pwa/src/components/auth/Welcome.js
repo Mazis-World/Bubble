@@ -4,32 +4,20 @@ import { Circle, PlusCircle, LogIn, ChevronRight } from 'lucide-react';
 const Welcome = ({ onLogin, onCreate, onJoin }) => {
   return (
     <div 
-      className="bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden relative" 
+      className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden relative" 
       style={{ 
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: '100%',
-        height: '100%',
         height: '100dvh',
         minHeight: '-webkit-fill-available',
-        minHeight: '100vh'
+        maxHeight: '100vh',
+        overflow: 'hidden'
       }}
     >
       {/* Background Bubbles */}
       <div 
-        className="absolute z-0" 
+        className="absolute inset-0 z-0" 
         style={{ 
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
           width: '100%',
-          height: '100%',
-          minHeight: '100vh',
-          minHeight: '-webkit-fill-available'
+          height: '100%'
         }}
       >
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-600/10 rounded-full animate-blob"></div>
