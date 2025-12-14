@@ -350,26 +350,10 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           const isInnerRing = ring <= 2;
 
           let borderWidth, glowIntensity;
-          // App colors: purple, blue, pink - cycle through them based on ring
-          const colorIndex = ring % 3;
-          let primaryColor, secondaryColor, tertiaryColor;
-
-          if (colorIndex === 0) {
-            // Purple primary
-            primaryColor = isOuterRing ? 'rgba(168, 85, 247, 1)' : isInnerRing ? `rgba(168, 85, 247, ${0.85 - (ring * 0.1)})` : 'rgba(168, 85, 247, 0.5)';
-            secondaryColor = isOuterRing ? 'rgba(59, 130, 246, 0.9)' : isInnerRing ? `rgba(59, 130, 246, ${0.75 - (ring * 0.1)})` : 'rgba(59, 130, 246, 0.4)';
-            tertiaryColor = isOuterRing ? 'rgba(236, 72, 153, 0.8)' : isInnerRing ? `rgba(236, 72, 153, ${0.65 - (ring * 0.1)})` : 'rgba(236, 72, 153, 0.3)';
-          } else if (colorIndex === 1) {
-            // Blue primary
-            primaryColor = isOuterRing ? 'rgba(59, 130, 246, 1)' : isInnerRing ? `rgba(59, 130, 246, ${0.85 - (ring * 0.1)})` : 'rgba(59, 130, 246, 0.5)';
-            secondaryColor = isOuterRing ? 'rgba(236, 72, 153, 0.9)' : isInnerRing ? `rgba(236, 72, 153, ${0.75 - (ring * 0.1)})` : 'rgba(236, 72, 153, 0.4)';
-            tertiaryColor = isOuterRing ? 'rgba(168, 85, 247, 0.8)' : isInnerRing ? `rgba(168, 85, 247, ${0.65 - (ring * 0.1)})` : 'rgba(168, 85, 247, 0.3)';
-          } else {
-            // Pink primary
-            primaryColor = isOuterRing ? 'rgba(236, 72, 153, 1)' : isInnerRing ? `rgba(236, 72, 153, ${0.85 - (ring * 0.1)})` : 'rgba(236, 72, 153, 0.5)';
-            secondaryColor = isOuterRing ? 'rgba(168, 85, 247, 0.9)' : isInnerRing ? `rgba(168, 85, 247, ${0.75 - (ring * 0.1)})` : 'rgba(168, 85, 247, 0.4)';
-            tertiaryColor = isOuterRing ? 'rgba(59, 130, 246, 0.8)' : isInnerRing ? `rgba(59, 130, 246, ${0.65 - (ring * 0.1)})` : 'rgba(59, 130, 246, 0.3)';
-          }
+          // Clean white rings with subtle app color tint
+          const ringOpacity = isOuterRing ? 0.9 : isInnerRing ? (0.85 - (ring * 0.1)) : 0.5;
+          const primaryColor = `rgba(255, 255, 255, ${ringOpacity})`;
+          const glowColor = `rgba(255, 255, 255, ${ringOpacity * 0.4})`;
 
           if (isOuterRing) {
             borderWidth = ring === 5 ? '3px' : '2.5px';
@@ -395,8 +379,8 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
                 border: `${borderWidth} solid ${primaryColor}`,
                 borderRadius: '50%',
                 boxShadow: isOuterRing
-                  ? `0 0 20px ${primaryColor}, 0 0 40px ${secondaryColor}, 0 0 60px ${tertiaryColor}, inset 0 0 10px ${primaryColor}`
-                  : `0 0 ${(8 + ring * 2) * glowIntensity}px ${primaryColor}, 0 0 ${(4 + ring) * glowIntensity}px ${secondaryColor}, inset 0 0 ${(4 + ring)}px ${tertiaryColor}`,
+                  ? `0 0 20px ${glowColor}, 0 0 40px ${glowColor}, inset 0 0 10px ${glowColor}`
+                  : `0 0 ${(8 + ring * 2) * glowIntensity}px ${glowColor}, inset 0 0 ${(4 + ring)}px ${glowColor}`,
                 animationDelay: `${ring * 0.25}s`,
               }}
             />
@@ -510,49 +494,15 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           />
         </div>
 
-        {/* Enhanced center crosshair - mobile optimized - z-index 8 - PERFECTLY CENTERED */}
+        {/* Center dot only - crosshair removed - z-index 8 - PERFECTLY CENTERED */}
         <div className="absolute pointer-events-none" style={{ zIndex: 8, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
-          {/* Outer crosshair */}
-          <div className="absolute" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-8 sm:w-12 h-0.5 bg-cyan-400/60 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]" style={{ transform: 'translateX(-50%)' }}></div>
-            <div className="h-8 sm:h-12 w-0.5 bg-cyan-400/60 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
-          </div>
-          {/* Inner crosshair */}
-          <div className="absolute" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-4 sm:w-6 h-0.5 bg-blue-500/80" style={{ transform: 'translateX(-50%)' }}></div>
-            <div className="h-4 sm:h-6 w-0.5 bg-blue-500/80" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
-          </div>
-          {/* Center dot - app-specific gradient colors */}
-          <div className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-purple-400/90 bg-gradient-to-br from-purple-500/40 via-blue-500/40 to-pink-500/40 shadow-[0_0_8px_rgba(168,85,247,0.5),0_0_4px_rgba(59,130,246,0.4),inset_0_0_6px_rgba(236,72,153,0.25)] sm:shadow-[0_0_12px_rgba(168,85,247,0.6),0_0_6px_rgba(59,130,246,0.5),inset_0_0_8px_rgba(236,72,153,0.3)] radar-pulse" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
+          {/* Center dot - clean white with subtle glow */}
+          <div className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white/80 shadow-[0_0_4px_rgba(255,255,255,0.6)]" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
         </div>
 
         {/* Glassmorphic overlay - z-index 9 (above rings, below bubbles) - reduced opacity so lines show through */}
         <div className="absolute inset-0 rounded-full glass-light pointer-events-none" style={{ zIndex: 9, opacity: 0.3 }}></div>
 
-        {/* Radar center glow effects - app-specific gradient colors - z-index 0 (behind everything) - PERFECTLY CENTERED */}
-        <div className="absolute w-32 h-32 sm:w-40 sm:h-40 rounded-full blur-2xl sm:blur-3xl pointer-events-none radar-pulse" style={{ 
-          zIndex: 0, 
-          left: '50%', 
-          top: '50%', 
-          transform: 'translate(-50%, -50%)',
-          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.25) 0%, rgba(59, 130, 246, 0.2) 50%, rgba(236, 72, 153, 0.25) 100%)',
-        }}></div>
-        <div className="absolute w-24 h-24 sm:w-28 sm:h-28 rounded-full blur-xl sm:blur-2xl pointer-events-none radar-pulse" style={{ 
-          zIndex: 0, 
-          left: '50%', 
-          top: '50%', 
-          transform: 'translate(-50%, -50%)',
-          background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%)',
-          animationDelay: '0.5s',
-        }}></div>
-        <div className="absolute w-12 h-12 sm:w-16 sm:h-16 rounded-full blur-lg sm:blur-xl pointer-events-none radar-pulse" style={{ 
-          zIndex: 0, 
-          left: '50%', 
-          top: '50%', 
-          transform: 'translate(-50%, -50%)',
-          background: 'radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(168, 85, 247, 0.35) 100%)',
-          animationDelay: '1s',
-        }}></div>
 
         {/* Member bubbles positioned by location - z-index 10+ (on top of everything) */}
         {nodes.map((node, index) => {
