@@ -107,11 +107,10 @@ const Bubble = ({
         <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
       </div>
       
-       <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between z-30 safe-area-top flex-shrink-0 sm:glass-strong sm:border-b sm:border-white/10" style={{ 
+       <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between z-30 safe-area-top flex-shrink-0 sm:glass-strong sm:border-b sm:border-white/10 rounded-t-3xl" style={{ 
          background: 'rgba(15, 23, 42, 0.4)',
          backdropFilter: 'blur(12px)',
          WebkitBackdropFilter: 'blur(12px)',
-         borderRadius: '1.5rem 1.5rem 0 0',
        }}>
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg glow-purple">
