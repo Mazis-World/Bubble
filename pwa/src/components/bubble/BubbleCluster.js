@@ -240,28 +240,55 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
     );
   }
 
+  // Get container dimensions for accurate centering
   const container = clusterRef.current;
   const containerWidth = container?.offsetWidth || 500;
   const containerHeight = container?.offsetHeight || 500;
+  // Use exact center - these should match the visual center of the radar
   const centerX = containerWidth / 2;
   const centerY = containerHeight / 2;
 
   return (
-    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4">
-      {/* Outer radar frame with glow - mobile optimized */}
+    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4" style={{ minHeight: '100%' }}>
+      {/* Outer radar frame with glow - mobile optimized - PERFECTLY CENTERED */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[min(600px,95vw)] h-[min(600px,95vw)] sm:w-[min(600px,90vw)] sm:h-[min(600px,90vw)] rounded-full border-2 border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.3),0_0_80px_rgba(34,211,238,0.15),inset_0_0_30px_rgba(34,211,238,0.08)] sm:shadow-[0_0_60px_rgba(34,211,238,0.4),0_0_120px_rgba(34,211,238,0.2),inset_0_0_40px_rgba(34,211,238,0.1)] radar-glow"></div>
-        <div className="absolute w-[min(580px,92vw)] h-[min(580px,92vw)] sm:w-[min(580px,87vw)] sm:h-[min(580px,87vw)] rounded-full border border-blue-400/30"></div>
+        <div 
+          className="rounded-full border-2 border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.3),0_0_80px_rgba(34,211,238,0.15),inset_0_0_30px_rgba(34,211,238,0.08)] sm:shadow-[0_0_60px_rgba(34,211,238,0.4),0_0_120px_rgba(34,211,238,0.2),inset_0_0_40px_rgba(34,211,238,0.1)] radar-glow"
+          style={{
+            width: 'min(600px, 95vw)',
+            height: 'min(600px, 95vw)',
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        ></div>
+        <div 
+          className="absolute rounded-full border border-blue-400/30"
+          style={{
+            width: 'min(580px, 92vw)',
+            height: 'min(580px, 92vw)',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        ></div>
       </div>
 
-      {/* Main radar container - mobile responsive */}
+      {/* Main radar container - mobile responsive - PERFECTLY CENTERED */}
       <div
-        className="relative w-[min(500px,85vw)] h-[min(500px,85vw)] sm:w-[min(500px,75vw)] sm:h-[min(500px,75vw)] rounded-full"
+        className="relative rounded-full"
         ref={clusterRef}
         style={{
-          background: 'radial-gradient(circle, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%)',
+          width: 'min(500px, 85vw)',
+          height: 'min(500px, 85vw)',
           minWidth: '280px',
           minHeight: '280px',
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: 'radial-gradient(circle, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%)',
           overflow: 'visible',
         }}
       >
@@ -297,7 +324,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           }}
         />
 
-        {/* Radar grid - radial lines (N, E, S, W and diagonals) - z-index 3 - MADE VISIBLE */}
+        {/* Radar grid - radial lines (N, E, S, W and diagonals) - z-index 3 - PERFECTLY CENTERED */}
         <div className="absolute inset-0 rounded-full pointer-events-none" style={{ zIndex: 3, overflow: 'visible' }}>
           {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
             const isCardinal = angle % 90 === 0;
@@ -310,7 +337,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
                   top: '50%',
                   width: isCardinal ? '3px' : '2px',
                   height: '50%',
-                  transformOrigin: 'center bottom',
+                  transformOrigin: '50% 100%',
                   transform: `translate(-50%, -100%) rotate(${angle}deg)`,
                   background: isCardinal
                     ? 'linear-gradient(to bottom, rgba(34, 211, 238, 0.9) 0%, rgba(34, 211, 238, 0.6) 30%, rgba(34, 211, 238, 0.3) 60%, rgba(34, 211, 238, 0.1) 90%, transparent 100%)'
@@ -404,26 +431,36 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           );
         })}
 
-        {/* Compass directions - mobile optimized - z-index 6 */}
+        {/* Compass directions - mobile optimized - z-index 6 - PERFECTLY POSITIONED */}
         {[
-          { dir: 'N', angle: 0, pos: 'top-1 sm:top-2' },
-          { dir: 'NE', angle: 45, pos: 'top-1 right-1 sm:top-2 sm:right-2' },
-          { dir: 'E', angle: 90, pos: 'right-1 sm:right-2' },
-          { dir: 'SE', angle: 135, pos: 'bottom-1 right-1 sm:bottom-2 sm:right-2' },
-          { dir: 'S', angle: 180, pos: 'bottom-1 sm:bottom-2' },
-          { dir: 'SW', angle: 225, pos: 'bottom-1 left-1 sm:bottom-2 sm:left-2' },
-          { dir: 'W', angle: 270, pos: 'left-1 sm:left-2' },
-          { dir: 'NW', angle: 315, pos: 'top-1 left-1 sm:top-2 sm:left-2' },
-        ].map(({ dir, pos }) => (
-          <div key={dir} className={`absolute ${pos} transform -translate-x-1/2 -translate-y-1/2 pointer-events-none`} style={{ zIndex: 6 }}>
+          { dir: 'N', angle: 0, offset: { top: '-2px', left: '50%' } },
+          { dir: 'NE', angle: 45, offset: { top: '2px', right: '2px' } },
+          { dir: 'E', angle: 90, offset: { top: '50%', right: '-2px' } },
+          { dir: 'SE', angle: 135, offset: { bottom: '2px', right: '2px' } },
+          { dir: 'S', angle: 180, offset: { bottom: '-2px', left: '50%' } },
+          { dir: 'SW', angle: 225, offset: { bottom: '2px', left: '2px' } },
+          { dir: 'W', angle: 270, offset: { top: '50%', left: '-2px' } },
+          { dir: 'NW', angle: 315, offset: { top: '2px', left: '2px' } },
+        ].map(({ dir, offset }) => (
+          <div 
+            key={dir} 
+            className="absolute pointer-events-none" 
+            style={{ 
+              zIndex: 6,
+              ...offset,
+              transform: offset.left === '50%' || offset.top === '50%' 
+                ? 'translate(-50%, -50%)' 
+                : 'none'
+            }}
+          >
             <div className="text-cyan-400/80 text-[9px] sm:text-[10px] font-bold glass-light px-1 sm:px-1.5 py-0.5 rounded border border-cyan-400/20 shadow-[0_0_6px_rgba(34,211,238,0.25)] sm:shadow-[0_0_8px_rgba(34,211,238,0.3)]">
               {dir}
             </div>
           </div>
         ))}
 
-        {/* Enhanced radar sweep line with trailing effect - z-index 7 */}
-        <div className="absolute top-1/2 left-1/2 pointer-events-none" style={{ zIndex: 7, transformOrigin: 'center bottom' }}>
+        {/* Enhanced radar sweep line with trailing effect - z-index 7 - PERFECTLY CENTERED */}
+        <div className="absolute pointer-events-none" style={{ zIndex: 7, left: '50%', top: '50%', transform: 'translate(-50%, -50%)', transformOrigin: 'center center' }}>
           {/* Main sweep line */}
           <div
             className="absolute"
@@ -432,7 +469,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
               top: '50%',
               width: '2.5px',
               height: '50%',
-              transformOrigin: 'center bottom',
+              transformOrigin: '50% 100%',
               transform: `translate(-50%, -100%) rotate(${sweepAngle}deg)`,
               background: 'linear-gradient(to bottom, rgba(34, 211, 238, 1) 0%, rgba(59, 130, 246, 0.8) 30%, rgba(59, 130, 246, 0.4) 60%, transparent 100%)',
               boxShadow: '0 0 8px rgba(34, 211, 238, 0.6), 0 0 16px rgba(34, 211, 238, 0.3)',
@@ -447,7 +484,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
               top: '50%',
               width: '2px',
               height: '50%',
-              transformOrigin: 'center bottom',
+              transformOrigin: '50% 100%',
               transform: `translate(-50%, -100%) rotate(${sweepAngle - 15}deg)`,
               background: 'linear-gradient(to bottom, rgba(34, 211, 238, 0.4) 0%, rgba(59, 130, 246, 0.2) 30%, transparent 100%)',
               boxShadow: '0 0 8px rgba(34, 211, 238, 0.3)',
@@ -456,29 +493,29 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           />
         </div>
 
-        {/* Enhanced center crosshair - mobile optimized - z-index 8 */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ zIndex: 8 }}>
+        {/* Enhanced center crosshair - mobile optimized - z-index 8 - PERFECTLY CENTERED */}
+        <div className="absolute pointer-events-none" style={{ zIndex: 8, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
           {/* Outer crosshair */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="w-8 sm:w-12 h-0.5 bg-cyan-400/60 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]"></div>
-            <div className="h-8 sm:h-12 w-0.5 bg-cyan-400/60 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]"></div>
+          <div className="absolute" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+            <div className="w-8 sm:w-12 h-0.5 bg-cyan-400/60 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]" style={{ transform: 'translateX(-50%)' }}></div>
+            <div className="h-8 sm:h-12 w-0.5 bg-cyan-400/60 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
           </div>
           {/* Inner crosshair */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-            <div className="w-4 sm:w-6 h-0.5 bg-blue-500/80"></div>
-            <div className="h-4 sm:h-6 w-0.5 bg-blue-500/80 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+            <div className="w-4 sm:w-6 h-0.5 bg-blue-500/80" style={{ transform: 'translateX(-50%)' }}></div>
+            <div className="h-4 sm:h-6 w-0.5 bg-blue-500/80" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
           </div>
           {/* Center dot */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-cyan-400/90 bg-cyan-400/30 shadow-[0_0_8px_rgba(34,211,238,0.5),inset_0_0_6px_rgba(34,211,238,0.25)] sm:shadow-[0_0_12px_rgba(34,211,238,0.6),inset_0_0_8px_rgba(34,211,238,0.3)] radar-pulse"></div>
+          <div className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-cyan-400/90 bg-cyan-400/30 shadow-[0_0_8px_rgba(34,211,238,0.5),inset_0_0_6px_rgba(34,211,238,0.25)] sm:shadow-[0_0_12px_rgba(34,211,238,0.6),inset_0_0_8px_rgba(34,211,238,0.3)] radar-pulse" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
         </div>
 
         {/* Glassmorphic overlay - z-index 9 (above rings, below bubbles) - reduced opacity so lines show through */}
         <div className="absolute inset-0 rounded-full glass-light pointer-events-none" style={{ zIndex: 9, opacity: 0.3 }}></div>
 
-        {/* Radar center glow effects - reduced on mobile for performance - z-index 0 (behind everything) */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-r from-cyan-500/20 via-blue-500/15 to-cyan-500/20 rounded-full blur-2xl sm:blur-3xl pointer-events-none radar-pulse" style={{ zIndex: 0 }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 sm:w-28 sm:h-28 bg-cyan-500/25 rounded-full blur-xl sm:blur-2xl pointer-events-none" style={{ zIndex: 0 }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 bg-cyan-400/30 rounded-full blur-lg sm:blur-xl pointer-events-none" style={{ zIndex: 0 }}></div>
+        {/* Radar center glow effects - reduced on mobile for performance - z-index 0 (behind everything) - PERFECTLY CENTERED */}
+        <div className="absolute w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-r from-cyan-500/20 via-blue-500/15 to-cyan-500/20 rounded-full blur-2xl sm:blur-3xl pointer-events-none radar-pulse" style={{ zIndex: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
+        <div className="absolute w-24 h-24 sm:w-28 sm:h-28 bg-cyan-500/25 rounded-full blur-xl sm:blur-2xl pointer-events-none" style={{ zIndex: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
+        <div className="absolute w-12 h-12 sm:w-16 sm:h-16 bg-cyan-400/30 rounded-full blur-lg sm:blur-xl pointer-events-none" style={{ zIndex: 0, left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}></div>
 
         {/* Member bubbles positioned by location - z-index 10+ (on top of everything) */}
         {nodes.map((node, index) => {
