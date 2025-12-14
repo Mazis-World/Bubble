@@ -99,7 +99,7 @@ const Bubble = ({
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden flex flex-col safe-area-insets">
+    <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden flex flex-col safe-area-insets" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
       {/* Modern animated background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>

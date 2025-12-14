@@ -493,7 +493,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Loading your bubble...</p>
@@ -504,7 +504,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
   if (!bubbleData) {
     return (
-      <div className="h-screen bg-gray-950 flex items-center justify-center overflow-hidden">
+      <div className="h-screen bg-gray-950 flex items-center justify-center overflow-hidden" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
         <div className="text-center">
           <p className="text-gray-400 mb-4">No bubble found.</p>
           <button

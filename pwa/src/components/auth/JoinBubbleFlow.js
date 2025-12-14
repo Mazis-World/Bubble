@@ -275,7 +275,7 @@ const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
       <div className="w-full max-w-md h-full flex flex-col justify-center overflow-y-auto scrollbar-hide">
         {renderStep()}
       </div>

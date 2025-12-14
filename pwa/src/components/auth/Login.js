@@ -23,14 +23,14 @@ const Login = ({ onLoginSuccess, onBack }) => {
   
   if (loading) {
     return (
-      <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 flex items-center justify-center overflow-hidden">
+      <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 flex items-center justify-center overflow-hidden" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
         <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden relative">
+    <div className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden relative" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
       {/* Background Bubbles */}
       <div className="absolute top-0 left-0 w-full h-full z-0">
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-600/10 rounded-full animate-blob"></div>

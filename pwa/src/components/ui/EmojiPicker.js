@@ -155,11 +155,10 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
     <div className="w-full">
       <div 
         ref={containerRef}
-        className="overflow-x-auto overflow-y-hidden scrollbar-hide"
+        className="overflow-x-auto overflow-y-visible scrollbar-hide"
         style={{ 
           WebkitOverflowScrolling: 'touch',
           scrollBehavior: 'smooth',
-          height: `${rows * emojiHeight + (rows - 1) * gap + (padding * 2)}px`,
           width: '100%',
           willChange: 'scroll-position', // Optimize for scrolling
         }}
@@ -172,8 +171,9 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
             gridAutoFlow: 'column',
             gap: `${gap}px`,
             padding: `${padding}px`,
+            paddingBottom: `${padding + 2}px`,
             width: `${totalWidth}px`,
-            height: `${rows * emojiHeight + (rows - 1) * gap}px`,
+            minHeight: `${rows * emojiHeight + (rows - 1) * gap + (padding * 2)}px`,
             contain: 'layout style paint', // Performance optimization
           }}
         >
@@ -201,7 +201,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
           ))}
         </div>
       </div>
-      <div className="text-center mt-1.5">
+      <div className="text-center mt-1">
         <p className="text-gray-400 text-xs font-medium">
           {displayEmojis.length} of {COMMON_EMOJIS.length} emojis • Swipe to see more
         </p>

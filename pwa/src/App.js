@@ -208,7 +208,7 @@ export default function FamilyBubbleApp() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 flex items-center justify-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
         <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
       </div>
     );
@@ -274,7 +274,7 @@ export default function FamilyBubbleApp() {
   // If we are here, currentUser exists.
   if (view === 'main' && isLapsedSubscriber && !isSubscribed) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
           <h1 className="text-3xl font-bold text-white mb-4">Your Subscription has Expired</h1>
           <p className="text-gray-400 mb-8">Please renew your subscription to continue using premium features.</p>
           <button
@@ -294,7 +294,7 @@ export default function FamilyBubbleApp() {
   }
 
   return (
-    <div className="h-screen bg-gray-950 overflow-hidden">
+    <div className="h-screen bg-gray-950 overflow-hidden" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
       <MainApp 
         userId={currentUser.uid} 
         onLogout={handleLogout} 
