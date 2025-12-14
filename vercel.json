@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd pwa && npm run build",
+  "buildCommand": "cd pwa && npm ci && npm run build",
   "outputDirectory": "pwa/build",
-  "installCommand": "cd pwa && npm install"
+  "installCommand": "cd pwa && npm ci"
 }
