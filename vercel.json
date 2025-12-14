@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd pwa && npm install --legacy-peer-deps --no-audit && npx react-scripts build",
+  "buildCommand": "cd pwa && npm install --legacy-peer-deps --no-audit && npm run build",
   "outputDirectory": "pwa/build",
   "installCommand": "cd pwa && npm install --legacy-peer-deps --no-audit"
 }

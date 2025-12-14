@@ -26,8 +26,8 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "npx react-scripts build",
-    "build:prod": "NODE_ENV=production npx react-scripts build",
+    "build": "node node_modules/react-scripts/scripts/build.js",
+    "build:prod": "NODE_ENV=production node node_modules/react-scripts/scripts/build.js",
     "test": "react-scripts test",
     "test:ci": "react-scripts test --ci --coverage --watchAll=false",
     "eject": "react-scripts eject",
