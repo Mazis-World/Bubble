@@ -107,11 +107,11 @@ const Bubble = ({
         <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
       </div>
       
-       <div className="relative z-30 safe-area-top flex-shrink-0" style={{ 
-         borderTopLeftRadius: '1.5rem',
-         borderTopRightRadius: '1.5rem',
-         overflow: 'hidden',
-       }}>
+      <div className="relative z-30 safe-area-top flex-shrink-0" style={{ 
+        borderTopLeftRadius: '1.5rem',
+        borderTopRightRadius: '1.5rem',
+        overflow: 'hidden',
+      }}>
         <div className="px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between sm:glass-strong sm:border-b sm:border-white/10" style={{ 
           background: 'rgba(15, 23, 42, 0.4)',
           backdropFilter: 'blur(12px)',
@@ -159,6 +159,7 @@ const Bubble = ({
           >
             <Settings size={18} className="sm:w-5 sm:h-5" />
           </button>
+          </div>
         </div>
       </div>
 
@@ -183,7 +184,9 @@ const Bubble = ({
         )}
       </div>
 
-      <div className="p-4 sm:p-6 pb-6 sm:pb-8 safe-area-bottom z-20 flex-shrink-0">
+      <div className="p-4 sm:p-6 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 
+        paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+      }}>
         <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl">
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
