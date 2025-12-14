@@ -111,8 +111,7 @@ const Bubble = ({
          background: 'rgba(15, 23, 42, 0.4)',
          backdropFilter: 'blur(12px)',
          WebkitBackdropFilter: 'blur(12px)',
-         borderTopLeftRadius: '1.5rem',
-         borderTopRightRadius: '1.5rem',
+         borderRadius: '1.5rem 1.5rem 0 0',
        }}>
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg glow-purple">
@@ -180,7 +179,7 @@ const Bubble = ({
         )}
       </div>
 
-      <div className="p-4 sm:p-6 safe-area-bottom z-20 flex-shrink-0">
+      <div className="p-4 sm:p-6 pb-6 sm:pb-8 safe-area-bottom z-20 flex-shrink-0">
         <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl">
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button

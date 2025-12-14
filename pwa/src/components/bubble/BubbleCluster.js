@@ -343,27 +343,41 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           })}
         </div>
 
-        {/* Enhanced concentric radar rings - inner rings more prominent - z-index 4 - PERFECTLY CENTERED */}
+        {/* Enhanced concentric radar rings - app-specific gradient colors - z-index 4 - PERFECTLY CENTERED */}
         {[1, 2, 3, 4, 5].map((ring) => {
           const ringSize = (ring / 5) * 90;
-          const isOuterRing = ring >= 4; // Outermost rings (4 and 5) - both white
+          const isOuterRing = ring >= 4; // Outermost rings (4 and 5)
           const isInnerRing = ring <= 2;
 
-          let borderColor, borderWidth, glowIntensity;
+          let borderWidth, glowIntensity;
+          // App colors: purple, blue, pink - cycle through them based on ring
+          const colorIndex = ring % 3;
+          let primaryColor, secondaryColor, tertiaryColor;
+
+          if (colorIndex === 0) {
+            // Purple primary
+            primaryColor = isOuterRing ? 'rgba(168, 85, 247, 1)' : isInnerRing ? `rgba(168, 85, 247, ${0.85 - (ring * 0.1)})` : 'rgba(168, 85, 247, 0.5)';
+            secondaryColor = isOuterRing ? 'rgba(59, 130, 246, 0.9)' : isInnerRing ? `rgba(59, 130, 246, ${0.75 - (ring * 0.1)})` : 'rgba(59, 130, 246, 0.4)';
+            tertiaryColor = isOuterRing ? 'rgba(236, 72, 153, 0.8)' : isInnerRing ? `rgba(236, 72, 153, ${0.65 - (ring * 0.1)})` : 'rgba(236, 72, 153, 0.3)';
+          } else if (colorIndex === 1) {
+            // Blue primary
+            primaryColor = isOuterRing ? 'rgba(59, 130, 246, 1)' : isInnerRing ? `rgba(59, 130, 246, ${0.85 - (ring * 0.1)})` : 'rgba(59, 130, 246, 0.5)';
+            secondaryColor = isOuterRing ? 'rgba(236, 72, 153, 0.9)' : isInnerRing ? `rgba(236, 72, 153, ${0.75 - (ring * 0.1)})` : 'rgba(236, 72, 153, 0.4)';
+            tertiaryColor = isOuterRing ? 'rgba(168, 85, 247, 0.8)' : isInnerRing ? `rgba(168, 85, 247, ${0.65 - (ring * 0.1)})` : 'rgba(168, 85, 247, 0.3)';
+          } else {
+            // Pink primary
+            primaryColor = isOuterRing ? 'rgba(236, 72, 153, 1)' : isInnerRing ? `rgba(236, 72, 153, ${0.85 - (ring * 0.1)})` : 'rgba(236, 72, 153, 0.5)';
+            secondaryColor = isOuterRing ? 'rgba(168, 85, 247, 0.9)' : isInnerRing ? `rgba(168, 85, 247, ${0.75 - (ring * 0.1)})` : 'rgba(168, 85, 247, 0.4)';
+            tertiaryColor = isOuterRing ? 'rgba(59, 130, 246, 0.8)' : isInnerRing ? `rgba(59, 130, 246, ${0.65 - (ring * 0.1)})` : 'rgba(59, 130, 246, 0.3)';
+          }
 
           if (isOuterRing) {
-            // Outer rings (4 and 5) - pure white like logo
-            borderColor = 'rgba(255, 255, 255, 1)';
-            borderWidth = ring === 5 ? '3px' : '2.5px'; // Ring 5 slightly thicker
+            borderWidth = ring === 5 ? '3px' : '2.5px';
             glowIntensity = 2.0;
           } else if (isInnerRing) {
-            // Inner rings - subtle white with slight fade
-            borderColor = `rgba(255, 255, 255, ${0.85 - (ring * 0.1)})`;
             borderWidth = '1.5px';
             glowIntensity = 1.2;
           } else {
-            // Middle ring (ring 3) - softer white
-            borderColor = `rgba(255, 255, 255, ${0.5})`;
             borderWidth = '1px';
             glowIntensity = 0.8;
           }
@@ -378,11 +392,11 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
                 height: `${ringSize}%`,
                 left: `${(100 - ringSize) / 2}%`,
                 top: `${(100 - ringSize) / 2}%`,
-                border: `${borderWidth} solid ${borderColor}`,
+                border: `${borderWidth} solid ${primaryColor}`,
                 borderRadius: '50%',
                 boxShadow: isOuterRing
-                  ? `0 0 20px rgba(255, 255, 255, 0.9), 0 0 40px rgba(255, 255, 255, 0.6), 0 0 60px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.2)`
-                  : `0 0 ${(8 + ring * 2) * glowIntensity}px rgba(255, 255, 255, ${0.4 * glowIntensity}), 0 0 ${(4 + ring) * glowIntensity}px rgba(255, 255, 255, ${0.3 * glowIntensity}), inset 0 0 ${(4 + ring)}px rgba(255, 255, 255, ${0.15})`,
+                  ? `0 0 20px ${primaryColor}, 0 0 40px ${secondaryColor}, 0 0 60px ${tertiaryColor}, inset 0 0 10px ${primaryColor}`
+                  : `0 0 ${(8 + ring * 2) * glowIntensity}px ${primaryColor}, 0 0 ${(4 + ring) * glowIntensity}px ${secondaryColor}, inset 0 0 ${(4 + ring)}px ${tertiaryColor}`,
                 animationDelay: `${ring * 0.25}s`,
               }}
             />
