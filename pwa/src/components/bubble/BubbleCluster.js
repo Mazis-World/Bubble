@@ -249,7 +249,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
   const centerY = containerHeight / 2;
 
   return (
-    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4" style={{ minHeight: '100%' }}>
+    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4">
       {/* Outer radar frame with glow - mobile optimized - PERFECTLY CENTERED */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div 
@@ -257,10 +257,6 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           style={{
             width: 'min(600px, 95vw)',
             height: 'min(600px, 95vw)',
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
           }}
         ></div>
         <div 
@@ -275,7 +271,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
         ></div>
       </div>
 
-      {/* Main radar container - mobile responsive - PERFECTLY CENTERED */}
+      {/* Main radar container - mobile responsive - CENTERED WITH FLEX */}
       <div
         className="relative rounded-full"
         ref={clusterRef}
@@ -284,10 +280,6 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           height: 'min(500px, 85vw)',
           minWidth: '280px',
           minHeight: '280px',
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
           background: 'radial-gradient(circle, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%)',
           overflow: 'visible',
         }}
@@ -351,17 +343,30 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
           })}
         </div>
 
-        {/* Enhanced concentric radar rings - inner rings more prominent - z-index 4 - FIXED POSITIONING */}
+        {/* Enhanced concentric radar rings - inner rings more prominent - z-index 4 - PERFECTLY CENTERED */}
         {[1, 2, 3, 4, 5].map((ring) => {
           const ringSize = (ring / 5) * 90;
-          // Inner rings are brighter and more visible
+          const isOuterRing = ring >= 4; // Outermost rings (4 and 5) - both white
           const isInnerRing = ring <= 2;
-          // Increased opacity for better visibility
-          const ringOpacity = isInnerRing 
-            ? 0.85 - (ring * 0.1)  // Inner rings: 0.85, 0.75
-            : 0.6 - ((ring - 2) * 0.1); // Outer rings: 0.6, 0.5, 0.4
-          const borderWidth = isInnerRing ? '2.5px' : '2px';
-          const glowIntensity = isInnerRing ? 1.5 : 0.8;
+
+          let borderColor, borderWidth, glowIntensity;
+
+          if (isOuterRing) {
+            // Outer rings (4 and 5) - pure white like logo
+            borderColor = 'rgba(255, 255, 255, 1)';
+            borderWidth = ring === 5 ? '3px' : '2.5px'; // Ring 5 slightly thicker
+            glowIntensity = 2.0;
+          } else if (isInnerRing) {
+            // Inner rings - subtle white with slight fade
+            borderColor = `rgba(255, 255, 255, ${0.85 - (ring * 0.1)})`;
+            borderWidth = '1.5px';
+            glowIntensity = 1.2;
+          } else {
+            // Middle ring (ring 3) - softer white
+            borderColor = `rgba(255, 255, 255, ${0.5})`;
+            borderWidth = '1px';
+            glowIntensity = 0.8;
+          }
           
           return (
             <div
@@ -373,20 +378,18 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
                 height: `${ringSize}%`,
                 left: `${(100 - ringSize) / 2}%`,
                 top: `${(100 - ringSize) / 2}%`,
-                border: `${borderWidth} solid rgba(34, 211, 238, ${ringOpacity})`,
+                border: `${borderWidth} solid ${borderColor}`,
                 borderRadius: '50%',
-                boxShadow: `
-                  0 0 ${(10 + ring * 3) * glowIntensity}px rgba(34, 211, 238, ${ringOpacity * glowIntensity}),
-                  0 0 ${(6 + ring * 2) * glowIntensity}px rgba(59, 130, 246, ${ringOpacity * glowIntensity * 0.7}),
-                  inset 0 0 ${(5 + ring)}px rgba(34, 211, 238, ${ringOpacity * 0.5})
-                `,
+                boxShadow: isOuterRing
+                  ? `0 0 20px rgba(255, 255, 255, 0.9), 0 0 40px rgba(255, 255, 255, 0.6), 0 0 60px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.2)`
+                  : `0 0 ${(8 + ring * 2) * glowIntensity}px rgba(255, 255, 255, ${0.4 * glowIntensity}), 0 0 ${(4 + ring) * glowIntensity}px rgba(255, 255, 255, ${0.3 * glowIntensity}), inset 0 0 ${(4 + ring)}px rgba(255, 255, 255, ${0.15})`,
                 animationDelay: `${ring * 0.25}s`,
               }}
             />
           );
         })}
         
-        {/* Additional inner highlight rings for depth - z-index 4 - FIXED POSITIONING */}
+        {/* Additional inner highlight rings for depth - z-index 4 - PERFECTLY CENTERED */}
         {[1, 2].map((ring) => {
           const ringSize = (ring / 5) * 90;
           return (
