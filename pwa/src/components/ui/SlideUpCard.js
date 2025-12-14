@@ -16,7 +16,8 @@ const SlideUpCard = ({ isOpen, onClose, children, title }) => {
         }`}
         style={{ 
           bottom: 0,
-          maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - 1rem)',
+          maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - 2rem)',
+          marginTop: '1rem',
           willChange: 'transform',
           overflow: 'hidden'
         }}
