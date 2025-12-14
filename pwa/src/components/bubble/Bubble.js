@@ -228,9 +228,9 @@ const Bubble = ({
         }}
         title="Update Your Status"
       >
-        <div className="w-full space-y-4">
-          <div className="-mt-2">
-            <p className="text-gray-300 text-sm mb-1 font-semibold">Choose your status emoji:</p>
+        <div className="w-full space-y-3">
+          <div>
+            <p className="text-gray-300 text-sm mb-1.5 font-semibold">Choose your status emoji:</p>
             <EmojiPicker
               selectedEmoji={selectedStatusEmoji || bubbleData?.currentMember?.status}
               onSelect={(emoji) => {
@@ -239,8 +239,8 @@ const Bubble = ({
             />
           </div>
           
-          <div className="border-t border-gray-800 pt-4">
-            <p className="text-gray-300 text-sm mb-3 font-semibold">Add a quick message (optional):</p>
+          <div className="border-t border-gray-800 pt-3">
+            <p className="text-gray-300 text-sm mb-2 font-semibold">Add a quick message (optional):</p>
             <div className="relative">
               <input
                 type="text"
