@@ -10,13 +10,19 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
     return () => clearTimeout(timer);
   }, [delay]);
 
-  // Optimized face-sized bubbles - smaller to better represent faces
+  // Optimized face-sized bubbles - mobile friendly touch targets
   const memberTier = member?.tier || (member?.type === 'owner' ? 1 : 2);
   const isOwner = memberTier === 1 || member?.type === 'owner';
-  // Smaller sizes: owner 64px, tier 2: 56px, tier 3+: 48px
-  const size = isOwner ? 'w-16 h-16' : memberTier === 2 ? 'w-14 h-14' : 'w-12 h-12';
-  const statusIconSize = isOwner ? 'w-6 h-6' : memberTier === 2 ? 'w-5 h-5' : 'w-4 h-4';
-  const iconSize = isOwner ? 14 : memberTier === 2 ? 12 : 10;
+  // Mobile: larger for touch, Desktop: optimized sizes
+  // Mobile: owner 72px, tier 2: 64px, tier 3+: 56px
+  // Desktop: owner 64px, tier 2: 56px, tier 3+: 48px
+  const size = isOwner 
+    ? 'w-18 h-18 sm:w-16 sm:h-16' 
+    : memberTier === 2 
+    ? 'w-16 h-16 sm:w-14 sm:h-14' 
+    : 'w-14 h-14 sm:w-12 sm:h-12';
+  const statusIconSize = isOwner ? 'w-7 h-7 sm:w-6 sm:h-6' : memberTier === 2 ? 'w-6 h-6 sm:w-5 sm:h-5' : 'w-5 h-5 sm:w-4 sm:h-4';
+  const iconSize = isOwner ? 16 : memberTier === 2 ? 14 : 12;
   const borderWidth = isOwner ? 'border-2' : memberTier === 2 ? 'border-2' : 'border-2';
 
   const StatusIcon = ({ status }) => {
@@ -105,10 +111,10 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
       {/* Status indicator */}
       <StatusIcon status={member.status || '⚪'} />
 
-      {/* Center indicator for current user */}
+      {/* Center indicator for current user - mobile optimized */}
       {isCenter && (
-        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border border-white shadow-lg z-20">
-          <span className="text-white text-[8px] font-bold">YOU</span>
+        <div className="absolute -top-0.5 sm:-top-1 left-1/2 transform -translate-x-1/2 w-6 h-6 sm:w-5 sm:h-5 bg-blue-500 rounded-full flex items-center justify-center border border-white shadow-lg z-20">
+          <span className="text-white text-[9px] sm:text-[8px] font-bold leading-none">YOU</span>
         </div>
       )}
     </div>

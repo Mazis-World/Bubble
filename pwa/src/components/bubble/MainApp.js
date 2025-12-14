@@ -11,6 +11,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const [showInvite, setShowInvite] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [inviteToken, setInviteToken] = useState('');
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const unsubscribeRef = useRef(null);
   const currentBubbleIdRef = useRef(null);
 
@@ -394,22 +395,22 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       console.error("Cannot update status: missing bubble or member data");
       return;
     }
-    await API.updateStatus(bubbleData.bubble.id, bubbleData.currentMember.id, status, statusText);
     
-    // Update location if provided, otherwise try to get current location
-    if (location) {
-      try {
-        await API.updateLocation(bubbleData.bubble.id, bubbleData.currentMember.id, location);
-        console.log('Location updated with status change');
-      } catch (error) {
-        console.log('Location update failed:', error.message);
-      }
-    } else {
-      // Try to get current location
-      updateLocation();
-    }
+    // Update status immediately (don't wait for location)
+    const statusPromise = API.updateStatus(bubbleData.bubble.id, bubbleData.currentMember.id, status, statusText);
     
-    loadBubble();
+    // Update location in parallel if provided
+    const locationPromise = location 
+      ? API.updateLocation(bubbleData.bubble.id, bubbleData.currentMember.id, location).catch(err => {
+          console.log('Location update failed:', err.message);
+        })
+      : Promise.resolve();
+    
+    // Wait for both, but don't block on location
+    await Promise.all([statusPromise, locationPromise]);
+    
+    // Don't reload entire bubble - the realtime listener will update automatically
+    // loadBubble(); // Removed - causes unnecessary delay
   };
 
   const handlePhotoUpdate = async (imageFile) => {
@@ -466,13 +467,27 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       console.error("Cannot generate invite: currentMember or nodeId is missing.", { bubbleData });
       return;
     }
+    
+    // Prevent multiple clicks
+    if (isGeneratingInvite) return;
+    
+    setIsGeneratingInvite(true);
+    
+    // Optimistic UI: Open modal immediately with loading state
+    setShowInvite(true);
+    setInviteToken('Generating...');
+    
+    // Generate token in background
     try {
       const { token } = await API.generateReferral(bubbleData.bubble.id, bubbleData.currentMember.id);
       setInviteToken(token);
-      setShowInvite(true);
     } catch (error) {
       console.error("Error generating invite:", error);
+      setShowInvite(false);
+      setInviteToken('');
       alert("Failed to generate invite code. Please try again.");
+    } finally {
+      setIsGeneratingInvite(false);
     }
   };
 
@@ -489,12 +504,12 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
   if (!bubbleData) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="h-screen bg-gray-950 flex items-center justify-center overflow-hidden">
         <div className="text-center">
           <p className="text-gray-400 mb-4">No bubble found.</p>
           <button
             onClick={() => loadBubble()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 tap-target"
           >
             Retry
           </button>
@@ -515,6 +530,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       inviteToken={inviteToken}
       handleStatusChange={handleStatusChange}
       handleGenerateInvite={handleGenerateInvite}
+      isGeneratingInvite={isGeneratingInvite}
       handlePhotoUpdate={handlePhotoUpdate}
       handleProfileUpdate={handleProfileUpdate}
       onLogout={onLogout}

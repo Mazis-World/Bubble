@@ -3,7 +3,7 @@ import { Circle, PlusCircle, LogIn, ChevronRight } from 'lucide-react';
 
 const Welcome = ({ onLogin, onCreate, onJoin }) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden relative">
+    <div className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden relative">
       {/* Background Bubbles */}
       <div className="absolute top-0 left-0 w-full h-full z-0">
         <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-600/10 rounded-full animate-blob"></div>
@@ -18,8 +18,8 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
           </div>
         </div>
 
-        <h1 className="text-5xl font-bold mb-3">Welcome to FamilyBubble</h1>
-        <p className="text-lg text-gray-400 max-w-sm mx-auto">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 px-4">Welcome to FamilyBubble</h1>
+        <p className="text-base sm:text-lg text-gray-400 max-w-sm mx-auto px-4">
           One bubble. One shared space. Instantly connect with your family circle.
         </p>
 
@@ -27,7 +27,7 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
           {/* Create New Bubble Card */}
           <div
             onClick={onCreate}
-            className="group bg-white/5 border border-white/10 rounded-2xl p-6 text-left hover:bg-white/10 hover:border-purple-500 transition-all duration-300 cursor-pointer transform hover:scale-105"
+            className="group bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 text-left hover:bg-white/10 hover:border-purple-500 active:bg-white/10 active:scale-[0.98] transition-all duration-300 cursor-pointer transform hover:scale-105 tap-target"
           >
             <div className="flex items-center">
               <div className="bg-purple-600/30 p-3 rounded-full mr-5">
@@ -44,7 +44,7 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
           {/* Join Existing Bubble Card */}
           <div
             onClick={onJoin}
-            className="group bg-white/5 border border-white/10 rounded-2xl p-6 text-left hover:bg-white/10 hover:border-blue-500 transition-all duration-300 cursor-pointer transform hover:scale-105"
+            className="group bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6 text-left hover:bg-white/10 hover:border-blue-500 active:bg-white/10 active:scale-[0.98] transition-all duration-300 cursor-pointer transform hover:scale-105 tap-target"
           >
             <div className="flex items-center">
               <div className="bg-blue-600/30 p-3 rounded-full mr-5">

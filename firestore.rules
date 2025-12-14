@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to check if user is a member of a bubble
+    function isBubbleMember(bubbleId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.bubbles.hasAny([bubbleId]);
+    }
+    
+    // Helper function to check if user is the bubble owner
+    function isBubbleOwner(bubbleId) {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/bubbles/$(bubbleId)) &&
+             get(/databases/$(database)/documents/bubbles/$(bubbleId)).data.ownerId == request.auth.uid;
+    }
+    
+    // ============================================================================
+    // USERS Collection
+    // ============================================================================
+    match /users/{userId} {
+      // Users can read their own profile
+      allow read: if isOwner(userId);
+      
+      // Users can create their own profile
+      allow create: if isOwner(userId) &&
+                     request.resource.data.keys().hasAll(['fullName', 'createdAt', 'premium', 'bubbles']) &&
+                     request.resource.data.fullName is string &&
+                     request.resource.data.bubbles is list;
+      
+      // Users can update their own profile
+      allow update: if isOwner(userId) &&
+                     request.resource.data.fullName is string &&
+                     request.resource.data.bubbles is list;
+      
+      // Users cannot delete their own profile (prevent accidental deletion)
+      allow delete: if false;
+    }
+    
+    // ============================================================================
+    // BUBBLES Collection
+    // ============================================================================
+    match /bubbles/{bubbleId} {
+      // Only bubble members can read bubble data
+      allow read: if isBubbleMember(bubbleId);
+      
+      // Only authenticated users can create bubbles (they become the owner)
+      allow create: if isAuthenticated() &&
+                     request.resource.data.ownerId == request.auth.uid &&
+                     request.resource.data.keys().hasAll(['name', 'ownerId', 'createdAt']) &&
+                     request.resource.data.name is string;
+      
+      // Only bubble owner can update bubble data
+      allow update: if isBubbleOwner(bubbleId);
+      
+      // Only bubble owner can delete bubbles
+      allow delete: if isBubbleOwner(bubbleId);
+      
+      // ============================================================================
+      // NODES Subcollection
+      // ============================================================================
+      match /nodes/{nodeId} {
+        // Bubble members can read nodes
+        allow read: if isBubbleMember(bubbleId);
+        
+        // Only bubble members can create nodes (when joining)
+        allow create: if isBubbleMember(bubbleId) &&
+                       request.resource.data.keys().hasAll(['userId', 'fullName', 'tier', 'createdAt']) &&
+                       request.resource.data.userId is string &&
+                       request.resource.data.fullName is string &&
+                       request.resource.data.tier is int;
+        
+        // Users can update their own node, or bubble owner can update any node
+        allow update: if isBubbleMember(bubbleId) &&
+                       (request.resource.data.userId == request.auth.uid || isBubbleOwner(bubbleId));
+        
+        // Only bubble owner can delete nodes
+        allow delete: if isBubbleOwner(bubbleId);
+      }
+      
+      // ============================================================================
+      // EDGES Subcollection
+      // ============================================================================
+      match /edges/{edgeId} {
+        // Bubble members can read edges
+        allow read: if isBubbleMember(bubbleId);
+        
+        // Only bubble members can create edges
+        allow create: if isBubbleMember(bubbleId) &&
+                       request.resource.data.keys().hasAll(['fromNodeId', 'toNodeId', 'relationship', 'createdAt']) &&
+                       request.resource.data.fromNodeId is string &&
+                       request.resource.data.toNodeId is string &&
+                       request.resource.data.relationship is string;
+        
+        // Only bubble owner can update edges
+        allow update: if isBubbleOwner(bubbleId);
+        
+        // Only bubble owner can delete edges
+        allow delete: if isBubbleOwner(bubbleId);
+      }
+    }
+    
+    // ============================================================================
+    // INVITATIONS Collection
+    // ============================================================================
+    match /invitations/{invitationId} {
+      // Anyone with the token can read invitation (for joining)
+      allow read: if true;
+      
+      // Only authenticated users can create invitations
+      allow create: if isAuthenticated() &&
+                     request.resource.data.keys().hasAll(['bubbleId', 'createdBy', 'createdAt', 'token']) &&
+                     request.resource.data.createdBy == request.auth.uid &&
+                     request.resource.data.bubbleId is string &&
+                     request.resource.data.token is string;
+      
+      // Only the creator or bubble owner can update invitations
+      allow update: if isAuthenticated() &&
+                     (request.resource.data.createdBy == request.auth.uid || 
+                      isBubbleOwner(request.resource.data.bubbleId));
+      
+      // Only the creator or bubble owner can delete invitations
+      allow delete: if isAuthenticated() &&
+                     (resource.data.createdBy == request.auth.uid ||
+                      isBubbleOwner(resource.data.bubbleId));
+    }
+    
+    // Default: deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -75,7 +75,9 @@ const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
               placeholder="BUBXXXXXXXX"
               value={inviteToken}
               onChange={(e) => setInviteToken(e.target.value.toUpperCase())}
-              className="w-full text-center font-bold text-2xl px-4 py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors tracking-widest font-mono"
+              autoComplete="off"
+              autoCapitalize="characters"
+              className="w-full text-center font-bold text-base sm:text-xl md:text-2xl px-4 py-4 sm:py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors tracking-widest font-mono tap-target"
             />
             <p className="text-gray-400 text-sm mt-4 text-center">
               The code should start with "BUB"
@@ -91,20 +93,22 @@ const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
             onBack={prevStep}
             canGoNext={firstName.trim() !== '' && lastName.trim() !== ''}
           >
-            <div className="flex space-x-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <input
                 type="text"
                 placeholder="First Name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-1/2 text-center font-bold text-xl px-4 py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                autoComplete="given-name"
+                className="w-full sm:w-1/2 text-center font-bold text-base sm:text-xl px-4 py-4 sm:py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors tap-target"
               />
               <input
                 type="text"
                 placeholder="Last Name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-1/2 text-center font-bold text-xl px-4 py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                autoComplete="family-name"
+                className="w-full sm:w-1/2 text-center font-bold text-base sm:text-xl px-4 py-4 sm:py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors tap-target"
               />
             </div>
           </Step>
@@ -198,7 +202,8 @@ const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
                 placeholder="Enter custom role"
                 value={relationshipRole}
                 onChange={(e) => setRelationshipRole(e.target.value)}
-                className="w-full text-center font-bold text-xl px-4 py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors mt-4"
+                autoComplete="off"
+                className="w-full text-center font-bold text-base sm:text-xl px-4 py-4 sm:py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors mt-4 tap-target"
               />
             )}
           </Step>
@@ -217,14 +222,17 @@ const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full text-center font-bold text-xl px-4 py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+              autoComplete="email"
+              inputMode="email"
+              className="w-full text-center font-bold text-base sm:text-xl px-4 py-4 sm:py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors tap-target"
             />
             <input
               type="password"
               placeholder="Password (min 6 characters)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full text-center font-bold text-xl px-4 py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+              autoComplete="new-password"
+              className="w-full text-center font-bold text-base sm:text-xl px-4 py-4 sm:py-5 bg-gray-900/50 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors tap-target"
             />
             <p className="text-gray-400 text-sm text-center">
               You'll be automatically logged in after joining
@@ -267,8 +275,10 @@ const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden">
-      {renderStep()}
+    <div className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden">
+      <div className="w-full max-w-md h-full flex flex-col justify-center overflow-y-auto scrollbar-hide">
+        {renderStep()}
+      </div>
     </div>
   );
 };

@@ -2,12 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import FamilyBubbleApp from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <FamilyBubbleApp />
+    <ErrorBoundary>
+      <FamilyBubbleApp />
+    </ErrorBoundary>
   </React.StrictMode>
 );
 

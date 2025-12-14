@@ -25,6 +25,7 @@ const Bubble = ({
   handlePhotoUpdate,
   handleProfileUpdate,
   onLogout,
+  isGeneratingInvite = false,
 }) => {
   const [shareSuccess, setShareSuccess] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -39,12 +40,15 @@ const Bubble = ({
   const [toggleEnabled, setToggleEnabled] = useState(true); // Enabled
 
   const handleShare = async () => {
-    if (!inviteToken) return;
+    if (!inviteToken || inviteToken === 'Generating...') return;
 
-    // Create shareable URL
-    const shareUrl = `${window.location.origin}${window.location.pathname}?join=${inviteToken}`;
-    const shareText = `Join my family bubble "${bubbleData?.bubble.name}" on FamilyBubble!\n\nUse invite code: ${inviteToken}\n\nOr click this link: ${shareUrl}`;
-    const shareTitle = `Join ${bubbleData?.bubble.name} on FamilyBubble`;
+    // Create shareable URL (optimize string operations)
+    const origin = window.location.origin;
+    const pathname = window.location.pathname;
+    const shareUrl = `${origin}${pathname}?join=${inviteToken}`;
+    const bubbleName = bubbleData?.bubble?.name || 'my bubble';
+    const shareText = `Join my family bubble "${bubbleName}" on FamilyBubble!\n\nUse invite code: ${inviteToken}\n\nOr click this link: ${shareUrl}`;
+    const shareTitle = `Join ${bubbleName} on FamilyBubble`;
 
     // Try Web Share API first (works on mobile and some desktop browsers)
     if (navigator.share) {
@@ -55,12 +59,14 @@ const Bubble = ({
           url: shareUrl,
         });
         setShareSuccess(true);
-        setTimeout(() => setShareSuccess(false), 3000);
+        setTimeout(() => setShareSuccess(false), 2000); // Reduced timeout
         return;
       } catch (error) {
         // User cancelled or share failed, fall through to clipboard
         if (error.name !== 'AbortError') {
           console.error('Error sharing:', error);
+        } else {
+          return; // User cancelled, don't fall through
         }
       }
     }
@@ -69,7 +75,7 @@ const Bubble = ({
     try {
       await navigator.clipboard.writeText(shareText);
       setShareSuccess(true);
-      setTimeout(() => setShareSuccess(false), 3000);
+      setTimeout(() => setShareSuccess(false), 2000); // Reduced timeout
     } catch (error) {
       console.error('Error copying to clipboard:', error);
       alert('Failed to share. Please copy the code manually.');
@@ -78,7 +84,7 @@ const Bubble = ({
 
   if (!bubbleData || !bubbleData.currentMember) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center relative overflow-hidden">
+      <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center relative overflow-hidden">
         {/* Animated background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
@@ -93,7 +99,7 @@ const Bubble = ({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 pb-32 safe-area-bottom relative overflow-hidden">
+    <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden flex flex-col safe-area-insets">
       {/* Modern animated background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-blob"></div>
@@ -101,7 +107,7 @@ const Bubble = ({
         <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
       </div>
       
-       <div className="glass-strong border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-30 safe-area-top">
+       <div className="glass-strong border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between z-30 safe-area-top flex-shrink-0">
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg glow-purple animate-float">
             <Circle size={16} className="sm:w-[18px] sm:h-[18px] text-white" />
@@ -147,7 +153,7 @@ const Bubble = ({
         </div>
       </div>
 
-      <div className="h-[calc(100vh-140px)] w-full">
+      <div className="flex-1 w-full overflow-hidden relative">
         {viewMode === 'globe' ? (
           <GlobeView
             bubbleData={bubbleData}
@@ -168,7 +174,7 @@ const Bubble = ({
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 safe-area-bottom z-20">
+      <div className="p-4 sm:p-6 safe-area-bottom z-20 flex-shrink-0">
         <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl">
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
@@ -180,11 +186,21 @@ const Bubble = ({
             </button>
             <button
               onClick={handleGenerateInvite}
-              className="bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 hover:from-purple-400 hover:via-pink-400 hover:to-blue-400 text-white py-4 sm:py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg glow-purple hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 tap-target text-sm sm:text-base relative overflow-hidden group"
+              disabled={isGeneratingInvite}
+              className="bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 hover:from-purple-400 hover:via-pink-400 hover:to-blue-400 text-white py-4 sm:py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg glow-purple hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 tap-target text-sm sm:text-base relative overflow-hidden group disabled:opacity-70 disabled:cursor-wait"
             >
-              <Plus size={18} className="sm:w-5 sm:h-5 relative z-10" />
-              <span className="relative z-10">Invite</span>
-              <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              {isGeneratingInvite ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin relative z-10"></div>
+                  <span className="relative z-10">Generating...</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={18} className="sm:w-5 sm:h-5 relative z-10" />
+                  <span className="relative z-10">Invite</span>
+                  <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -220,7 +236,8 @@ const Bubble = ({
                 onChange={(e) => setStatusText(e.target.value)}
                 placeholder="What's on your mind?"
                 maxLength={100}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 pr-16 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                autoComplete="off"
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 pr-16 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base tap-target"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
                 {statusText.length}/100
@@ -230,12 +247,14 @@ const Bubble = ({
           
           <div className="border-t border-gray-800 pt-4">
             <p className="text-gray-300 text-sm mb-3 font-semibold">Update your location (optional):</p>
-            <LocationStep
-              onLocationSet={(loc) => {
-                setStatusLocation(loc);
-              }}
-              initialLocation={bubbleData?.currentMember?.lastKnownLocation}
-            />
+            {showStatus && (
+              <LocationStep
+                onLocationSet={(loc) => {
+                  setStatusLocation(loc);
+                }}
+                initialLocation={bubbleData?.currentMember?.lastKnownLocation}
+              />
+            )}
           </div>
           
           <button
@@ -265,8 +284,17 @@ const Bubble = ({
       >
         <p className="text-gray-300 mb-6 font-medium">Share this code to add someone to <strong className="gradient-text">{bubbleData?.bubble.name}</strong>:</p>
         <div className="bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 p-6 rounded-3xl mb-6 text-center shadow-2xl glow-blue relative overflow-hidden">
-          <code className="text-3xl font-mono font-bold text-white relative z-10">{inviteToken}</code>
-          <div className="absolute inset-0 shimmer"></div>
+          {inviteToken === 'Generating...' ? (
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <code className="text-xl font-mono font-bold text-white">Generating code...</code>
+            </div>
+          ) : (
+            <>
+              <code className="text-3xl font-mono font-bold text-white relative z-10">{inviteToken}</code>
+              <div className="absolute inset-0 shimmer"></div>
+            </>
+          )}
         </div>
         <div className="glass-light border border-white/10 rounded-2xl p-4 mb-6">
           <p className="text-sm text-blue-100 leading-relaxed font-medium">
@@ -277,6 +305,7 @@ const Bubble = ({
         <div className="flex gap-3">
           <button
             onClick={async () => {
+              if (!inviteToken || inviteToken === 'Generating...') return;
               try {
                 await navigator.clipboard.writeText(inviteToken);
                 setShareSuccess(true);
@@ -286,13 +315,15 @@ const Bubble = ({
                 alert('Failed to copy code. Please try again.');
               }
             }}
-            className="flex-1 bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-semibold hover:bg-gray-700 active:bg-gray-600 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            disabled={!inviteToken || inviteToken === 'Generating...'}
+            className="flex-1 bg-gray-800 border border-gray-700 text-white py-3 rounded-xl font-semibold hover:bg-gray-700 active:bg-gray-600 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed tap-target"
           >
             {shareSuccess ? 'Copied!' : 'Copy Code'}
           </button>
           <button
             onClick={handleShare}
-            className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl font-bold hover:from-blue-400 hover:to-purple-400 active:scale-[0.98] transition-all duration-300 hover:scale-[1.02] flex items-center justify-center gap-2 shadow-lg glow-blue hover:shadow-xl relative overflow-hidden group"
+            disabled={!inviteToken || inviteToken === 'Generating...'}
+            className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl font-bold hover:from-blue-400 hover:to-purple-400 active:scale-[0.98] transition-all duration-200 hover:scale-[1.02] flex items-center justify-center gap-2 shadow-lg glow-blue hover:shadow-xl relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed tap-target"
           >
             <Share2 size={18} />
             {shareSuccess ? 'Shared!' : 'Share'}

@@ -37,10 +37,174 @@
   user-select: none;
 }
 
-/* Better tap targets for mobile */
+/* Better tap targets for mobile - iOS recommends 44x44pt minimum */
 .tap-target {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* Prevent iOS input zoom - font-size must be at least 16px */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+textarea,
+select {
+  font-size: 16px !important; /* Prevents iOS zoom on focus */
+}
+
+@media screen and (min-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: inherit; /* Allow normal sizing on desktop */
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific styles */
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Fix iOS bounce scrolling */
+  body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  #root {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Android Chrome specific fixes */
+@supports not (-webkit-touch-callout: none) {
+  /* Android specific styles */
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Fix for mobile keyboard pushing content */
+.mobile-keyboard-fix {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+/* Better mobile scrolling */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Mobile-specific button improvements */
+@media (max-width: 640px) {
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better spacing on mobile */
+  .space-y-6 > * + * {
+    margin-top: 1.25rem;
+  }
+  
+  /* Optimize text sizes for mobile */
+  h1 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  
+  /* Better touch feedback */
+  button:active,
+  .tap-target:active {
+    transform: scale(0.97);
+    transition: transform 0.1s;
+  }
+}
+
+/* Fix for iOS Safari address bar */
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+  
+  .h-screen {
+    height: -webkit-fill-available;
+  }
+  
+  /* Ensure no scrolling on iOS */
+  html, body {
+    height: -webkit-fill-available;
+    overflow: hidden;
+  }
+  
+  #root {
+    height: -webkit-fill-available;
+    overflow: hidden;
+  }
+}
+
+/* Prevent scrolling globally */
+html, body {
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Safe area insets helper */
+.safe-area-insets {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Prevent text size adjustment on iOS */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Better focus states for mobile */
+*:focus {
+  outline: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
 }
 
 /* Hide scrollbar but keep functionality - global */
@@ -132,6 +296,135 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Radar-specific animations - mobile optimized */
+@keyframes radar-sweep {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes radar-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes radar-ring-pulse {
+  0% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+}
+
+@keyframes radar-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3), 0 0 20px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3);
+  }
+}
+
+.radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+  will-change: transform, opacity;
+}
+
+.radar-pulse {
+  animation: radar-pulse 2s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.radar-ring-pulse {
+  animation: radar-ring-pulse 3s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.radar-glow {
+  animation: radar-glow 2s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+/* Mobile performance optimizations for radar */
+@media (max-width: 640px) {
+  .radar-ring-pulse {
+    animation-duration: 4s; /* Slower on mobile for better performance */
+  }
+  
+  .radar-pulse {
+    animation-duration: 3s; /* Slower on mobile */
+  }
+  
+  /* Reduce animation complexity on mobile */
+  .radar-glow {
+    animation: none; /* Disable glow animation on mobile for performance */
+  }
+}
+
+/* Radar container performance hints */
+.member-bubble-wrapper {
+  contain: layout style paint;
+  will-change: transform;
+}
+
+/* Optimize radar rendering */
+[class*="radar"] {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Theme system - Snowflakes (for future use) */
+@keyframes snowflake-fall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.snowflake {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1em;
+  font-family: Arial, sans-serif;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+  animation: snowflake-fall linear infinite;
+  pointer-events: none;
+  user-select: none;
 }
 
 .animate-slide-up {

@@ -45,10 +45,21 @@ export default function FamilyBubbleApp() {
 
   useEffect(() => {
     const initializePurchases = async (user) => {
-      Purchases.setLogLevel(LogLevel.DEBUG);
+      // Only enable debug logging in development
+      if (process.env.NODE_ENV === 'development') {
+        Purchases.setLogLevel(LogLevel.DEBUG);
+      } else {
+        Purchases.setLogLevel(LogLevel.ERROR);
+      }
+
+      const revenueCatApiKey = process.env.REACT_APP_REVENUECAT_API_KEY;
+      if (!revenueCatApiKey) {
+        console.error("RevenueCat API key is not configured");
+        return;
+      }
 
       await Purchases.configure({
-        apiKey: "test_ZUBBwQojxkZCoVcCxjqjtUdSdzr",
+        apiKey: revenueCatApiKey,
         appUserId: user.uid,
       });
 
@@ -108,11 +119,19 @@ export default function FamilyBubbleApp() {
     try {
       // Ensure Purchases is configured, especially for the anonymous user creation flow.
       if (!Purchases.isConfigured()) {
-        console.log("Configuring Purchases for anonymous user...");
+        if (process.env.NODE_ENV === 'development') {
+          console.log("Configuring Purchases for anonymous user...");
+        }
         const appUserId = Purchases.generateRevenueCatAnonymousAppUserId();
         setAnonymousId(appUserId); // Store anonymous ID for later
+        
+        const revenueCatApiKey = process.env.REACT_APP_REVENUECAT_API_KEY;
+        if (!revenueCatApiKey) {
+          throw new Error("RevenueCat API key is not configured");
+        }
+        
         await Purchases.configure({
-          apiKey: "test_ZUBBwQojxkZCoVcCxjqjtUdSdzr",
+          apiKey: revenueCatApiKey,
           appUserId: appUserId,
         });
       }
@@ -275,7 +294,7 @@ export default function FamilyBubbleApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="h-screen bg-gray-950 overflow-hidden">
       <MainApp 
         userId={currentUser.uid} 
         onLogout={handleLogout} 

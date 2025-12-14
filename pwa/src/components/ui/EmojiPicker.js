@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 // Comprehensive emoji list - all common emojis organized
 const ALL_EMOJIS = [
@@ -43,30 +43,125 @@ const ALL_EMOJIS = [
 ];
 
 const EmojiPicker = ({ onSelect, selectedEmoji }) => {
-  // 8 columns, 4 rows = 32 emojis visible at once
+  const [visibleEmojis, setVisibleEmojis] = React.useState(64); // Start with only 64 emojis
   const columns = 8;
   const rows = 4;
   const emojiSize = 'text-3xl sm:text-4xl';
-  const emojiWidth = 60; // Fixed width in pixels for consistent grid
-  const emojiHeight = 60; // Fixed height
-  const gap = 8; // Gap between emojis
-  const padding = 16; // Container padding
+  const emojiWidth = 60;
+  const emojiHeight = 60;
+  const gap = 8;
+  const padding = 16;
   
-  // Calculate how many "pages" we need (each page is 8 columns x 4 rows = 32 emojis)
-  const emojisPerPage = columns * rows; // 32 emojis per page
-  const totalPages = Math.ceil(ALL_EMOJIS.length / emojisPerPage);
-  const pageWidth = columns * emojiWidth + (columns - 1) * gap; // Width of one page
+  // Most commonly used emojis - show these first
+  const COMMON_EMOJIS = [
+    '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩',
+    '😘', '😗', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤔', '😐', '😑', '😏', '😒', '🙄', '😬',
+    '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '😵', '🤯', '🤠',
+    '🥳', '😎', '🤓', '😕', '😟', '🙁', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥',
+    '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '💀', '☠️',
+    '💩', '🤡', '👋', '🤚', '✋', '👌', '✌️', '🤞', '🤟', '🤘', '🤙', '👍', '👎', '✊', '👊', '🤛',
+    '🤜', '👏', '🙌', '🤝', '🙏', '💪', '👶', '👦', '👧', '🧑', '👨', '👩', '🧓', '👴', '👵', '👨‍👩‍👧',
+    '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔',
+    '🍏', '🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🍅',
+    '🍆', '🥑', '🥦', '🥬', '🥒', '🌶️', '🌽', '🥕', '🥔', '🍠', '🥐', '🥯', '🍞', '🥖', '🧀', '🥚',
+    '🍳', '🥞', '🥓', '🥩', '🍗', '🍖', '🌭', '🍔', '🍟', '🍕', '🥪', '🥙', '🌮', '🌯', '🥗', '🍝',
+    '🍜', '🍲', '🍛', '🍣', '🍱', '🍘', '🍙', '🍚', '🍢', '🍡', '🍧', '🍨', '🍦', '🥧', '🍰', '🎂',
+    '🍮', '🍭', '🍬', '🍫', '🍿', '🍩', '🍪', '🥜', '🍯', '🥛', '☕', '🍵', '🧃', '🥤', '🍶', '🍺',
+    '🍻', '🥂', '🍷', '🥃', '🍸', '🍹', '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🎱', '🏓',
+    '🏸', '🏒', '🏑', '🥍', '🏏', '⛳', '🏹', '🎣', '🥊', '🥋', '🎽', '🛹', '⛸️', '🥌', '🎿', '⛷️',
+    '🏂', '🏋️', '🤼', '🤸', '⛹️', '🤺', '🤾', '🏌️', '🏇', '🧘', '🏄', '🏊', '🤽', '🚣', '🧗', '🚵',
+    '🚴', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🏵️', '🎗️', '🎫', '🎟️', '🎪', '🤹', '🎭', '🎨', '🎬',
+    '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', '🎺', '🎸', '🪕', '🎻', '🎲', '♟️', '🎯', '🎳', '🎮', '🎰',
+    '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🚚', '🚛', '🚜', '🏍️', '🛵', '🚲',
+    '🛴', '🛹', '🚁', '🛸', '✈️', '🛩️', '🛫', '🛬', '🪂', '💺', '🚀', '🚤', '⛵', '🛥️', '🛳️', '⛴️',
+    '🚢', '⚓', '⛽', '🚧', '🚦', '🚥', '🚂', '🚃', '🚄', '🚅', '🚆', '🚇', '🚈', '🚉', '🚊', '🚝',
+    '⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🕹️', '💾', '💿', '📀', '📼', '📷', '📸', '📹',
+    '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '⏱️', '⏲️', '⏰', '🕰️',
+    '⌛', '⏳', '📡', '🔋', '🔌', '💡', '🔦', '🕯️', '🧯', '💸', '💵', '💴', '💶', '💷', '💰', '💳',
+    '💎', '⚖️', '🧰', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🔩', '⚙️', '🧱', '⛓️', '🧲', '🔫', '💣', '🧨',
+    '🔪', '🗡️', '⚔️', '🛡️', '🚬', '⚰️', '🪦', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬',
+    '🕳️', '🩹', '🩺', '💊', '💉', '🩸', '🧬', '🦠', '🧫', '🧪', '🌡️', '🧹', '🪠', '🧺', '🧻', '🚽',
+    '🚿', '🛁', '🛀', '🧼', '🪥', '🪒', '🧽', '🪣', '🧴', '🛎️', '🔑', '🗝️', '🚪', '🪑', '🛋️', '🛏️',
+    '🛌', '🧸', '🪆', '🖼️', '🪞', '🪟', '🛍️', '🛒', '🎁', '🎈', '🎏', '🎀', '🪄', '🪅', '🎊', '🎉',
+    '🎎', '🏮', '🎐', '🧧', '✉️', '📩', '📨', '📧', '💌', '📥', '📤', '📦', '🏷️', '🪧', '📪', '📫',
+    '📬', '📭', '📮', '📯', '📜', '📃', '📄', '📑', '🧾', '📊', '📈', '📉', '🗒️', '🗓️', '📆', '📅',
+    '🗑️', '📇', '🗃️', '🗳️', '🗄️', '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📔', '📒', '📕', '📗',
+    '📘', '📙', '📚', '📖', '🔖', '🧷', '🔗', '📎', '🖇️', '📐', '📏', '🧮', '📌', '📍', '✂️', '🖊️',
+    '🖋️', '✒️', '🖌️', '🖍️', '📝', '✏️', '🔍', '🔎', '🔏', '🔐', '🔒', '🔓', '❤️', '🧡', '💛', '💚',
+    '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️',
+    '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌',
+    '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚',
+    '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎',
+    '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱',
+    '🔞', '📵', '🚭', '❗', '❓', '❕', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️',
+    '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿',
+    '🅿️', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '🚻', '🚮', '🎦', '📶', '🈁', '🔣',
+    'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣',
+    '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️',
+    '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️',
+    '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️',
+    '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️',
+    '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔸', '🔹', '🔶', '🔷',
+    '🔳', '🔲', '▪️', '▫️', '◼️', '◻️', '◾', '◽', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜',
+    '🟫', '🔈', '🔇', '🔉', '🔊', '🔔', '🔕', '📣', '📢', '💬', '💭', '🗯️', '♠️', '♣️', '♥️', '♦️',
+    '🃏', '🎴', '🀄', '🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛', '🕜',
+    '🕝', '🕞', '🕟', '🕠', '🕡', '🕢', '🕣', '🕤', '🕥', '🕦', '🕧', '🌍', '🌎', '🌏', '🌐', '🗺️',
+    '🧭', '🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘', '🌙', '🌚', '🌛', '🌜', '🌝', '🌞', '⭐',
+    '🌟', '🌠', '☀️', '⛅', '☁️', '⛈️', '🌤️', '🌥️', '🌦️', '🌧️', '🌨️', '🌩️', '🌪️', '🌫️', '🌬️',
+    '🌀', '🌈', '☂️', '☔', '⛱️', '⚡', '❄️', '☃️', '⛄', '☄️', '🔥', '💧', '🌊', '🌋', '🏔️', '⛰️',
+    '🗻', '🏕️', '🏖️', '🏜️', '🏝️', '🏞️', '🏟️', '🏛️', '🏗️', '🧱', '🏘️', '🏚️', '🏠', '🏡', '🏢',
+    '🏣', '🏤', '🏥', '🏦', '🏨', '🏩', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '💒', '🗼', '🗽', '⛪',
+    '🕌', '🛕', '🕍', '⛩️', '🕋', '⛲', '⛺', '🛖', '🌁', '🌃', '🏙️', '🌄', '🌅', '🌆', '🌇', '🌉',
+    '♨️', '🎠', '🎡', '🎢', '💈', '🎪', '🌱', '🌲', '🌳', '🌴', '🌵', '🌶️', '🌷', '🌸', '🌹', '🌺',
+    '🌻', '🌼', '🌽', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃', '🍄', '🌰', '🪴', '🪵', '🪨', '🎃',
+    '🎄', '🎅', '🤶', '🎆', '🎇', '🧨', '✨', '🎈', '🎉', '🎊', '🎋', '🎌', '🎍', '🎎', '🎏', '🎐',
+    '🎑', '🧧', '🎀', '🎁', '🎗️', '🎟️', '🎫', '🎖️', '🏆', '🏅', '🥇', '🥈', '🥉', '🎪', '🎭', '🩰',
+    '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', '🎺', '🎸', '🪗', '🪕', '🎻', '🎲', '♟️', '🎯',
+    '🎳', '🎮', '🎰', '🧩', '🪀', '🪁', '🪃', '🪄', '🪅', '🪆', '🪇', '🪈'
+  ];
+
+  // Use common emojis first, then fall back to all
+  const displayEmojis = useMemo(() => {
+    return COMMON_EMOJIS.slice(0, visibleEmojis);
+  }, [visibleEmojis]);
+
+  const containerRef = useRef(null);
+
+  // Load more emojis when scrolling near the end
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = container;
+      const scrollPercentage = (scrollLeft + clientWidth) / scrollWidth;
+      
+      // Load more when 80% scrolled
+      if (scrollPercentage > 0.8 && visibleEmojis < COMMON_EMOJIS.length) {
+        setVisibleEmojis(prev => Math.min(prev + 64, COMMON_EMOJIS.length));
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [visibleEmojis]);
+
+  const emojisPerPage = columns * rows;
+  const totalPages = Math.ceil(displayEmojis.length / emojisPerPage);
+  const pageWidth = columns * emojiWidth + (columns - 1) * gap;
   const totalWidth = totalPages * pageWidth + (totalPages - 1) * gap + (padding * 2);
 
   return (
     <div className="w-full">
       <div 
+        ref={containerRef}
         className="overflow-x-auto overflow-y-hidden scrollbar-hide"
         style={{ 
           WebkitOverflowScrolling: 'touch',
           scrollBehavior: 'smooth',
-          height: `${rows * emojiHeight + (rows - 1) * gap + (padding * 2)}px`, // Fixed height for 4 rows
+          height: `${rows * emojiHeight + (rows - 1) * gap + (padding * 2)}px`,
           width: '100%',
+          willChange: 'scroll-position', // Optimize for scrolling
         }}
       >
         <div 
@@ -74,14 +169,15 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
             display: 'grid',
             gridTemplateColumns: `repeat(${columns}, ${emojiWidth}px)`,
             gridTemplateRows: `repeat(${rows}, ${emojiHeight}px)`,
-            gridAutoFlow: 'column', // Flow horizontally (creates new columns, not rows)
+            gridAutoFlow: 'column',
             gap: `${gap}px`,
             padding: `${padding}px`,
             width: `${totalWidth}px`,
             height: `${rows * emojiHeight + (rows - 1) * gap}px`,
+            contain: 'layout style paint', // Performance optimization
           }}
         >
-          {ALL_EMOJIS.map((emoji, index) => (
+          {displayEmojis.map((emoji, index) => (
             <button
               key={`${emoji}-${index}`}
               onClick={() => onSelect(emoji)}
@@ -89,11 +185,10 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
                 ${emojiSize} 
                 flex items-center justify-center 
                 rounded-2xl 
-                transition-all duration-300
-                hover:bg-white/10 
+                transition-transform duration-150
                 active:scale-90
-                focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-2 focus:ring-offset-gray-900
-                ${selectedEmoji === emoji ? 'bg-gradient-to-br from-blue-500 to-purple-500 scale-110 ring-2 ring-purple-400 shadow-lg glow-blue' : 'glass-light'}
+                focus:outline-none
+                ${selectedEmoji === emoji ? 'bg-gradient-to-br from-blue-500 to-purple-500 scale-110 ring-2 ring-purple-400 shadow-lg' : 'glass-light hover:bg-white/5'}
               `}
               style={{
                 width: `${emojiWidth}px`,
@@ -108,7 +203,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
       </div>
       <div className="text-center mt-3">
         <p className="text-gray-400 text-xs font-medium">
-          {ALL_EMOJIS.length} emojis available • Swipe left/right to see more
+          {displayEmojis.length} of {COMMON_EMOJIS.length} emojis • Swipe to see more
         </p>
       </div>
     </div>

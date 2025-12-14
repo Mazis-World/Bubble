@@ -1,6 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import MemberBubble from '../ui/MemberBubble';
-import { Compass } from 'lucide-react';
+import { Radio } from 'lucide-react';
+
+// Theme system - ready for future additions like snowflakes
+// eslint-disable-next-line no-unused-vars
+const RADAR_THEMES = {
+  default: {
+    name: 'Default',
+    particles: null, // Can add snowflakes, stars, etc. here
+  },
+  snowglobe: {
+    name: 'Snowglobe',
+    particles: 'snowflakes', // Future: snowflakes falling
+  },
+};
 
 // Geographic calculation utilities for radar positioning
 const calculateBearing = (lat1, lon1, lat2, lon2) => {
@@ -31,7 +44,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   return R * c; // Distance in km
 };
 
-const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
+const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'default' }) => {
   const clusterRef = useRef(null);
 
   const [nodes, setNodes] = useState([]);
@@ -46,10 +59,8 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
   // Filter and prepare members - ensure they have required properties
   const validMembers = allMembers.filter(member => {
     if (!member || typeof member !== 'object') return false;
-    // Ensure id exists (either from nodeId or id property)
     const memberId = member.id || member.nodeId;
     if (!memberId) return false;
-    // Add id if it's missing but nodeId exists
     if (!member.id && member.nodeId) {
       member.id = member.nodeId;
     }
@@ -73,9 +84,8 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
     const height = container.offsetHeight;
     const centerX = width / 2;
     const centerY = height / 2;
-    const maxRadius = Math.min(width, height) * 0.4; // Use 80% of radius for bubbles
+    const maxRadius = Math.min(width, height) * 0.4;
 
-    // Get current user's location (center of radar)
     const centerLocation = currentMember.lastKnownLocation;
     if (!centerLocation || !centerLocation.latitude || !centerLocation.longitude) {
       // Fallback to tier-based if no location
@@ -133,7 +143,6 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
     const centerLat = centerLocation.latitude;
     const centerLon = centerLocation.longitude;
 
-    // Calculate distances and bearings for all members
     const membersWithLocation = validMembers
       .map(member => {
         const loc = member.lastKnownLocation;
@@ -150,17 +159,14 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
       })
       .filter(Boolean);
 
-    // Find max distance for scaling
     const distances = membersWithLocation.map(m => m.distance);
-    const calculatedMaxDistance = Math.max(...distances, 10); // At least 10km
+    const calculatedMaxDistance = Math.max(...distances, 10);
     setMaxDistance(calculatedMaxDistance);
 
-    // Build radar nodes
     const radarNodes = validMembers.map((member) => {
       const isCurrentUser = member.id === currentMember.id;
       
       if (isCurrentUser) {
-        // Current user at center
         return {
           id: member.id,
           ...member,
@@ -171,17 +177,12 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
         };
       }
 
-      // Find location data for this member
       const locationData = membersWithLocation.find(m => m.member.id === member.id);
       
       if (locationData) {
-        // Position based on bearing and distance
         const normalizedDistance = Math.min(locationData.distance / calculatedMaxDistance, 1);
         const radius = normalizedDistance * maxRadius;
-        
-        // Convert bearing to radians (0° = North, clockwise)
-        // In radar, 0° is typically at top (North), so we adjust
-        const angleRad = ((locationData.bearing - 90) * Math.PI / 180); // -90 to make 0° point up
+        const angleRad = ((locationData.bearing - 90) * Math.PI / 180);
         
         const x = centerX + Math.cos(angleRad) * radius;
         const y = centerY + Math.sin(angleRad) * radius;
@@ -195,7 +196,6 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
           bearing: locationData.bearing,
         };
       } else {
-        // No location data - position randomly in outer ring
         const angle = Math.random() * Math.PI * 2;
         const radius = maxRadius * 0.9;
         return {
@@ -211,7 +211,6 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
 
     setNodes(radarNodes);
     
-    // Initialize positions
     const initialPositions = {};
     radarNodes.forEach(n => {
       initialPositions[n.id] = { x: n.x, y: n.y };
@@ -224,12 +223,11 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
    * ---------------------------- */
   useEffect(() => {
     const sweepInterval = setInterval(() => {
-      setSweepAngle(prev => (prev + 2) % 360);
-    }, 50); // Smooth sweep animation
+      setSweepAngle(prev => (prev + 1.5) % 360);
+    }, 30);
     
     return () => clearInterval(sweepInterval);
   }, []);
-
 
   if (!currentMember) {
     return (
@@ -242,179 +240,269 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
     );
   }
 
+  const container = clusterRef.current;
+  const containerWidth = container?.offsetWidth || 500;
+  const containerHeight = container?.offsetHeight || 500;
+  const centerX = containerWidth / 2;
+  const centerY = containerHeight / 2;
+
   return (
-    <div className="flex items-center justify-center w-full h-full relative">
-      {/* Modern outer rings with solid white glow */}
+    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4">
+      {/* Outer radar frame with glow - mobile optimized */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-[min(600px,90vw)] h-[min(600px,90vw)] rounded-full border-2 border-white shadow-[0_0_40px_rgba(255,255,255,0.6),0_0_80px_rgba(255,255,255,0.3)]"></div>
-        <div className="absolute w-[min(550px,82.5vw)] h-[min(550px,82.5vw)] rounded-full border border-purple-500/20 shadow-[0_0_30px_rgba(168,85,247,0.2)]"></div>
-        <div className="absolute w-[min(520px,78vw)] h-[min(520px,78vw)] rounded-full border border-blue-500/15"></div>
+        <div className="w-[min(600px,95vw)] h-[min(600px,95vw)] sm:w-[min(600px,90vw)] sm:h-[min(600px,90vw)] rounded-full border-2 border-cyan-400/40 shadow-[0_0_40px_rgba(34,211,238,0.3),0_0_80px_rgba(34,211,238,0.15),inset_0_0_30px_rgba(34,211,238,0.08)] sm:shadow-[0_0_60px_rgba(34,211,238,0.4),0_0_120px_rgba(34,211,238,0.2),inset_0_0_40px_rgba(34,211,238,0.1)] radar-glow"></div>
+        <div className="absolute w-[min(580px,92vw)] h-[min(580px,92vw)] sm:w-[min(580px,87vw)] sm:h-[min(580px,87vw)] rounded-full border border-blue-400/30"></div>
       </div>
 
-      {/* Main cluster container - radar view */}
+      {/* Main radar container - mobile responsive */}
       <div
-        className="relative w-[min(500px,75vw)] h-[min(500px,75vw)] rounded-full overflow-hidden"
+        className="relative w-[min(500px,85vw)] h-[min(500px,85vw)] sm:w-[min(500px,75vw)] sm:h-[min(500px,75vw)] rounded-full"
         ref={clusterRef}
+        style={{
+          background: 'radial-gradient(circle, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%)',
+          minWidth: '280px',
+          minHeight: '280px',
+          overflow: 'visible',
+        }}
       >
-        {/* Radar distance rings */}
-        {[1, 2, 3].map((ring) => (
+        {/* Background texture layer - z-index 1 */}
+        <div 
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            zIndex: 1,
+            background: `
+              radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.08) 0%, transparent 40%),
+              radial-gradient(circle at 70% 70%, rgba(59, 130, 246, 0.06) 0%, transparent 40%),
+              repeating-conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(34, 211, 238, 0.02) 1deg, transparent 2deg)
+            `,
+            opacity: 0.6,
+            overflow: 'visible',
+          }}
+        />
+
+        {/* Grid overlay - z-index 2 */}
+        <div 
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            zIndex: 2,
+            backgroundImage: `
+              linear-gradient(rgba(34, 211, 238, 0.08) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(34, 211, 238, 0.08) 1px, transparent 1px)
+            `,
+            backgroundSize: '16px 16px',
+            opacity: 0.25,
+            maskImage: 'radial-gradient(circle, black 85%, transparent 100%)',
+            WebkitMaskImage: 'radial-gradient(circle, black 85%, transparent 100%)',
+            overflow: 'visible',
+          }}
+        />
+
+        {/* Radar grid - radial lines (N, E, S, W and diagonals) - z-index 3 - MADE VISIBLE */}
+        <div className="absolute inset-0 rounded-full pointer-events-none" style={{ zIndex: 3, overflow: 'visible' }}>
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
+            const isCardinal = angle % 90 === 0;
+            return (
+              <div
+                key={angle}
+                className="absolute"
+                style={{
+                  left: '50%',
+                  top: '50%',
+                  width: isCardinal ? '3px' : '2px',
+                  height: '50%',
+                  transformOrigin: 'center bottom',
+                  transform: `translate(-50%, -100%) rotate(${angle}deg)`,
+                  background: isCardinal
+                    ? 'linear-gradient(to bottom, rgba(34, 211, 238, 0.9) 0%, rgba(34, 211, 238, 0.6) 30%, rgba(34, 211, 238, 0.3) 60%, rgba(34, 211, 238, 0.1) 90%, transparent 100%)'
+                    : 'linear-gradient(to bottom, rgba(59, 130, 246, 0.7) 0%, rgba(59, 130, 246, 0.4) 30%, rgba(59, 130, 246, 0.2) 60%, rgba(59, 130, 246, 0.05) 90%, transparent 100%)',
+                  boxShadow: isCardinal
+                    ? '0 0 8px rgba(34, 211, 238, 0.6), 0 0 4px rgba(34, 211, 238, 0.4)'
+                    : '0 0 4px rgba(59, 130, 246, 0.4), 0 0 2px rgba(59, 130, 246, 0.2)',
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {/* Enhanced concentric radar rings - inner rings more prominent - z-index 4 - FIXED POSITIONING */}
+        {[1, 2, 3, 4, 5].map((ring) => {
+          const ringSize = (ring / 5) * 90;
+          // Inner rings are brighter and more visible
+          const isInnerRing = ring <= 2;
+          // Increased opacity for better visibility
+          const ringOpacity = isInnerRing 
+            ? 0.85 - (ring * 0.1)  // Inner rings: 0.85, 0.75
+            : 0.6 - ((ring - 2) * 0.1); // Outer rings: 0.6, 0.5, 0.4
+          const borderWidth = isInnerRing ? '2.5px' : '2px';
+          const glowIntensity = isInnerRing ? 1.5 : 0.8;
+          
+          return (
+            <div
+              key={ring}
+              className="absolute rounded-full pointer-events-none radar-ring-pulse"
+              style={{
+                zIndex: 4,
+                width: `${ringSize}%`,
+                height: `${ringSize}%`,
+                left: `${(100 - ringSize) / 2}%`,
+                top: `${(100 - ringSize) / 2}%`,
+                border: `${borderWidth} solid rgba(34, 211, 238, ${ringOpacity})`,
+                borderRadius: '50%',
+                boxShadow: `
+                  0 0 ${(10 + ring * 3) * glowIntensity}px rgba(34, 211, 238, ${ringOpacity * glowIntensity}),
+                  0 0 ${(6 + ring * 2) * glowIntensity}px rgba(59, 130, 246, ${ringOpacity * glowIntensity * 0.7}),
+                  inset 0 0 ${(5 + ring)}px rgba(34, 211, 238, ${ringOpacity * 0.5})
+                `,
+                animationDelay: `${ring * 0.25}s`,
+              }}
+            />
+          );
+        })}
+        
+        {/* Additional inner highlight rings for depth - z-index 4 - FIXED POSITIONING */}
+        {[1, 2].map((ring) => {
+          const ringSize = (ring / 5) * 90;
+          return (
+            <div
+              key={`highlight-${ring}`}
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                zIndex: 4,
+                width: `${ringSize}%`,
+                height: `${ringSize}%`,
+                left: `${(100 - ringSize) / 2}%`,
+                top: `${(100 - ringSize) / 2}%`,
+                border: `0.5px solid rgba(255, 255, 255, ${0.2 - ring * 0.05})`,
+                borderRadius: '50%',
+                boxShadow: `inset 0 0 ${3 + ring}px rgba(255, 255, 255, ${0.1 - ring * 0.02})`,
+              }}
+            />
+          );
+        })}
+
+        {/* Distance markers on rings (North position) - mobile optimized - z-index 5 */}
+        {[1, 2, 3, 4, 5].map((ring) => {
+          const ringSize = (ring / 5) * 90;
+          const isInnerRing = ring <= 2;
+          
+          return (
+            <div
+              key={`marker-${ring}`}
+              className="absolute pointer-events-none"
+              style={{
+                zIndex: 5,
+                left: '50%',
+                top: `${50 - (ringSize / 2)}%`,
+                transform: 'translate(-50%, -50%)',
+                width: '3px',
+                height: isInnerRing ? '6px' : '5px',
+                background: `linear-gradient(to bottom, rgba(34, 211, 238, ${isInnerRing ? 0.9 : 0.6}), rgba(34, 211, 238, ${isInnerRing ? 0.5 : 0.3}))`,
+                borderRadius: '1.5px',
+                boxShadow: `0 0 ${isInnerRing ? 4 : 3}px rgba(34, 211, 238, ${isInnerRing ? 0.7 : 0.4})`,
+              }}
+            />
+          );
+        })}
+
+        {/* Compass directions - mobile optimized - z-index 6 */}
+        {[
+          { dir: 'N', angle: 0, pos: 'top-1 sm:top-2' },
+          { dir: 'NE', angle: 45, pos: 'top-1 right-1 sm:top-2 sm:right-2' },
+          { dir: 'E', angle: 90, pos: 'right-1 sm:right-2' },
+          { dir: 'SE', angle: 135, pos: 'bottom-1 right-1 sm:bottom-2 sm:right-2' },
+          { dir: 'S', angle: 180, pos: 'bottom-1 sm:bottom-2' },
+          { dir: 'SW', angle: 225, pos: 'bottom-1 left-1 sm:bottom-2 sm:left-2' },
+          { dir: 'W', angle: 270, pos: 'left-1 sm:left-2' },
+          { dir: 'NW', angle: 315, pos: 'top-1 left-1 sm:top-2 sm:left-2' },
+        ].map(({ dir, pos }) => (
+          <div key={dir} className={`absolute ${pos} transform -translate-x-1/2 -translate-y-1/2 pointer-events-none`} style={{ zIndex: 6 }}>
+            <div className="text-cyan-400/80 text-[9px] sm:text-[10px] font-bold glass-light px-1 sm:px-1.5 py-0.5 rounded border border-cyan-400/20 shadow-[0_0_6px_rgba(34,211,238,0.25)] sm:shadow-[0_0_8px_rgba(34,211,238,0.3)]">
+              {dir}
+            </div>
+          </div>
+        ))}
+
+        {/* Enhanced radar sweep line with trailing effect - z-index 7 */}
+        <div className="absolute top-1/2 left-1/2 pointer-events-none" style={{ zIndex: 7, transformOrigin: 'center bottom' }}>
+          {/* Main sweep line */}
           <div
-            key={ring}
-            className="absolute inset-0 rounded-full pointer-events-none"
+            className="absolute"
             style={{
-              width: `${(ring / 3) * 80}%`,
-              height: `${(ring / 3) * 80}%`,
               left: '50%',
               top: '50%',
-              transform: 'translate(-50%, -50%)',
-              border: `1px solid rgba(59, 130, 246, ${0.2 - ring * 0.05})`,
-              borderRadius: '50%',
+              width: '2.5px',
+              height: '50%',
+              transformOrigin: 'center bottom',
+              transform: `translate(-50%, -100%) rotate(${sweepAngle}deg)`,
+              background: 'linear-gradient(to bottom, rgba(34, 211, 238, 1) 0%, rgba(59, 130, 246, 0.8) 30%, rgba(59, 130, 246, 0.4) 60%, transparent 100%)',
+              boxShadow: '0 0 8px rgba(34, 211, 238, 0.6), 0 0 16px rgba(34, 211, 238, 0.3)',
+              borderRadius: '2px',
             }}
           />
-        ))}
-        
-        {/* Compass directions - positioned at edges */}
-        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 pointer-events-none">
-          <div className="text-white/70 text-xs font-bold glass-light px-2 py-1 rounded-lg border border-white/10">N</div>
+          {/* Trailing sweep effect - hidden on mobile */}
+          <div
+            className="absolute hidden sm:block"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: '2px',
+              height: '50%',
+              transformOrigin: 'center bottom',
+              transform: `translate(-50%, -100%) rotate(${sweepAngle - 15}deg)`,
+              background: 'linear-gradient(to bottom, rgba(34, 211, 238, 0.4) 0%, rgba(59, 130, 246, 0.2) 30%, transparent 100%)',
+              boxShadow: '0 0 8px rgba(34, 211, 238, 0.3)',
+              borderRadius: '1px',
+            }}
+          />
         </div>
-        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <div className="text-white/70 text-xs font-bold glass-light px-2 py-1 rounded-lg border border-white/10">E</div>
+
+        {/* Enhanced center crosshair - mobile optimized - z-index 8 */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ zIndex: 8 }}>
+          {/* Outer crosshair */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="w-8 sm:w-12 h-0.5 bg-cyan-400/60 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]"></div>
+            <div className="h-8 sm:h-12 w-0.5 bg-cyan-400/60 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-[0_0_3px_rgba(34,211,238,0.4)] sm:shadow-[0_0_4px_rgba(34,211,238,0.5)]"></div>
+          </div>
+          {/* Inner crosshair */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="w-4 sm:w-6 h-0.5 bg-blue-500/80"></div>
+            <div className="h-4 sm:h-6 w-0.5 bg-blue-500/80 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+          </div>
+          {/* Center dot */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 border-cyan-400/90 bg-cyan-400/30 shadow-[0_0_8px_rgba(34,211,238,0.5),inset_0_0_6px_rgba(34,211,238,0.25)] sm:shadow-[0_0_12px_rgba(34,211,238,0.6),inset_0_0_8px_rgba(34,211,238,0.3)] radar-pulse"></div>
         </div>
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 pointer-events-none">
-          <div className="text-white/70 text-xs font-bold glass-light px-2 py-1 rounded-lg border border-white/10">S</div>
-        </div>
-        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <div className="text-white/70 text-xs font-bold glass-light px-2 py-1 rounded-lg border border-white/10">W</div>
-        </div>
-        
-        {/* Radar sweep line */}
-        <div
-          className="absolute top-1/2 left-1/2 pointer-events-none"
-          style={{
-            transform: `translate(-50%, -50%) rotate(${sweepAngle}deg)`,
-            width: '2px',
-            height: '50%',
-            background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.8) 0%, rgba(59, 130, 246, 0.3) 50%, rgba(59, 130, 246, 0) 100%)',
-            transformOrigin: 'center bottom',
-            boxShadow: '0 0 8px rgba(59, 130, 246, 0.6)',
-          }}
-        />
-        
-        {/* Center crosshair */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <div className="w-8 h-0.5 bg-blue-500/50"></div>
-          <div className="h-8 w-0.5 bg-blue-500/50 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-blue-500/70 bg-blue-500/20"></div>
-        </div>
-        {/* 2D Map Background - subtle geographic visualization */}
-        <div 
-          className="absolute inset-0 rounded-full pointer-events-none overflow-hidden"
-          style={{
-            background: `
-              radial-gradient(ellipse at 25% 35%, rgba(34, 197, 94, 0.12) 0%, transparent 30%),
-              radial-gradient(ellipse at 75% 65%, rgba(59, 130, 246, 0.12) 0%, transparent 30%),
-              radial-gradient(ellipse at 50% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 25%),
-              radial-gradient(ellipse at 20% 80%, rgba(34, 197, 94, 0.1) 0%, transparent 25%),
-              radial-gradient(ellipse at 80% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 25%),
-              linear-gradient(135deg, rgba(30, 58, 138, 0.2) 0%, rgba(79, 70, 229, 0.15) 50%, rgba(30, 58, 138, 0.2) 100%),
-              radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%)
-            `,
-            opacity: 0.35,
-            filter: 'blur(2px)',
-          }}
-        />
-        
-        {/* Map coordinate grid for geographic feel */}
-        <div 
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px)
-            `,
-            backgroundSize: '25px 25px',
-            opacity: 0.4,
-            maskImage: 'radial-gradient(circle, black 75%, transparent 100%)',
-            WebkitMaskImage: 'radial-gradient(circle, black 75%, transparent 100%)',
-            filter: 'blur(0.5px)',
-          }}
-        />
-        
-        {/* Subtle map texture overlay */}
-        <div 
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            background: `
-              repeating-linear-gradient(
-                45deg,
-                transparent,
-                transparent 10px,
-                rgba(59, 130, 246, 0.02) 10px,
-                rgba(59, 130, 246, 0.02) 11px
-              )
-            `,
-            opacity: 0.5,
-            maskImage: 'radial-gradient(circle, black 80%, transparent 100%)',
-            WebkitMaskImage: 'radial-gradient(circle, black 80%, transparent 100%)',
-          }}
-        />
-        
-        {/* Modern glassmorphic background */}
-        <div className="absolute inset-0 rounded-full glass-light"></div>
-        
-        {/* Enhanced glass overlay effect */}
-        <div 
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-            mixBlendMode: 'overlay',
-            filter: 'blur(2px)',
-          }}
-        ></div>
-        
-        {/* Modern gradient reflection */}
-        <div 
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            background: 'linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(168,85,247,0.1) 50%, rgba(236,72,153,0.1) 100%)',
-            mixBlendMode: 'soft-light',
-          }}
-        ></div>
-        
-        {/* Shimmer effect overlay */}
-        <div 
-          className="absolute inset-0 rounded-full pointer-events-none shimmer"
-          style={{
-            opacity: 0.3,
-          }}
-        ></div>
-        
-        {/* Member bubbles positioned by location */}
+
+        {/* Glassmorphic overlay - z-index 9 (above rings, below bubbles) - reduced opacity so lines show through */}
+        <div className="absolute inset-0 rounded-full glass-light pointer-events-none" style={{ zIndex: 9, opacity: 0.3 }}></div>
+
+        {/* Radar center glow effects - reduced on mobile for performance - z-index 0 (behind everything) */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-r from-cyan-500/20 via-blue-500/15 to-cyan-500/20 rounded-full blur-2xl sm:blur-3xl pointer-events-none radar-pulse" style={{ zIndex: 0 }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 sm:w-28 sm:h-28 bg-cyan-500/25 rounded-full blur-xl sm:blur-2xl pointer-events-none" style={{ zIndex: 0 }}></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 sm:w-16 sm:h-16 bg-cyan-400/30 rounded-full blur-lg sm:blur-xl pointer-events-none" style={{ zIndex: 0 }}></div>
+
+        {/* Member bubbles positioned by location - z-index 10+ (on top of everything) */}
         {nodes.map((node, index) => {
           const pos = positions[node.id] || { x: node.x, y: node.y };
           const isCurrentUser = node.id === currentMember.id;
           
-          // Calculate percentage-based positioning for responsive design
-          const container = clusterRef.current;
-          const containerWidth = container?.offsetWidth || 500;
-          const containerHeight = container?.offsetHeight || 500;
-          const centerX = containerWidth / 2;
-          const centerY = containerHeight / 2;
-          
-          // Convert absolute coordinates to percentage
           const leftPercent = ((pos?.x ?? node.x ?? centerX) / containerWidth) * 100;
           const topPercent = ((pos?.y ?? node.y ?? centerY) / containerHeight) * 100;
           
           return (
             <div
               key={node.id}
-              className="member-bubble-wrapper absolute"
+              className="member-bubble-wrapper absolute tap-target"
               style={{
                 left: `${leftPercent}%`,
                 top: `${topPercent}%`,
                 transform: `translate(-50%, -50%)`,
                 transition: 'left 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                zIndex: isCurrentUser ? 20 : 10,
+                zIndex: isCurrentUser ? 12 : 11,
+                minWidth: '48px',
+                minHeight: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               <MemberBubble
@@ -427,25 +515,20 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick }) => {
             </div>
           );
         })}
-
-        {/* Radar center glow effect */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-r from-blue-500/30 via-purple-500/20 to-blue-500/30 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-blue-500/20 rounded-full blur-2xl pointer-events-none"></div>
-        
       </div>
       
-      {/* Radar info overlay - positioned outside bubble, bottom left */}
-      <div className="absolute bottom-4 left-4 glass-light rounded-xl px-3 py-2 border border-white/10 shadow-lg">
-        <div className="flex items-center gap-2">
-          <Compass className="w-4 h-4 text-blue-400" />
-          <div>
-            <p className="text-xs text-gray-300 font-semibold">Radar View</p>
-            <p className="text-xs text-blue-400/80">
+      {/* Radar info overlay - mobile optimized */}
+      <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 glass-light rounded-lg sm:rounded-xl px-2 py-1.5 sm:px-3 sm:py-2 border border-cyan-400/20 shadow-lg backdrop-blur-md max-w-[140px] sm:max-w-none">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-400 flex-shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs text-gray-200 font-semibold leading-tight">Radar Active</p>
+            <p className="text-[9px] sm:text-xs text-cyan-400/90 font-mono leading-tight">
               {maxDistance < 1 
-                ? `${(maxDistance * 1000).toFixed(0)}m range` 
+                ? `${(maxDistance * 1000).toFixed(0)}m` 
                 : maxDistance < 1000
-                ? `${maxDistance.toFixed(1)}km range`
-                : `${(maxDistance / 1000).toFixed(1)}k km range`}
+                ? `${maxDistance.toFixed(1)}km`
+                : `${(maxDistance / 1000).toFixed(1)}k km`}
             </p>
           </div>
         </div>

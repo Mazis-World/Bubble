@@ -11,17 +11,15 @@ const LocationStep = ({ onLocationSet, initialLocation = null }) => {
   const [searching, setSearching] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
 
-  // Try to get location automatically on mount
+  // Only set initial location if provided - don't auto-request (too slow on mobile)
   useEffect(() => {
-    if (!initialLocation) {
-      requestLocation();
-    } else if (initialLocation.address) {
+    if (initialLocation && initialLocation.address) {
       // If we have an initial location with address, set it
       setLocation(initialLocation);
       setSelectedAddress(initialLocation.address);
       setAddressQuery(initialLocation.address);
     }
-  }, []);
+  }, [initialLocation]);
 
   // Reverse geocode coordinates to get address
   const reverseGeocode = async (lat, lng) => {
@@ -255,7 +253,8 @@ const LocationStep = ({ onLocationSet, initialLocation = null }) => {
                       setSelectedAddress(null);
                     }}
                     placeholder="e.g., New York, NY or Toronto, ON or London, UK"
-                    className="w-full pl-10 pr-4 py-3.5 glass-light border border-white/10 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                    autoComplete="street-address"
+                    className="w-full pl-10 pr-4 py-3.5 glass-light border border-white/10 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all text-base tap-target"
                   />
                   {searching && (
                     <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-400 animate-spin" />

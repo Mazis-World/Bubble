@@ -335,9 +335,18 @@ export const API = {
   },
   
   generateReferral: async (bubbleId, fromNodeId) => {
-    // Get the referrer's node to determine their tier
+    // Optimize: Generate token first (fast operation)
+    const token = `BUB${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
+    
+    // Get the referrer's node to determine their tier (can be done in parallel with edge creation)
     const fromNodeRef = doc(db, 'bubbles', bubbleId, 'nodes', fromNodeId);
-    const fromNodeDoc = await getDoc(fromNodeRef);
+    const fromNodeDocPromise = getDoc(fromNodeRef);
+    
+    // Start edge creation immediately (don't wait for node fetch)
+    const edgesRef = collection(db, 'bubbles', bubbleId, 'edges');
+    
+    // Get node data (we need tier)
+    const fromNodeDoc = await fromNodeDocPromise;
     
     if (!fromNodeDoc.exists()) {
       throw new Error('Referrer node not found.');
@@ -347,8 +356,7 @@ export const API = {
     const referrerTier = fromNode.tier || 1; // Default to tier 1 if not set
     const newMemberTier = referrerTier + 1; // New member will be one tier deeper
     
-    const token = `BUB${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
-    const edgesRef = collection(db, 'bubbles', bubbleId, 'edges');
+    // Create edge with token
     const edge = new BubbleEdge(
       null, // edgeId will be set by Firestore
       fromNodeId,
