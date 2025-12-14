@@ -43,14 +43,14 @@ const ALL_EMOJIS = [
 ];
 
 const EmojiPicker = ({ onSelect, selectedEmoji }) => {
-  const [visibleEmojis, setVisibleEmojis] = React.useState(64); // Start with only 64 emojis
+  const [visibleEmojis, setVisibleEmojis] = React.useState(48); // Start with 48 emojis (3 rows x 8 columns)
   const columns = 8;
-  const rows = 4;
+  const rows = 3;
   const emojiSize = 'text-3xl sm:text-4xl';
   const emojiWidth = 60;
   const emojiHeight = 60;
   const gap = 8;
-  const padding = 8;
+  const padding = 4;
   
   // Most commonly used emojis - show these first
   const COMMON_EMOJIS = [
@@ -138,7 +138,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
       
       // Load more when 80% scrolled
       if (scrollPercentage > 0.8 && visibleEmojis < COMMON_EMOJIS.length) {
-        setVisibleEmojis(prev => Math.min(prev + 64, COMMON_EMOJIS.length));
+        setVisibleEmojis(prev => Math.min(prev + 48, COMMON_EMOJIS.length));
       }
     };
 
@@ -201,7 +201,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
           ))}
         </div>
       </div>
-      <div className="text-center mt-3">
+      <div className="text-center mt-2">
         <p className="text-gray-400 text-xs font-medium">
           {displayEmojis.length} of {COMMON_EMOJIS.length} emojis • Swipe to see more
         </p>
