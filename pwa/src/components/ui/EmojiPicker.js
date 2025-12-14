@@ -50,7 +50,7 @@ const EmojiPicker = ({ onSelect, selectedEmoji }) => {
   const emojiWidth = 60;
   const emojiHeight = 60;
   const gap = 8;
-  const padding = 16;
+  const padding = 8;
   
   // Most commonly used emojis - show these first
   const COMMON_EMOJIS = [
