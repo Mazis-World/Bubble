@@ -16,13 +16,14 @@ const SlideUpCard = ({ isOpen, onClose, children, title }) => {
         }`}
         style={{ 
           bottom: 0,
-          maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - 1rem)',
+          top: 'auto',
+          maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - 0.5rem)',
           willChange: 'transform',
           overflow: 'hidden'
         }}
       >
         <div 
-          className="w-12 h-1 bg-gradient-to-r from-gray-500 to-gray-400 rounded-full mx-auto mt-3 mb-4 cursor-pointer hover:from-gray-400 hover:to-gray-300 active:scale-95 transition-all duration-200 tap-target"
+          className="w-12 h-1 bg-gradient-to-r from-gray-500 to-gray-400 rounded-full mx-auto mt-2 mb-4 cursor-pointer hover:from-gray-400 hover:to-gray-300 active:scale-95 transition-all duration-200 tap-target"
           onClick={onClose}
           style={{ touchAction: 'manipulation', zIndex: 1, position: 'relative' }}
         />
@@ -31,7 +32,7 @@ const SlideUpCard = ({ isOpen, onClose, children, title }) => {
             <h3 className="text-xl font-bold gradient-text">{title}</h3>
           </div>
         )}
-        <div className="p-4 sm:p-6 overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - 10rem)' }}>
+        <div className="p-4 sm:p-6 overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(100vh - env(safe-area-inset-top, 0px) - 9rem)' }}>
           {children}
         </div>
       </div>
