@@ -249,7 +249,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
   const centerY = containerHeight / 2;
 
   return (
-    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4">
+    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4" style={{ width: '100%', height: '100%' }}>
       {/* Outer radar frame with glow - mobile optimized - PERFECTLY CENTERED */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div 

@@ -153,7 +153,7 @@ const Bubble = ({
         </div>
       </div>
 
-      <div className="flex-1 w-full overflow-hidden relative">
+      <div className="flex-1 w-full overflow-hidden relative flex items-center justify-center" style={{ minHeight: 0 }}>
         {viewMode === 'globe' ? (
           <GlobeView
             bubbleData={bubbleData}
