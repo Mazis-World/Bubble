@@ -10,7 +10,7 @@
     "browser-image-compression": "^2.0.2",
     "d3-drag": "^3.0.0",
     "d3-force": "^3.0.0",
-    "firebase": "10.7.1",
+    "firebase": "^10.14.1",
     "lucide-react": "^0.309.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
