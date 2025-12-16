@@ -36,8 +36,13 @@ const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase }) => {
       relationshipRole,
       location,
     };
-    // handlePurchase(() => onComplete(bubbleData));
-    onComplete(bubbleData);
+    // Show paywall after clicking "Create Bubble" button
+    if (handlePurchase) {
+      handlePurchase(() => onComplete(bubbleData));
+    } else {
+      // Fallback if handlePurchase is not provided
+      onComplete(bubbleData);
+    }
   };
 
 

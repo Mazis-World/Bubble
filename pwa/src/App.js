@@ -145,10 +145,19 @@ export default function FamilyBubbleApp() {
       }
 
       await purchases.presentPaywall({ offering: currentOffering });
-      
-      // Optimistically call onSuccess. The listener will handle the state update.
-      if (onSuccess) {
-        onSuccess();
+
+      // After paywall, verify entitlement to ensure trial/subscription was started
+      const customerInfo = await purchases.getCustomerInfo();
+      const premiumEntitlement = customerInfo.entitlements.active["FamilyBubble Premium"];
+
+      if (typeof premiumEntitlement !== "undefined") {
+        setIsSubscribed(true);
+        setIsLapsedSubscriber(false);
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        alert("Please start your free trial or subscription to continue.");
       }
     } catch (error) {
       console.error("Paywall presentation or purchase error:", error);
@@ -258,6 +267,7 @@ export default function FamilyBubbleApp() {
                     }
                   }}
                   onBack={() => setView('welcome')}
+                  handlePurchase={handlePurchase}
                 />;
       case 'login':
         return <Login onLoginSuccess={() => setView('main')} onBack={handleLoginBack} />;
