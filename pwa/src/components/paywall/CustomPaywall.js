@@ -45,13 +45,88 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
         return;
       }
 
+      // RevenueCat Products:
+      // - FamilyBubble Monthly (familyBubble_Monthly) → MONTHLY package type
+      // - FamilyBubble Yearly (familyBubble_Yearly) → ANNUAL package type
+      // Entitlement: "FamilyBubble Premium"
+      
+      // Log all available packages for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('All RevenueCat packages in offering:', currentOffering.availablePackages.map(p => ({
+          identifier: p.identifier,
+          packageType: p.packageType,
+          productId: p.product?.identifier,
+          productTitle: p.product?.title,
+          price: p.product?.priceString
+        })));
+      }
+      
+      // Filter to only show our specific products (exclude default/fallback RC products)
+      // Expected product identifiers: familyBubble_Monthly, familyBubble_Yearly
+      const expectedProductIds = ['familybubble_monthly', 'familybubble_yearly'];
+      const filteredPackages = currentOffering.availablePackages.filter(pkg => {
+        const productId = (pkg.product?.identifier || '').toLowerCase();
+        const packageIdentifier = (pkg.identifier || '').toLowerCase();
+        const productTitle = (pkg.product?.title || '').toLowerCase();
+        
+        // Check if it matches our expected product identifiers
+        const matchesProduct = expectedProductIds.some(id => 
+          productId.includes(id) || 
+          packageIdentifier.includes(id) ||
+          productTitle.includes('familybubble')
+        );
+        
+        // Exclude default RevenueCat test products (usually contain "rc" or "test")
+        const isDefaultRC = productId.includes('rc_') || 
+                           productId.includes('_rc') ||
+                           packageIdentifier.includes('rc_') ||
+                           packageIdentifier.includes('_rc') ||
+                           productId.includes('test') ||
+                           productTitle.includes('test');
+        
+        // Only include if it matches our products AND is not a default RC product
+        return matchesProduct && !isDefaultRC;
+      });
+
+      // If filtering removed all packages, fall back to MONTHLY/ANNUAL types only
+      let packagesToUse = filteredPackages;
+      if (filteredPackages.length === 0) {
+        packagesToUse = currentOffering.availablePackages.filter(pkg => {
+          const productId = (pkg.product?.identifier || '').toLowerCase();
+          const packageIdentifier = (pkg.identifier || '').toLowerCase();
+          // Exclude RC default products
+          const isDefaultRC = productId.includes('rc_') || 
+                             productId.includes('_rc') ||
+                             packageIdentifier.includes('rc_') ||
+                             packageIdentifier.includes('_rc');
+          return (pkg.packageType === 'MONTHLY' || pkg.packageType === 'ANNUAL') && !isDefaultRC;
+        });
+      }
+
+      if (packagesToUse.length === 0) {
+        setError("No subscription packages available. Please try again later.");
+        setLoading(false);
+        return;
+      }
+      
       // Sort packages: monthly first, then annual, then lifetime
-      const sortedPackages = [...currentOffering.availablePackages].sort((a, b) => {
+      const sortedPackages = [...packagesToUse].sort((a, b) => {
         const aPeriod = a.packageType;
         const bPeriod = b.packageType;
         const order = { MONTHLY: 1, ANNUAL: 2, LIFETIME: 3, SIX_MONTH: 4, THREE_MONTH: 5, TWO_MONTH: 6, WEEKLY: 7, CUSTOM: 8 };
         return (order[aPeriod] || 99) - (order[bPeriod] || 99);
       });
+
+      // Log filtered packages in development for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Filtered RevenueCat packages (showing in paywall):', sortedPackages.map(p => ({
+          identifier: p.identifier,
+          packageType: p.packageType,
+          productId: p.product?.identifier,
+          productTitle: p.product?.title,
+          price: p.product?.priceString
+        })));
+      }
 
       setPackages(sortedPackages);
       // Select the first package (usually monthly) by default
