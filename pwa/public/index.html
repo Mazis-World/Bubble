@@ -21,16 +21,50 @@
     <meta name="author" content="FamilyBubble" />
     
     <!-- Open Graph / Facebook -->
+    <!-- IMPORTANT: Replace YOUR_DOMAIN_HERE with your actual domain (e.g., https://familybubble.vercel.app or your custom domain) -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="FamilyBubble - Your Family Galaxy" />
-    <meta property="og:description" content="Connect with your family in a beautiful, private family network" />
+    <meta property="og:description" content="Connect with your family in a beautiful, private family network. Share moments, stay connected, and build your family galaxy." />
+    <meta property="og:image" content="YOUR_DOMAIN_HERE/familybubble-logo-with-text-1200x400.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="400" />
+    <meta property="og:image:alt" content="FamilyBubble - Your Family Galaxy" />
+    <meta property="og:url" content="YOUR_DOMAIN_HERE" />
+    <meta property="og:site_name" content="FamilyBubble" />
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="FamilyBubble - Your Family Galaxy" />
-    <meta name="twitter:description" content="Connect with your family in a beautiful, private family network" />
+    <meta name="twitter:description" content="Connect with your family in a beautiful, private family network. Share moments, stay connected, and build your family galaxy." />
+    <meta name="twitter:image" content="YOUR_DOMAIN_HERE/familybubble-logo-with-text-1200x400.png" />
+    <meta name="twitter:image:alt" content="FamilyBubble - Your Family Galaxy" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>FamilyBubble</title>
+    <script>
+      // Fallback: Set absolute URLs dynamically if not set in static HTML
+      (function() {
+        var baseUrl = window.location.origin;
+        var imagePath = baseUrl + '/familybubble-logo-with-text-1200x400.png';
+        
+        // Update og:image if it still has placeholder
+        var ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage && ogImage.getAttribute('content').includes('YOUR_DOMAIN_HERE')) {
+          ogImage.setAttribute('content', imagePath);
+        }
+        
+        // Update og:url if it still has placeholder
+        var ogUrl = document.querySelector('meta[property="og:url"]');
+        if (ogUrl && ogUrl.getAttribute('content').includes('YOUR_DOMAIN_HERE')) {
+          ogUrl.setAttribute('content', baseUrl + window.location.pathname);
+        }
+        
+        // Update twitter:image if it still has placeholder
+        var twitterImage = document.querySelector('meta[name="twitter:image"]');
+        if (twitterImage && twitterImage.getAttribute('content').includes('YOUR_DOMAIN_HERE')) {
+          twitterImage.setAttribute('content', imagePath);
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
