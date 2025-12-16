@@ -63,7 +63,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       
       // Filter to only show our specific products (exclude default/fallback RC products)
       // Expected product identifiers: familyBubble_Monthly, familyBubble_Yearly
-      const expectedProductIds = ['familybubble_monthly', 'familybubble_yearly'];
+      const expectedProductIds = ['familyBubble_Monthly', 'familyBubble_Yearly'];
       const filteredPackages = currentOffering.availablePackages.filter(pkg => {
         const productId = (pkg.product?.identifier || '').toLowerCase();
         const packageIdentifier = (pkg.identifier || '').toLowerCase();
