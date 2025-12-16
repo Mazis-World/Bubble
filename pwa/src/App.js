@@ -23,25 +23,26 @@ export default function FamilyBubbleApp() {
   const onBubbleCreatedCallback = React.useCallback(() => setBubbleCreationData(null), []);
   const onInitiateCreateCallback = React.useCallback(() => setView('create'), []);
 
-  // Handle URL parameters for join links
+  // Handle URL parameters for join links - check on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const joinToken = urlParams.get('join');
     
-    if (joinToken) {
+    if (joinToken && !pendingJoinToken) {
+      // Store the token first before cleaning up URL
+      setPendingJoinToken(joinToken);
+      
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // If user is not logged in, go to join flow
-      if (!currentUser && !loading) {
-        setView('join');
-        // Store the token to pre-populate the join flow
-        setPendingJoinToken(joinToken);
-      }
-      // If user is logged in, they shouldn't be joining - they're already in a bubble
-      // But we could handle this case if needed
     }
-  }, [currentUser, loading]);
+  }, []); // Run only on mount
+  
+  // Navigate to join flow when token is available and user is not logged in
+  useEffect(() => {
+    if (pendingJoinToken && !currentUser && !loading && view !== 'join') {
+      setView('join');
+    }
+  }, [pendingJoinToken, currentUser, loading, view]);
 
   useEffect(() => {
     const initializePurchases = async (user) => {

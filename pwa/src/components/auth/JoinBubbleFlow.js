@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, Circle, Plus, ChevronDown } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
 import LocationStep from '../ui/LocationStep';
@@ -7,6 +7,13 @@ import imageCompression from 'browser-image-compression';
 const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
   const [step, setStep] = useState(1);
   const [inviteToken, setInviteToken] = useState(initialInviteToken);
+  
+  // Update inviteToken when initialInviteToken prop changes (e.g., from URL parameter)
+  useEffect(() => {
+    if (initialInviteToken) {
+      setInviteToken(initialInviteToken);
+    }
+  }, [initialInviteToken]);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [userPhoto, setUserPhoto] = useState(null);
