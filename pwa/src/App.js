@@ -320,7 +320,13 @@ export default function FamilyBubbleApp() {
       default:
         return <Welcome 
                   onLogin={resetAuthFlow} 
-                  onCreate={() => setView('create')}
+                  onCreate={() => {
+                    // Show paywall first, then proceed to create flow after purchase
+                    handlePurchase(() => {
+                      // After purchase success, proceed to create flow
+                      setView('create');
+                    });
+                  }}
                   onJoin={() => setView('join')} 
                 />;
     }
@@ -334,6 +340,8 @@ export default function FamilyBubbleApp() {
       <CustomPaywall
         onClose={() => {
           setShowCustomPaywall(false);
+          // Only clear pending callback if user closes without purchasing
+          // Don't proceed to create flow if they close the paywall
           setPendingPurchaseSuccess(null);
         }}
         onPurchaseSuccess={() => {
@@ -341,12 +349,16 @@ export default function FamilyBubbleApp() {
           setIsSubscribed(true);
           setIsLapsedSubscriber(false);
           
-          // Show walkthrough and execute callback
-          setShowWalkthrough(true);
-          setView('walkthrough');
-          
-          // Clear pending callback - walkthrough will handle continuation
-          setPendingPurchaseSuccess(null);
+          // Execute pending callback if exists (e.g., to proceed to create flow)
+          if (pendingPurchaseSuccess) {
+            const callback = pendingPurchaseSuccess;
+            setPendingPurchaseSuccess(null);
+            callback();
+          } else {
+            // Show walkthrough if no callback (e.g., upgrade from main app)
+            setShowWalkthrough(true);
+            setView('walkthrough');
+          }
         }}
         onPurchaseError={(error) => {
           const errorMessage = error?.message || error?.toString() || '';
