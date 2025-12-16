@@ -37,7 +37,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
       const purchases = Purchases.getSharedInstance();
       const offerings = await purchases.getOfferings();
-      const currentOffering = offerings.current;
+      
+      // Use "FamilyBubble Offering" if available, otherwise fall back to current offering
+      let currentOffering = offerings.all["FamilyBubble Offering"] || offerings.current;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Available offerings:', Object.keys(offerings.all || {}));
+        console.log('Using offering:', currentOffering?.identifier || 'current');
+      }
 
       if (!currentOffering) {
         console.error('No current offering found in RevenueCat');
