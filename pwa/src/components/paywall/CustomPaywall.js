@@ -194,44 +194,23 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const formatPrice = (packageItem) => {
-    if (!packageItem.product) {
+    if (!packageItem.product || !packageItem.product.priceString) {
       return "Loading...";
     }
-    // Try priceString first (formatted price from RevenueCat)
-    if (packageItem.product.priceString) {
-      return packageItem.product.priceString;
-    }
-    // Fallback: try to construct price from price and currencyCode
-    if (packageItem.product.price !== undefined && packageItem.product.currencyCode) {
-      const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: packageItem.product.currencyCode,
-      });
-      return formatter.format(packageItem.product.price / 100); // Price is usually in cents
-    }
-    // If price is already in dollars (not cents)
-    if (packageItem.product.price !== undefined && packageItem.product.currencyCode) {
-      const formatter = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: packageItem.product.currencyCode,
-      });
-      return formatter.format(packageItem.product.price);
-    }
-    return "Loading...";
+    return packageItem.product.priceString;
   };
 
   const getPackageLabel = (packageType) => {
-    // Always use "FamilyBubble" prefix for consistency
     const labels = {
-      MONTHLY: "FamilyBubble Monthly",
-      ANNUAL: "FamilyBubble Yearly",
-      LIFETIME: "FamilyBubble Lifetime",
-      SIX_MONTH: "FamilyBubble 6 Months",
-      THREE_MONTH: "FamilyBubble 3 Months",
-      TWO_MONTH: "FamilyBubble 2 Months",
-      WEEKLY: "FamilyBubble Weekly",
+      MONTHLY: "Monthly",
+      ANNUAL: "Annual",
+      LIFETIME: "Lifetime",
+      SIX_MONTH: "6 Months",
+      THREE_MONTH: "3 Months",
+      TWO_MONTH: "2 Months",
+      WEEKLY: "Weekly",
     };
-    return labels[packageType] || `FamilyBubble ${packageType}`;
+    return labels[packageType] || packageType;
   };
 
   const getSavings = (packageItem) => {
