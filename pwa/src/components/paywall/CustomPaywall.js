@@ -39,8 +39,16 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       const offerings = await purchases.getOfferings();
       const currentOffering = offerings.current;
 
-      if (!currentOffering || !currentOffering.availablePackages || currentOffering.availablePackages.length === 0) {
-        setError("No subscription packages available. Please try again later.");
+      if (!currentOffering) {
+        console.error('No current offering found in RevenueCat');
+        setError("No subscription packages available. Please ensure your RevenueCat offering is configured and active.");
+        setLoading(false);
+        return;
+      }
+
+      if (!currentOffering.availablePackages || currentOffering.availablePackages.length === 0) {
+        console.error('Current offering has no available packages:', currentOffering);
+        setError("No subscription packages available in the current offering. Please check your RevenueCat dashboard.");
         setLoading(false);
         return;
       }
@@ -61,7 +69,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
         })));
       }
       
-      // Filter to only show our specific products (exclude default/fallback RC products)
+      // Filter to prioritize our specific products, but allow all packages for testing
       // Expected product identifiers: familyBubble_Monthly, familyBubble_Yearly
       const expectedProductIds = ['familyBubble_Monthly', 'familyBubble_Yearly'];
       const filteredPackages = currentOffering.availablePackages.filter(pkg => {
@@ -71,37 +79,17 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
         
         // Check if it matches our expected product identifiers
         const matchesProduct = expectedProductIds.some(id => 
-          productId.includes(id) || 
-          packageIdentifier.includes(id) ||
+          productId.includes(id.toLowerCase()) || 
+          packageIdentifier.includes(id.toLowerCase()) ||
           productTitle.includes('familybubble')
         );
         
-        // Exclude default RevenueCat test products (usually contain "rc" or "test")
-        const isDefaultRC = productId.includes('rc_') || 
-                           productId.includes('_rc') ||
-                           packageIdentifier.includes('rc_') ||
-                           packageIdentifier.includes('_rc') ||
-                           productId.includes('test') ||
-                           productTitle.includes('test');
-        
-        // Only include if it matches our products AND is not a default RC product
-        return matchesProduct && !isDefaultRC;
+        // Include all packages - don't exclude test/default products for testing
+        return true;
       });
 
-      // If filtering removed all packages, fall back to MONTHLY/ANNUAL types only
+      // Use all available packages (including test products)
       let packagesToUse = filteredPackages;
-      if (filteredPackages.length === 0) {
-        packagesToUse = currentOffering.availablePackages.filter(pkg => {
-          const productId = (pkg.product?.identifier || '').toLowerCase();
-          const packageIdentifier = (pkg.identifier || '').toLowerCase();
-          // Exclude RC default products
-          const isDefaultRC = productId.includes('rc_') || 
-                             productId.includes('_rc') ||
-                             packageIdentifier.includes('rc_') ||
-                             packageIdentifier.includes('_rc');
-          return (pkg.packageType === 'MONTHLY' || pkg.packageType === 'ANNUAL') && !isDefaultRC;
-        });
-      }
 
       if (packagesToUse.length === 0) {
         setError("No subscription packages available. Please try again later.");
@@ -136,7 +124,8 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       setLoading(false);
     } catch (err) {
       console.error("Error loading offerings:", err);
-      setError("Failed to load subscription options. Please try again.");
+      const errorMessage = err?.message || err?.toString() || 'Unknown error';
+      setError(`Failed to load subscription options: ${errorMessage}. Please check your RevenueCat API key and configuration.`);
       setLoading(false);
     }
   };
@@ -266,6 +255,11 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       >
         <div className="w-16 h-16 border-4 border-t-transparent border-purple-500 rounded-full animate-spin mb-4"></div>
         <p className="text-white text-lg">Loading subscription options...</p>
+        {process.env.NODE_ENV === 'development' && !process.env.REACT_APP_REVENUECAT_API_KEY && (
+          <p className="text-yellow-400 text-sm mt-4 text-center max-w-md">
+            ⚠️ REACT_APP_REVENUECAT_API_KEY not found. Check your .env file.
+          </p>
+        )}
       </div>
     );
   }
@@ -360,13 +354,6 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
             {/* Right side - Packages & Purchase */}
             <div className="order-1 lg:order-2 lg:sticky lg:top-6">
-              {/* Error message */}
-              {error && (
-                <div className="mb-4 sm:mb-6 p-4 bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-200 text-sm text-center">
-                  {error}
-                </div>
-              )}
-
               {/* Packages */}
               <div className="space-y-4 sm:space-y-5 mb-6 sm:mb-8">
                 {packages.map((packageItem, index) => {
