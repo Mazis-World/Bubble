@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import MainApp from './components/bubble/MainApp';
 import Welcome from './components/auth/Welcome';
 import Login from './components/auth/Login';
 import JoinBubbleFlow from './components/auth/JoinBubbleFlow';
 import CreateBubbleFlow from './components/auth/CreateBubbleFlow';
+import WelcomeWalkthrough from './components/auth/WelcomeWalkthrough';
 import { Purchases, LogLevel } from '@revenuecat/purchases-js'
 
 
@@ -12,7 +13,7 @@ export default function FamilyBubbleApp() {
   const auth = getAuth();
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('welcome'); // welcome, login, join, create, main, purchaseSuccess, purchaseError
+  const [view, setView] = useState('welcome'); // welcome, login, join, create, main, purchaseSuccess, purchaseError, walkthrough
   const [joinToken, setJoinToken] = useState(null);
   const [bubbleCreationData, setBubbleCreationData] = useState(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -20,6 +21,9 @@ export default function FamilyBubbleApp() {
   const [pendingJoinToken, setPendingJoinToken] = useState(null);
   const [anonymousId, setAnonymousId] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [pendingPurchaseSuccess, setPendingPurchaseSuccess] = useState(null);
+  const customerInfoListenerRef = useRef(null);
   const onBubbleCreatedCallback = React.useCallback(() => setBubbleCreationData(null), []);
   const onInitiateCreateCallback = React.useCallback(() => setView('create'), []);
 
@@ -64,7 +68,9 @@ export default function FamilyBubbleApp() {
         appUserId: user.uid,
       });
 
-      const customerInfo = await Purchases.getSharedInstance().getCustomerInfo();
+      // Get initial customer info
+      const purchases = Purchases.getSharedInstance();
+      const customerInfo = await purchases.getCustomerInfo();
       const premiumEntitlement = customerInfo.entitlements.active["FamilyBubble Premium"];
       const wasOnceSubscriber = customerInfo.entitlements.all["FamilyBubble Premium"];
 
@@ -73,6 +79,51 @@ export default function FamilyBubbleApp() {
       } else if (typeof wasOnceSubscriber !== "undefined") {
         setIsLapsedSubscriber(true);
       }
+      
+      // Set up periodic check for customer info updates (for purchase state changes)
+      // Note: RevenueCat JS SDK doesn't have listeners, so we poll periodically
+      // Clear any existing interval first
+      if (customerInfoListenerRef.current) {
+        clearInterval(customerInfoListenerRef.current);
+      }
+      
+      const checkInterval = setInterval(async () => {
+        try {
+          const updatedCustomerInfo = await purchases.getCustomerInfo();
+          const updatedPremiumEntitlement = updatedCustomerInfo.entitlements.active["FamilyBubble Premium"];
+          const updatedWasOnceSubscriber = updatedCustomerInfo.entitlements.all["FamilyBubble Premium"];
+
+          setIsSubscribed(prevSubscribed => {
+            const hasSubscription = typeof updatedPremiumEntitlement !== "undefined";
+
+            if (hasSubscription && !prevSubscribed) {
+              // New subscription detected - show walkthrough
+              setIsLapsedSubscriber(false);
+              
+              // Check for pending purchase success callback
+              setPendingPurchaseSuccess(prev => {
+                if (prev) {
+                  setShowWalkthrough(true);
+                  setView('walkthrough');
+                }
+                return null;
+              });
+              return true;
+            } else if (hasSubscription) {
+              setIsLapsedSubscriber(false);
+              return true;
+            } else if (typeof updatedWasOnceSubscriber !== "undefined") {
+              setIsLapsedSubscriber(true);
+              return false;
+            }
+            return prevSubscribed;
+          });
+        } catch (error) {
+          console.error("Error checking customer info:", error);
+        }
+      }, 2000); // Check every 2 seconds
+      
+      customerInfoListenerRef.current = checkInterval;
     };
 
     const unsubscribe = auth.onAuthStateChanged(async user => {
@@ -96,7 +147,15 @@ export default function FamilyBubbleApp() {
         // This case is handled by the login logic after account creation
       }
     });
-    return () => unsubscribe();
+    
+    return () => {
+      unsubscribe();
+      // Clean up customer info check interval
+      if (customerInfoListenerRef.current) {
+        clearInterval(customerInfoListenerRef.current);
+        customerInfoListenerRef.current = null;
+      }
+    };
   }, [auth]);
 
   const handleLogout = () => {
@@ -145,23 +204,40 @@ export default function FamilyBubbleApp() {
         return;
       }
 
+      // Store the success callback to execute after purchase
+      if (onSuccess) {
+        setPendingPurchaseSuccess(() => onSuccess);
+      }
+
+      // Present paywall - this will return when the paywall is dismissed
       await purchases.presentPaywall({ offering: currentOffering });
 
-      // After paywall, verify entitlement to ensure trial/subscription was started
+      // After paywall is dismissed, immediately check customer info to detect purchase
       const customerInfo = await purchases.getCustomerInfo();
       const premiumEntitlement = customerInfo.entitlements.active["FamilyBubble Premium"];
 
       if (typeof premiumEntitlement !== "undefined") {
+        // Purchase was successful!
         setIsSubscribed(true);
         setIsLapsedSubscriber(false);
-        if (onSuccess) {
-          onSuccess();
-        }
+        
+        // Show walkthrough and execute callback
+        setShowWalkthrough(true);
+        setView('walkthrough');
+        
+        // Clear pending callback - walkthrough will handle continuation
+        setPendingPurchaseSuccess(null);
       } else {
-        alert("Please start your free trial or subscription to continue.");
+        // No purchase was made - clear pending callback
+        setPendingPurchaseSuccess(null);
+        // User cancelled or didn't complete purchase - this is fine, no error needed
+        console.log("No purchase completed - user may have cancelled");
       }
     } catch (error) {
       console.error("Paywall presentation or purchase error:", error);
+      
+      // Clear pending callback on error
+      setPendingPurchaseSuccess(null);
       
       // RevenueCat JS SDK throws a CodedError. We can inspect the code.
       const isCancelled = error.code === 2; // PURCHASE_CANCELLED code from SDK
@@ -283,6 +359,61 @@ export default function FamilyBubbleApp() {
   }
 
   // If we are here, currentUser exists.
+  
+  // Show walkthrough after successful purchase
+  if (view === 'walkthrough' || showWalkthrough) {
+    return (
+      <WelcomeWalkthrough 
+        onComplete={() => {
+          setShowWalkthrough(false);
+          setView('main');
+          // The bubble creation will continue in MainApp when bubbleCreationData is set
+        }}
+      />
+    );
+  }
+
+  // Show purchase error view
+  if (view === 'purchaseError') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-rose-900 text-white flex flex-col items-center justify-center p-4 text-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
+        <div className="max-w-md w-full z-10">
+          <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-lg">
+            <div className="w-16 h-16 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h1 className="text-4xl font-bold mb-2">Purchase Failed</h1>
+            <p className="text-gray-400 mb-8">
+              {purchaseError || "An unexpected error occurred. Please try again."}
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setPurchaseError(null);
+                  setView('main');
+                }}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple-600/30 transition-all transform hover:scale-105"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={() => {
+                  setPurchaseError(null);
+                  handlePurchase();
+                }}
+                className="w-full bg-white/10 border border-white/20 text-white py-3 rounded-xl font-semibold hover:bg-white/20 transition-all"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (view === 'main' && isLapsedSubscriber && !isSubscribed) {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
