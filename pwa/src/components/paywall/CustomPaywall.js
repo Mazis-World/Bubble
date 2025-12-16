@@ -223,22 +223,33 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 text-gray-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10 tap-target"
+          style={{ minWidth: '44px', minHeight: '44px' }}
           aria-label="Close"
         >
-          <X size={24} />
+          <X size={20} className="sm:w-6 sm:h-6" />
         </button>
 
-        <div className="relative z-10 p-6 sm:p-8">
+        <div className="relative z-10 p-4 sm:p-6 md:p-8 overflow-y-auto" style={{ maxHeight: '100%', WebkitOverflowScrolling: 'touch' }}>
           {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex p-4 bg-gradient-to-br from-purple-600 to-blue-600 rounded-3xl mb-6 shadow-lg">
-              <Star size={48} className="text-white" />
+          <div className="text-center mb-6 sm:mb-8">
+            {/* Logo */}
+            <div className="inline-flex items-center justify-center mb-4 sm:mb-6">
+              <img 
+                src="/familybubble-logo-icon-only.svg" 
+                alt="FamilyBubble Logo"
+                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24"
+                onError={(e) => {
+                  // Fallback to PNG if SVG fails
+                  e.target.src = '/familybubble-logo-icon-only-256x256.png';
+                  e.target.onerror = null; // Prevent infinite loop
+                }}
+              />
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold mb-3 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 px-2 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight">
               Unlock FamilyBubble Premium
             </h1>
-            <p className="text-gray-300 text-lg sm:text-xl">
+            <p className="text-gray-300 text-sm sm:text-base md:text-lg lg:text-xl px-4">
               Connect with your family like never before
             </p>
           </div>
