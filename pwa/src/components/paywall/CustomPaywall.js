@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap, Star } from 'lucide-react';
+import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
 
 const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
@@ -179,20 +179,40 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-gradient-to-br from-gray-950 via-black to-blue-950 rounded-3xl p-8 text-center">
-          <div className="w-16 h-16 border-4 border-t-transparent border-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading subscription options...</p>
+      <div 
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        style={{
+          paddingTop: 'env(safe-area-inset-top)',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
+        }}
+      >
+        <div className="bg-gradient-to-br from-gray-950 via-black to-blue-950 rounded-3xl p-6 sm:p-8 text-center max-w-sm w-full">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-t-transparent border-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-base sm:text-lg">Loading subscription options...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top), 12px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
+        paddingLeft: 'max(env(safe-area-inset-left), 12px)',
+        paddingRight: 'max(env(safe-area-inset-right), 12px)',
+        WebkitOverflowScrolling: 'touch',
+      }}
+    >
       <div 
-        className="w-full max-w-2xl bg-gradient-to-br from-gray-950 via-black to-blue-950 rounded-3xl shadow-2xl relative overflow-hidden"
-        style={{ maxHeight: '90vh' }}
+        className="w-full max-w-2xl bg-gradient-to-br from-gray-950 via-black to-blue-950 rounded-2xl sm:rounded-3xl shadow-2xl relative overflow-hidden"
+        style={{ 
+          maxHeight: 'calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)',
+          maxHeight: 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px)',
+        }}
       >
         {/* Background decorative bubbles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -224,18 +244,18 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
           </div>
 
           {/* Features */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
                 <div
                   key={index}
-                  className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-4 backdrop-blur-sm"
+                  className="flex items-start sm:items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3 sm:p-4 backdrop-blur-sm"
                 >
-                  <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-                    <Icon size={20} className="text-white" />
+                  <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                    <Icon size={18} className="sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <p className="text-white text-sm sm:text-base">{feature.text}</p>
+                  <p className="text-white text-xs sm:text-sm md:text-base leading-relaxed">{feature.text}</p>
                 </div>
               );
             })}
@@ -248,7 +268,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
             </div>
           )}
 
-          <div className="space-y-3 mb-6">
+          <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
             {packages.map((packageItem, index) => {
               const isSelected = selectedPackage?.identifier === packageItem.identifier;
               const savings = getSavings(packageItem);
@@ -259,36 +279,37 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                   key={packageItem.identifier}
                   onClick={() => setSelectedPackage(packageItem)}
                   disabled={purchasing}
-                  className={`w-full relative p-5 rounded-2xl border-2 transition-all text-left ${
+                  className={`w-full relative p-4 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all text-left tap-target ${
                     isSelected
                       ? 'border-purple-500 bg-purple-500/20 shadow-lg shadow-purple-500/30'
-                      : 'border-white/20 bg-white/5 hover:border-white/30 hover:bg-white/10'
+                      : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30'
                   } ${purchasing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  style={{ minHeight: '64px' }}
                 >
                   {isPopular && (
-                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    <div className="absolute -top-2 sm:-top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full whitespace-nowrap">
                       BEST VALUE
                     </div>
                   )}
                   
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2 flex-wrap">
+                        <div className={`flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center ${
                           isSelected ? 'border-purple-400 bg-purple-500' : 'border-white/40'
                         }`}>
-                          {isSelected && <Check size={12} className="text-white" />}
+                          {isSelected && <Check size={10} className="sm:w-3 sm:h-3 text-white" />}
                         </div>
-                        <h3 className="text-white font-bold text-lg">
+                        <h3 className="text-white font-bold text-base sm:text-lg md:text-xl truncate">
                           {getPackageLabel(packageItem.packageType)}
                         </h3>
                         {savings && (
-                          <span className="bg-emerald-500/20 text-emerald-300 text-xs font-semibold px-2 py-1 rounded-full">
+                          <span className="bg-emerald-500/20 text-emerald-300 text-[10px] sm:text-xs font-semibold px-2 py-0.5 sm:py-1 rounded-full whitespace-nowrap">
                             {savings}
                           </span>
                         )}
                       </div>
-                      <p className="text-gray-400 text-sm ml-8">
+                      <p className="text-gray-400 text-xs sm:text-sm ml-7 sm:ml-8">
                         {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
                         {packageItem.packageType === 'ANNUAL' && 'Billed annually'}
                         {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
@@ -296,8 +317,8 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                         {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-white font-bold text-2xl">
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-white font-bold text-lg sm:text-xl md:text-2xl whitespace-nowrap">
                         {formatPrice(packageItem)}
                       </div>
                     </div>
@@ -311,23 +332,24 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
           <button
             onClick={handlePurchase}
             disabled={!selectedPackage || purchasing}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple-600/30 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 tap-target"
+            style={{ minHeight: '48px' }}
           >
             {purchasing ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Processing...
+                <span>Processing...</span>
               </>
             ) : (
               <>
-                <Sparkles size={20} />
-                Start Premium
+                <Sparkles size={18} className="sm:w-5 sm:h-5" />
+                <span>Start Premium</span>
               </>
             )}
           </button>
 
           {/* Legal text */}
-          <p className="text-gray-500 text-xs text-center mt-6">
+          <p className="text-gray-500 text-[10px] sm:text-xs text-center mt-4 sm:mt-6 px-2 leading-relaxed">
             Payment will be charged to your account. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period.
           </p>
 
@@ -335,6 +357,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
           <button
             onClick={async () => {
               try {
+                setError(null);
                 const purchases = Purchases.getSharedInstance();
                 await purchases.restorePurchases();
                 const customerInfo = await purchases.getCustomerInfo();
@@ -348,10 +371,12 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                   setError("No active subscriptions found to restore.");
                 }
               } catch (err) {
+                console.error("Restore error:", err);
                 setError("Failed to restore purchases. Please try again.");
               }
             }}
-            className="w-full mt-4 text-gray-400 hover:text-white text-sm transition-colors"
+            className="w-full mt-3 sm:mt-4 text-gray-400 hover:text-white active:text-white text-xs sm:text-sm transition-colors tap-target py-2"
+            style={{ minHeight: '44px' }}
           >
             Restore Purchases
           </button>
