@@ -6,6 +6,7 @@ import Login from './components/auth/Login';
 import JoinBubbleFlow from './components/auth/JoinBubbleFlow';
 import CreateBubbleFlow from './components/auth/CreateBubbleFlow';
 import WelcomeWalkthrough from './components/auth/WelcomeWalkthrough';
+import CustomPaywall from './components/paywall/CustomPaywall';
 import { Purchases, LogLevel } from '@revenuecat/purchases-js'
 
 
@@ -23,6 +24,7 @@ export default function FamilyBubbleApp() {
   const [purchaseError, setPurchaseError] = useState(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [pendingPurchaseSuccess, setPendingPurchaseSuccess] = useState(null);
+  const [showCustomPaywall, setShowCustomPaywall] = useState(false);
   const customerInfoListenerRef = useRef(null);
   const onBubbleCreatedCallback = React.useCallback(() => setBubbleCreationData(null), []);
   const onInitiateCreateCallback = React.useCallback(() => setView('create'), []);
@@ -209,47 +211,13 @@ export default function FamilyBubbleApp() {
         setPendingPurchaseSuccess(() => onSuccess);
       }
 
-      // Present paywall - this will return when the paywall is dismissed
-      await purchases.presentPaywall({ offering: currentOffering });
-
-      // After paywall is dismissed, immediately check customer info to detect purchase
-      const customerInfo = await purchases.getCustomerInfo();
-      const premiumEntitlement = customerInfo.entitlements.active["FamilyBubble Premium"];
-
-      if (typeof premiumEntitlement !== "undefined") {
-        // Purchase was successful!
-        setIsSubscribed(true);
-        setIsLapsedSubscriber(false);
-        
-        // Show walkthrough and execute callback
-        setShowWalkthrough(true);
-        setView('walkthrough');
-        
-        // Clear pending callback - walkthrough will handle continuation
-        setPendingPurchaseSuccess(null);
-      } else {
-        // No purchase was made - clear pending callback
-        setPendingPurchaseSuccess(null);
-        // User cancelled or didn't complete purchase - this is fine, no error needed
-        console.log("No purchase completed - user may have cancelled");
-      }
+      // Show custom paywall instead of RevenueCat's default
+      setShowCustomPaywall(true);
     } catch (error) {
-      console.error("Paywall presentation or purchase error:", error);
-      
-      // Clear pending callback on error
+      // Catch any unexpected errors
+      console.error("Unexpected error in purchase flow:", error);
       setPendingPurchaseSuccess(null);
-      
-      // RevenueCat JS SDK throws a CodedError. We can inspect the code.
-      const isCancelled = error.code === 2; // PURCHASE_CANCELLED code from SDK
-
-      if (isCancelled) {
-          console.log("Purchase was cancelled by the user.");
-          // No need to show an error screen for cancellation.
-          return;
-      }
-
-      // For all other errors, show a dedicated error screen.
-      setPurchaseError("Your purchase could not be completed. Please check your payment details and try again.");
+      setPurchaseError("An unexpected error occurred. Please try again.");
       setView('purchaseError');
     }
   };
@@ -359,6 +327,39 @@ export default function FamilyBubbleApp() {
   }
 
   // If we are here, currentUser exists.
+  
+  // Show custom paywall
+  if (showCustomPaywall) {
+    return (
+      <CustomPaywall
+        onClose={() => {
+          setShowCustomPaywall(false);
+          setPendingPurchaseSuccess(null);
+        }}
+        onPurchaseSuccess={() => {
+          setShowCustomPaywall(false);
+          setIsSubscribed(true);
+          setIsLapsedSubscriber(false);
+          
+          // Show walkthrough and execute callback
+          setShowWalkthrough(true);
+          setView('walkthrough');
+          
+          // Clear pending callback - walkthrough will handle continuation
+          setPendingPurchaseSuccess(null);
+        }}
+        onPurchaseError={(error) => {
+          const errorMessage = error?.message || error?.toString() || '';
+          const isCancelled = error?.code === 2;
+          
+          if (!isCancelled && !errorMessage.includes('Purchase failure simulated')) {
+            setPurchaseError("Your purchase could not be completed. Please try again.");
+            setView('purchaseError');
+          }
+        }}
+      />
+    );
+  }
   
   // Show walkthrough after successful purchase
   if (view === 'walkthrough' || showWalkthrough) {
