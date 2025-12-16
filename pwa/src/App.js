@@ -178,47 +178,36 @@ export default function FamilyBubbleApp() {
   };
   
   const handlePurchase = async (onSuccess) => {
+    // Store the success callback to execute after purchase
+    if (onSuccess) {
+      setPendingPurchaseSuccess(() => onSuccess);
+    }
+
+    // Show custom paywall immediately
+    setShowCustomPaywall(true);
+
+    // Configure RevenueCat in background if needed (paywall will handle this too, but we can pre-configure)
     try {
-      // Ensure Purchases is configured, especially for the anonymous user creation flow.
       if (!Purchases.isConfigured()) {
         if (process.env.NODE_ENV === 'development') {
-          console.log("Configuring Purchases for anonymous user...");
+          console.log("Pre-configuring Purchases...");
         }
-        const appUserId = Purchases.generateRevenueCatAnonymousAppUserId();
-        setAnonymousId(appUserId); // Store anonymous ID for later
+        const appUserId = currentUser?.uid || Purchases.generateRevenueCatAnonymousAppUserId();
+        if (!currentUser) {
+          setAnonymousId(appUserId);
+        }
         
         const revenueCatApiKey = process.env.REACT_APP_REVENUECAT_API_KEY;
-        if (!revenueCatApiKey) {
-          throw new Error("RevenueCat API key is not configured");
+        if (revenueCatApiKey) {
+          await Purchases.configure({
+            apiKey: revenueCatApiKey,
+            appUserId: appUserId,
+          });
         }
-        
-        await Purchases.configure({
-          apiKey: revenueCatApiKey,
-          appUserId: appUserId,
-        });
       }
-
-      const purchases = Purchases.getSharedInstance();
-      const offerings = await purchases.getOfferings();
-      const currentOffering = offerings.current;
-      if (!currentOffering) {
-        alert("No offerings found.");
-        return;
-      }
-
-      // Store the success callback to execute after purchase
-      if (onSuccess) {
-        setPendingPurchaseSuccess(() => onSuccess);
-      }
-
-      // Show custom paywall instead of RevenueCat's default
-      setShowCustomPaywall(true);
     } catch (error) {
-      // Catch any unexpected errors
-      console.error("Unexpected error in purchase flow:", error);
-      setPendingPurchaseSuccess(null);
-      setPurchaseError("An unexpected error occurred. Please try again.");
-      setView('purchaseError');
+      console.error("Error pre-configuring RevenueCat (paywall will handle):", error);
+      // Paywall will handle configuration and show errors if needed
     }
   };
 
@@ -265,6 +254,46 @@ export default function FamilyBubbleApp() {
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 flex items-center justify-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
         <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
       </div>
+    );
+  }
+
+  // Show custom paywall (check before user auth check so it works on welcome screen)
+  if (showCustomPaywall) {
+    console.log("Rendering CustomPaywall component");
+    return (
+      <CustomPaywall
+        onClose={() => {
+          setShowCustomPaywall(false);
+          // Only clear pending callback if user closes without purchasing
+          // Don't proceed to create flow if they close the paywall
+          setPendingPurchaseSuccess(null);
+        }}
+        onPurchaseSuccess={() => {
+          setShowCustomPaywall(false);
+          setIsSubscribed(true);
+          setIsLapsedSubscriber(false);
+          
+          // Execute pending callback if exists (e.g., to proceed to create flow)
+          if (pendingPurchaseSuccess) {
+            const callback = pendingPurchaseSuccess;
+            setPendingPurchaseSuccess(null);
+            callback();
+          } else {
+            // Show walkthrough if no callback (e.g., upgrade from main app)
+            setShowWalkthrough(true);
+            setView('walkthrough');
+          }
+        }}
+        onPurchaseError={(error) => {
+          const errorMessage = error?.message || error?.toString() || '';
+          const isCancelled = error?.code === 2;
+          
+          if (!isCancelled && !errorMessage.includes('Purchase failure simulated')) {
+            setPurchaseError("Your purchase could not be completed. Please try again.");
+            setView('purchaseError');
+          }
+        }}
+      />
     );
   }
 
@@ -321,8 +350,10 @@ export default function FamilyBubbleApp() {
         return <Welcome 
                   onLogin={resetAuthFlow} 
                   onCreate={() => {
+                    console.log("Create Bubble clicked - showing paywall");
                     // Show paywall first, then proceed to create flow after purchase
                     handlePurchase(() => {
+                      console.log("Purchase success callback - proceeding to create flow");
                       // After purchase success, proceed to create flow
                       setView('create');
                     });
@@ -333,45 +364,6 @@ export default function FamilyBubbleApp() {
   }
 
   // If we are here, currentUser exists.
-  
-  // Show custom paywall
-  if (showCustomPaywall) {
-    return (
-      <CustomPaywall
-        onClose={() => {
-          setShowCustomPaywall(false);
-          // Only clear pending callback if user closes without purchasing
-          // Don't proceed to create flow if they close the paywall
-          setPendingPurchaseSuccess(null);
-        }}
-        onPurchaseSuccess={() => {
-          setShowCustomPaywall(false);
-          setIsSubscribed(true);
-          setIsLapsedSubscriber(false);
-          
-          // Execute pending callback if exists (e.g., to proceed to create flow)
-          if (pendingPurchaseSuccess) {
-            const callback = pendingPurchaseSuccess;
-            setPendingPurchaseSuccess(null);
-            callback();
-          } else {
-            // Show walkthrough if no callback (e.g., upgrade from main app)
-            setShowWalkthrough(true);
-            setView('walkthrough');
-          }
-        }}
-        onPurchaseError={(error) => {
-          const errorMessage = error?.message || error?.toString() || '';
-          const isCancelled = error?.code === 2;
-          
-          if (!isCancelled && !errorMessage.includes('Purchase failure simulated')) {
-            setPurchaseError("Your purchase could not be completed. Please try again.");
-            setView('purchaseError');
-          }
-        }}
-      />
-    );
-  }
   
   // Show walkthrough after successful purchase
   if (view === 'walkthrough' || showWalkthrough) {

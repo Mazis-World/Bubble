@@ -16,12 +16,31 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   const loadOfferings = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Ensure Purchases is configured
+      if (!Purchases.isConfigured()) {
+        const revenueCatApiKey = process.env.REACT_APP_REVENUECAT_API_KEY;
+        if (!revenueCatApiKey) {
+          setError("RevenueCat is not configured. Please contact support.");
+          setLoading(false);
+          return;
+        }
+
+        // Configure with anonymous user if needed
+        const appUserId = Purchases.generateRevenueCatAnonymousAppUserId();
+        await Purchases.configure({
+          apiKey: revenueCatApiKey,
+          appUserId: appUserId,
+        });
+      }
+
       const purchases = Purchases.getSharedInstance();
       const offerings = await purchases.getOfferings();
       const currentOffering = offerings.current;
 
       if (!currentOffering || !currentOffering.availablePackages || currentOffering.availablePackages.length === 0) {
-        setError("No subscription packages available.");
+        setError("No subscription packages available. Please try again later.");
         setLoading(false);
         return;
       }
