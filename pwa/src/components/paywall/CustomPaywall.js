@@ -386,16 +386,28 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   const getSavings = (packageItem) => {
     if (packageItem.packageType === 'ANNUAL' && packages.length > 0) {
       const monthlyPackage = packages.find(p => p.packageType === 'MONTHLY');
-      if (monthlyPackage && monthlyPackage.product && packageItem.product) {
-        const monthlyPrice = monthlyPackage.product.price;
-        const annualPrice = packageItem.product.price;
-        if (monthlyPrice && annualPrice) {
-          const monthlyTotal = monthlyPrice * 12;
-          const savings = monthlyTotal - annualPrice;
-          const savingsPercent = Math.round((savings / monthlyTotal) * 100);
-          if (savingsPercent > 0) {
-            return `Save ${savingsPercent}%`;
-          }
+      if (!monthlyPackage) return null;
+      
+      // Get prices from webBillingProduct or rcBillingProduct (same as formatPrice)
+      const getPriceAmount = (pkg) => {
+        const priceObj = pkg?.webBillingProduct?.currentPrice || 
+                         pkg?.webBillingProduct?.price ||
+                         pkg?.rcBillingProduct?.currentPrice ||
+                         pkg?.rcBillingProduct?.price;
+        return priceObj?.amount || null; // Amount is in cents
+      };
+      
+      const monthlyPriceCents = getPriceAmount(monthlyPackage);
+      const annualPriceCents = getPriceAmount(packageItem);
+      
+      if (monthlyPriceCents && annualPriceCents) {
+        const monthlyPrice = monthlyPriceCents / 100;
+        const annualPrice = annualPriceCents / 100;
+        const monthlyTotal = monthlyPrice * 12;
+        const savings = monthlyTotal - annualPrice;
+        const savingsPercent = Math.round((savings / monthlyTotal) * 100);
+        if (savingsPercent > 0) {
+          return `Save ${savingsPercent}%`;
         }
       }
     }
@@ -509,27 +521,12 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
           <div className="text-center mb-8 sm:mb-10 md:mb-12 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.2s' }}>
             {/* Logo */}
             <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
-              <div className="inline-block p-4 bg-white/10 backdrop-blur-lg rounded-full">
-                <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28">
-                  {/* Gradient ring */}
-                  <div className="absolute inset-0 rounded-full" style={{
-                    background: 'conic-gradient(from 135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.95) 25%, rgba(168, 85, 247, 1) 50%, rgba(139, 92, 246, 0.95) 75%, rgba(99, 102, 241, 0.9) 100%)',
-                    padding: '6px',
-                    WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 8px), black calc(100% - 8px))',
-                    mask: 'radial-gradient(farthest-side, transparent calc(100% - 8px), black calc(100% - 8px))'
-                  }}>
-                    <div className="w-full h-full rounded-full bg-purple-900 flex items-center justify-center">
-                      <img 
-                        src="/familybubble-logo-icon-only.svg" 
-                        alt="FamilyBubble Logo"
-                        className="w-full h-full object-contain p-2"
-                        onError={(e) => {
-                          e.target.src = '/familybubble-logo-icon-only-256x256.png';
-                          e.target.onerror = null;
-                        }}
-                      />
-                    </div>
-                  </div>
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden">
+                {/* Diagonal gradient background */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-pink-500"></div>
+                {/* White center ring */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full border-4 border-white"></div>
                 </div>
               </div>
             </div>
