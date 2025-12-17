@@ -722,7 +722,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       disabled={purchasing}
                       className={`w-full relative p-5 sm:p-6 md:p-7 rounded-2xl border-2 transition-all duration-300 text-left tap-target ${
                         isSelected
-                          ? 'border-purple-400 bg-purple-600/40 shadow-xl shadow-purple-500/60 scale-[1.02]'
+                          ? 'border-purple-400 bg-purple-600/30 shadow-xl shadow-purple-500/50 scale-[1.02]'
                           : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30 hover:border-white/30 hover:scale-[1.01]'
                       } ${purchasing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       style={{ 
@@ -743,41 +743,43 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                         </div>
                       )}
                       
-                      <div className="flex items-center justify-between gap-4 sm:gap-6">
+                      {freeTrial && packageItem.packageType === 'MONTHLY' && (
+                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
+                          🎁 {freeTrial.days} Days Free
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start gap-4 sm:gap-6">
+                        <div className="flex-shrink-0">
+                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center ${
+                            isSelected ? 'border-purple-400 bg-purple-500 shadow-lg' : 'border-white/40'
+                          }`}>
+                            {isSelected && <Check size={16} className="sm:w-4 sm:h-4 text-white" />}
+                          </div>
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 sm:gap-4 mb-2 flex-wrap">
-                            <div className={`flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center ${
-                              isSelected ? 'border-purple-400 bg-purple-500 shadow-lg' : 'border-white/40'
-                            }`}>
-                              {isSelected && <Check size={16} className="sm:w-4 sm:h-4 text-white" />}
-                            </div>
-                            <h3 className="text-white font-bold text-xl sm:text-2xl md:text-3xl">
-                              {getPackageLabel(packageItem)}
-                            </h3>
-                          </div>
-                          <div className="ml-10 sm:ml-11">
-                            <div className="space-y-1">
-                              <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
-                                {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
-                                {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
-                                  <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
-                                )}
-                              </p>
-                              {freeTrial ? (
-                                <p className="text-gray-400 text-xs sm:text-sm">
-                                  Full access during trial • Cancel anytime
-                                </p>
-                              ) : (
-                                <p className="text-gray-400 text-xs sm:text-sm">
-                                  {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
-                                  {packageItem.packageType === 'ANNUAL' && `Billed annually${getMonthlyPrice(packageItem) ? ` (${getMonthlyPrice(packageItem)}/month)` : ''}`}
-                                  {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
-                                  {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
-                                  {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
-                                </p>
-                              )}
-                            </div>
-                          </div>
+                          <h3 className="text-white font-bold text-xl sm:text-2xl md:text-3xl mb-2">
+                            {getPackageLabel(packageItem)}
+                          </h3>
+                          <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg mb-1">
+                            {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                            {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
+                              <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
+                            )}
+                          </p>
+                          {freeTrial ? (
+                            <p className="text-gray-400 text-xs sm:text-sm">
+                              Full access during trial • Cancel anytime
+                            </p>
+                          ) : (
+                            <p className="text-gray-400 text-xs sm:text-sm">
+                              {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
+                              {packageItem.packageType === 'ANNUAL' && `Billed annually${getMonthlyPrice(packageItem) ? ` (${getMonthlyPrice(packageItem)}/month)` : ''}`}
+                              {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
+                              {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
+                              {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </button>
