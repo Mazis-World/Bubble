@@ -201,13 +201,50 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const formatPrice = (packageItem) => {
-    if (!packageItem.product || !packageItem.product.priceString) {
+    if (!packageItem?.product) {
       return "Loading...";
     }
-    return packageItem.product.priceString;
+    
+    const product = packageItem.product;
+    
+    // Try priceString first (formatted price from RevenueCat)
+    if (product.priceString) {
+      return product.priceString;
+    }
+    
+    // Fallback: try to format from price and currencyCode
+    if (product.price !== undefined && product.currencyCode) {
+      try {
+        const formatter = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: product.currencyCode,
+        });
+        // Price might be in cents (divide by 100) or in dollars - try both
+        if (product.price > 1000) {
+          return formatter.format(product.price / 100);
+        }
+        return formatter.format(product.price);
+      } catch (e) {
+        console.error('Error formatting price:', e);
+      }
+    }
+    
+    return "Loading...";
   };
 
-  const getPackageLabel = (packageType) => {
+  const getPackageLabel = (packageItem) => {
+    // Use product title first (should be "FamilyBubble Monthly" or "FamilyBubble Yearly")
+    if (packageItem?.product?.title) {
+      return packageItem.product.title;
+    }
+    
+    // Use product identifier if title not available
+    if (packageItem?.product?.identifier) {
+      return packageItem.product.identifier;
+    }
+    
+    // Fallback to package type labels
+    const packageType = packageItem?.packageType || 'MONTHLY';
     const labels = {
       MONTHLY: "Monthly",
       ANNUAL: "Annual",
@@ -395,7 +432,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                               {isSelected && <Check size={16} className="sm:w-4 sm:h-4 text-white" />}
                             </div>
                             <h3 className="text-white font-bold text-xl sm:text-2xl md:text-3xl">
-                              {getPackageLabel(packageItem.packageType)}
+                              {getPackageLabel(packageItem)}
                             </h3>
                             {savings && (
                               <span className="bg-emerald-500/30 text-emerald-200 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap border border-emerald-400/30">
