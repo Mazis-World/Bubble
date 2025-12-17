@@ -529,7 +529,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">No credit card required • Cancel anytime</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Try free for 3 days • No commitment</span>
             </div>
           </div>
 
