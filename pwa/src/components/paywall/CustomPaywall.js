@@ -726,14 +726,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                         </div>
                       )}
                       
-                      {freeTrial && packageItem.packageType === 'MONTHLY' && (
+                      {freeTrial && (
                         <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 animate-pulse">
                           🎁 {freeTrial.days} Days Free
                         </div>
                       )}
                       
                       {savings && packageItem.packageType === 'ANNUAL' && (
-                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
+                        <div className="absolute -top-3 sm:-top-4 left-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
                           💰 {savings}
                         </div>
                       )}
