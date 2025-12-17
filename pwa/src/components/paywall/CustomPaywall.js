@@ -737,20 +737,20 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                         </div>
                       )}
                       
-                      {savings && packageItem.packageType === 'ANNUAL' && (
-                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
-                          🎁 {savings}
-                        </div>
-                      )}
-                      
-                      {freeTrial && packageItem.packageType === 'MONTHLY' && (
+                      {freeTrial && (
                         <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
                           🎁 {freeTrial.days} Days Free
                         </div>
                       )}
                       
-                      <div className="flex items-start gap-4 sm:gap-6">
-                        <div className="flex-shrink-0">
+                      {savings && packageItem.packageType === 'ANNUAL' && !freeTrial && (
+                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
+                          🎁 {savings}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start gap-4 sm:gap-5">
+                        <div className="flex-shrink-0 pt-1">
                           <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center ${
                             isSelected ? 'border-purple-400 bg-purple-500 shadow-lg' : 'border-white/40'
                           }`}>
