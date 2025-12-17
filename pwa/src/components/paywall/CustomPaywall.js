@@ -257,42 +257,72 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const getPackageLabel = (packageItem) => {
-    // Use webBillingProduct identifier first (e.g., "familyBubble_Yearly")
-    if (packageItem?.webBillingProduct?.identifier) {
-      return packageItem.webBillingProduct.identifier;
+    // Get the identifier from webBillingProduct or rcBillingProduct
+    const identifier = packageItem?.webBillingProduct?.identifier || 
+                       packageItem?.rcBillingProduct?.identifier ||
+                       packageItem?.product?.identifier ||
+                       '';
+    
+    // Format the identifier to a clean label
+    if (identifier) {
+      const lowerId = identifier.toLowerCase();
+      
+      // Check for yearly/annual
+      if (lowerId.includes('yearly') || lowerId.includes('annual')) {
+        return 'Yearly';
+      }
+      
+      // Check for monthly
+      if (lowerId.includes('monthly')) {
+        return 'Monthly';
+      }
+      
+      // Check for lifetime
+      if (lowerId.includes('lifetime')) {
+        return 'Lifetime';
+      }
+      
+      // Check for other periods
+      if (lowerId.includes('six') || lowerId.includes('6')) {
+        return '6 Months';
+      }
+      if (lowerId.includes('three') || lowerId.includes('3')) {
+        return '3 Months';
+      }
+      if (lowerId.includes('two') || lowerId.includes('2')) {
+        return '2 Months';
+      }
+      if (lowerId.includes('weekly') || lowerId.includes('week')) {
+        return 'Weekly';
+      }
     }
     
-    // Use rcBillingProduct identifier
-    if (packageItem?.rcBillingProduct?.identifier) {
-      return packageItem.rcBillingProduct.identifier;
-    }
-    
-    // Legacy: Check product.identifier (if product exists)
-    if (packageItem?.product?.identifier) {
-      return packageItem.product.identifier;
-    }
-    
-    // If we're getting package identifier (like "$rc_annual"), try to extract product info
-    const packageIdentifier = packageItem?.identifier || '';
-    if (packageIdentifier.includes('monthly') || packageIdentifier.includes('Monthly')) {
-      return 'FamilyBubble Monthly';
-    }
-    if (packageIdentifier.includes('annual') || packageIdentifier.includes('yearly') || packageIdentifier.includes('Annual') || packageIdentifier.includes('Yearly')) {
-      return 'FamilyBubble Yearly';
-    }
-    
-    // Fallback to package type labels
-    const packageType = packageItem?.packageType || 'MONTHLY';
-    const labels = {
-      MONTHLY: "FamilyBubble Monthly",
-      ANNUAL: "FamilyBubble Yearly",
-      LIFETIME: "FamilyBubble Lifetime",
-      SIX_MONTH: "FamilyBubble 6 Months",
-      THREE_MONTH: "FamilyBubble 3 Months",
-      TWO_MONTH: "FamilyBubble 2 Months",
-      WEEKLY: "FamilyBubble Weekly",
+    // Fallback to package type
+    const packageType = packageItem?.packageType || '';
+    const typeLabels = {
+      MONTHLY: "Monthly",
+      ANNUAL: "Yearly",
+      LIFETIME: "Lifetime",
+      SIX_MONTH: "6 Months",
+      THREE_MONTH: "3 Months",
+      TWO_MONTH: "2 Months",
+      WEEKLY: "Weekly",
     };
-    return labels[packageType] || packageIdentifier || packageType;
+    
+    if (packageType && typeLabels[packageType]) {
+      return typeLabels[packageType];
+    }
+    
+    // Last resort: parse from package identifier
+    const packageIdentifier = packageItem?.identifier || '';
+    if (packageIdentifier.includes('annual') || packageIdentifier.includes('yearly')) {
+      return 'Yearly';
+    }
+    if (packageIdentifier.includes('monthly')) {
+      return 'Monthly';
+    }
+    
+    return 'Monthly'; // Default fallback
   };
 
   const getSavings = (packageItem) => {
