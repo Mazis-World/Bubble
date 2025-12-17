@@ -329,10 +329,10 @@ select:focus-visible {
 
 @keyframes rotateGlobe3D {
   from {
-    transform: rotateY(0deg) rotateX(10deg);
+    transform: rotateY(0deg) rotateX(15deg);
   }
   to {
-    transform: rotateY(360deg) rotateX(10deg);
+    transform: rotateY(360deg) rotateX(15deg);
   }
 }
 

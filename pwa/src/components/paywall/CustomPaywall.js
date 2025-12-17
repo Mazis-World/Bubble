@@ -174,9 +174,9 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     } catch (err) {
       console.error("Purchase error:", err);
       
-      // Check if user cancelled
+      // Check if user canceled
       if (err.code === 2) {
-        // User cancelled - don't show error
+        // User canceled - don't show error
         setPurchasing(false);
         return;
       }
@@ -368,56 +368,16 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
   const getFreeTrialInfo = (packageItem) => {
     // Different trial periods: Monthly = 3 days, Annual = 7 days
+    // ALWAYS use these values regardless of what RevenueCat returns
     const isMonthly = packageItem.packageType === 'MONTHLY';
     const trialDays = isMonthly ? 3 : 7;
     const trialFormatted = isMonthly ? '3 days free' : '7 days free';
     
-    // Check for free trial in webBillingProduct
+    // Check if product has trial configured (but always use our days value)
     const webProduct = packageItem?.webBillingProduct;
-    if (webProduct?.freeTrialPhase) {
-      return {
-        duration: webProduct.freeTrialPhase.duration,
-        period: webProduct.freeTrialPhase.period,
-        formatted: trialFormatted,
-        days: trialDays
-      };
-    }
-    
-    // Check subscription options for trial
-    if (webProduct?.subscriptionOptions) {
-      const baseOption = webProduct.subscriptionOptions.base_option;
-      if (baseOption?.trial) {
-        return {
-          duration: baseOption.trial.duration,
-          period: baseOption.trial.period,
-          formatted: trialFormatted,
-          days: trialDays
-        };
-      }
-    }
-    
-    // Check defaultSubscriptionOption
-    if (webProduct?.defaultSubscriptionOption?.trial) {
-      return {
-        duration: webProduct.defaultSubscriptionOption.trial.duration,
-        period: webProduct.defaultSubscriptionOption.trial.period,
-        formatted: trialFormatted,
-        days: trialDays
-      };
-    }
-    
-    // Check rcBillingProduct
     const rcProduct = packageItem?.rcBillingProduct;
-    if (rcProduct?.freeTrialPhase) {
-      return {
-        duration: rcProduct.freeTrialPhase.duration,
-        period: rcProduct.freeTrialPhase.period,
-        formatted: trialFormatted,
-        days: trialDays
-      };
-    }
     
-    // Default: return trial info based on package type
+    // If either product exists, return trial info with our hardcoded days
     if (webProduct || rcProduct) {
       return {
         formatted: trialFormatted,
@@ -627,35 +587,51 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       )}
                       
                       {feature.visual === 'globe' && (
-                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center" style={{ perspective: '800px', perspectiveOrigin: 'center center' }}>
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-visible border border-blue-500/20 flex items-center justify-center" style={{ perspective: '1200px', perspectiveOrigin: 'center center' }}>
                           <div className="relative w-40 h-40 sm:w-48 sm:h-48" style={{ 
                             transformStyle: 'preserve-3d',
                             animation: 'rotateGlobe3D 20s linear infinite'
                           }}>
-                            {/* 3D Globe Sphere with realistic appearance */}
+                            {/* Outer glow ring for depth */}
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400/30 to-blue-500/20 blur-2xl" style={{ transform: 'scale(1.4) translateZ(-20px)' }}></div>
+                            
+                            {/* 3D Globe Sphere - Main sphere with proper spherical appearance */}
                             <div className="absolute inset-0 rounded-full" style={{
-                              background: 'radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.9), rgba(59, 130, 246, 0.7) 30%, rgba(30, 64, 175, 0.6) 50%, rgba(15, 23, 42, 0.8) 80%)',
+                              background: 'radial-gradient(ellipse 60% 100% at 30% 30%, rgba(34, 211, 238, 1), rgba(59, 130, 246, 0.85) 20%, rgba(30, 64, 175, 0.75) 40%, rgba(15, 23, 42, 0.9) 65%, rgba(0, 0, 0, 0.95) 100%)',
                               transformStyle: 'preserve-3d',
-                              boxShadow: 'inset -30px -30px 60px rgba(0, 0, 0, 0.6), inset 30px 30px 60px rgba(59, 130, 246, 0.4), 0 0 40px rgba(34, 211, 238, 0.3)',
-                              border: '2px solid rgba(34, 211, 238, 0.3)'
+                              boxShadow: `
+                                inset -50px -50px 100px rgba(0, 0, 0, 0.9),
+                                inset 50px 50px 100px rgba(59, 130, 246, 0.6),
+                                inset -20px 20px 40px rgba(0, 0, 0, 0.5),
+                                inset 20px -20px 40px rgba(34, 211, 238, 0.4),
+                                0 0 80px rgba(34, 211, 238, 0.5),
+                                0 0 150px rgba(59, 130, 246, 0.3)
+                              `,
+                              border: '3px solid rgba(34, 211, 238, 0.5)',
+                              filter: 'drop-shadow(0 0 30px rgba(34, 211, 238, 0.4))'
                             }}>
                               {/* Continents/landmasses with realistic shapes */}
-                              <div className="absolute top-[12%] left-[20%] w-14 h-20 bg-gradient-to-b from-emerald-700/70 to-emerald-900/50 rounded-t-full blur-[2px]" style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)' }}></div>
-                              <div className="absolute top-[32%] right-[15%] w-18 h-24 bg-gradient-to-b from-emerald-700/70 to-emerald-900/50 rounded-t-full blur-[2px]" style={{ clipPath: 'polygon(15% 0%, 85% 0%, 100% 40%, 90% 100%, 10% 100%, 0% 40%)' }}></div>
-                              <div className="absolute bottom-[18%] left-[25%] w-16 h-22 bg-gradient-to-b from-emerald-700/70 to-emerald-900/50 rounded-t-full blur-[2px]" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }}></div>
-                              {/* Latitude/longitude grid */}
-                              <div className="absolute top-1/4 left-0 right-0 h-px bg-cyan-400/30"></div>
-                              <div className="absolute bottom-1/4 left-0 right-0 h-px bg-cyan-400/30"></div>
-                              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-cyan-400/30"></div>
-                              <div className="absolute top-0 left-1/4 bottom-0 w-px bg-cyan-400/20"></div>
-                              <div className="absolute top-0 right-1/4 bottom-0 w-px bg-cyan-400/20"></div>
+                              <div className="absolute top-[12%] left-[20%] w-14 h-20 bg-gradient-to-b from-emerald-500/90 to-emerald-700/70 rounded-t-full blur-[0.5px]" style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)' }}></div>
+                              <div className="absolute top-[32%] right-[15%] w-18 h-24 bg-gradient-to-b from-emerald-500/90 to-emerald-700/70 rounded-t-full blur-[0.5px]" style={{ clipPath: 'polygon(15% 0%, 85% 0%, 100% 40%, 90% 100%, 10% 100%, 0% 40%)' }}></div>
+                              <div className="absolute bottom-[18%] left-[25%] w-16 h-22 bg-gradient-to-b from-emerald-500/90 to-emerald-700/70 rounded-t-full blur-[0.5px]" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }}></div>
+                              {/* Latitude/longitude grid lines - curved for sphere effect */}
+                              <div className="absolute top-1/4 left-0 right-0 h-px bg-cyan-400/50" style={{ borderRadius: '50%', transform: 'scaleY(0.3)' }}></div>
+                              <div className="absolute bottom-1/4 left-0 right-0 h-px bg-cyan-400/50" style={{ borderRadius: '50%', transform: 'scaleY(0.3)' }}></div>
+                              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-cyan-400/50"></div>
+                              <div className="absolute top-0 left-1/4 bottom-0 w-px bg-cyan-400/30"></div>
+                              <div className="absolute top-0 right-1/4 bottom-0 w-px bg-cyan-400/30"></div>
                             </div>
-                            {/* Location markers with 3D positioning */}
-                            <div className="absolute top-[16%] left-[26%] w-5 h-5 rounded-full bg-purple-400 shadow-lg shadow-purple-400/60 animate-pulse" style={{ animationDelay: '0s', transform: 'translateZ(22px) scale(1.1)' }}></div>
-                            <div className="absolute bottom-[20%] right-[20%] w-5 h-5 rounded-full bg-blue-400 shadow-lg shadow-blue-400/60 animate-pulse" style={{ animationDelay: '0.5s', transform: 'translateZ(22px) scale(1.1)' }}></div>
-                            <div className="absolute top-[46%] right-[30%] w-5 h-5 rounded-full bg-pink-400 shadow-lg shadow-pink-400/60 animate-pulse" style={{ animationDelay: '1s', transform: 'translateZ(22px) scale(1.1)' }}></div>
-                            {/* Atmospheric glow effect */}
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400/15 to-blue-500/10 blur-2xl" style={{ transform: 'translateZ(-10px)' }}></div>
+                            
+                            {/* Location markers with 3D positioning and enhanced glow */}
+                            <div className="absolute top-[16%] left-[26%] w-5 h-5 rounded-full bg-purple-400 shadow-2xl shadow-purple-400/80 animate-pulse" style={{ animationDelay: '0s', transform: 'translateZ(28px) scale(1.3)', filter: 'drop-shadow(0 0 12px rgba(168, 85, 247, 1))' }}></div>
+                            <div className="absolute bottom-[20%] right-[20%] w-5 h-5 rounded-full bg-blue-400 shadow-2xl shadow-blue-400/80 animate-pulse" style={{ animationDelay: '0.5s', transform: 'translateZ(28px) scale(1.3)', filter: 'drop-shadow(0 0 12px rgba(59, 130, 246, 1))' }}></div>
+                            <div className="absolute top-[46%] right-[30%] w-5 h-5 rounded-full bg-pink-400 shadow-2xl shadow-pink-400/80 animate-pulse" style={{ animationDelay: '1s', transform: 'translateZ(28px) scale(1.3)', filter: 'drop-shadow(0 0 12px rgba(236, 72, 153, 1))' }}></div>
+                            
+                            {/* Highlight for 3D depth - light reflection */}
+                            <div className="absolute top-[18%] left-[22%] w-20 h-20 rounded-full bg-white/15 blur-2xl" style={{ transform: 'translateZ(35px)' }}></div>
+                            
+                            {/* Secondary highlight for more depth */}
+                            <div className="absolute top-[25%] left-[30%] w-12 h-12 rounded-full bg-cyan-300/20 blur-xl" style={{ transform: 'translateZ(32px)' }}></div>
                           </div>
                         </div>
                       )}
@@ -769,7 +745,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       
                       {freeTrial && (
                         <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 animate-pulse">
-                          🎁 {freeTrial.days || (packageItem.packageType === 'MONTHLY' ? 3 : 7)} Days Free
+                          🎁 {freeTrial.days} Days Free
                         </div>
                       )}
                       
@@ -794,7 +770,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                             {freeTrial ? (
                               <div className="space-y-1">
                                 <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
-                                  {freeTrial.days || (packageItem.packageType === 'MONTHLY' ? 3 : 7)} days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                                  {freeTrial.days} days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
                                   {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
                                     <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
                                   )}
@@ -853,7 +829,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Free trial begins immediately upon activation. Monthly subscriptions include 3 days free; annual subscriptions include 7 days free. Cancel anytime during your trial period with no charges. Your subscription will automatically renew after the trial ends unless cancelled at least 24 hours before the renewal date.
+                Free trial begins immediately upon activation. Monthly subscriptions include 3 days free; annual subscriptions include 7 days free. Cancel anytime during your trial period with no charges. Your subscription will automatically renew after the trial ends unless canceled at least 24 hours before the renewal date.
               </p>
 
               {/* Restore purchases */}
