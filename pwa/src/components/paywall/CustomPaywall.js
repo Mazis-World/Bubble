@@ -215,23 +215,29 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   const formatPrice = (packageItem) => {
     // Check webBillingProduct first (has formattedPrice)
     if (packageItem?.webBillingProduct?.currentPrice?.formattedPrice) {
-      return packageItem.webBillingProduct.currentPrice.formattedPrice;
+      const price = packageItem.webBillingProduct.currentPrice.formattedPrice;
+      // Fix any encoding issues (é instead of $)
+      return price.replace(/é/g, '$').replace(/€/g, '$');
     }
     if (packageItem?.webBillingProduct?.price?.formattedPrice) {
-      return packageItem.webBillingProduct.price.formattedPrice;
+      const price = packageItem.webBillingProduct.price.formattedPrice;
+      return price.replace(/é/g, '$').replace(/€/g, '$');
     }
     
     // Check rcBillingProduct
     if (packageItem?.rcBillingProduct?.currentPrice?.formattedPrice) {
-      return packageItem.rcBillingProduct.currentPrice.formattedPrice;
+      const price = packageItem.rcBillingProduct.currentPrice.formattedPrice;
+      return price.replace(/é/g, '$').replace(/€/g, '$');
     }
     if (packageItem?.rcBillingProduct?.price?.formattedPrice) {
-      return packageItem.rcBillingProduct.price.formattedPrice;
+      const price = packageItem.rcBillingProduct.price.formattedPrice;
+      return price.replace(/é/g, '$').replace(/€/g, '$');
     }
     
     // Legacy: Check product.priceString (if product exists)
     if (packageItem?.product?.priceString) {
-      return packageItem.product.priceString;
+      const price = packageItem.product.priceString;
+      return price.replace(/é/g, '$').replace(/€/g, '$');
     }
     
     // Fallback: try to format from price amount and currency
@@ -254,6 +260,30 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     }
     
     return "Loading...";
+  };
+
+  const getMonthlyPrice = (packageItem) => {
+    if (packageItem.packageType === 'ANNUAL') {
+      const priceObj = packageItem?.webBillingProduct?.currentPrice || 
+                       packageItem?.webBillingProduct?.price ||
+                       packageItem?.rcBillingProduct?.currentPrice ||
+                       packageItem?.rcBillingProduct?.price;
+      
+      if (priceObj?.amount && priceObj?.currency) {
+        try {
+          const formatter = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: priceObj.currency,
+          });
+          // Calculate monthly: annual price / 12
+          const monthlyAmount = (priceObj.amount / 100) / 12;
+          return formatter.format(monthlyAmount);
+        } catch (e) {
+          console.error('Error calculating monthly price:', e);
+        }
+      }
+    }
+    return null;
   };
 
   const getPackageLabel = (packageItem) => {
@@ -326,13 +356,19 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const getFreeTrialInfo = (packageItem) => {
+    // Different trial periods: Monthly = 3 days, Annual = 7 days
+    const isMonthly = packageItem.packageType === 'MONTHLY';
+    const trialDays = isMonthly ? 3 : 7;
+    const trialFormatted = isMonthly ? '3 days free' : '7 days free';
+    
     // Check for free trial in webBillingProduct
     const webProduct = packageItem?.webBillingProduct;
     if (webProduct?.freeTrialPhase) {
       return {
         duration: webProduct.freeTrialPhase.duration,
         period: webProduct.freeTrialPhase.period,
-        formatted: '7 days free'
+        formatted: trialFormatted,
+        days: trialDays
       };
     }
     
@@ -343,7 +379,8 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
         return {
           duration: baseOption.trial.duration,
           period: baseOption.trial.period,
-          formatted: '7 days free'
+          formatted: trialFormatted,
+          days: trialDays
         };
       }
     }
@@ -353,7 +390,8 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       return {
         duration: webProduct.defaultSubscriptionOption.trial.duration,
         period: webProduct.defaultSubscriptionOption.trial.period,
-        formatted: '7 days free'
+        formatted: trialFormatted,
+        days: trialDays
       };
     }
     
@@ -363,14 +401,16 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       return {
         duration: rcProduct.freeTrialPhase.duration,
         period: rcProduct.freeTrialPhase.period,
-        formatted: '7 days free'
+        formatted: trialFormatted,
+        days: trialDays
       };
     }
     
-    // Default: assume 7-day trial if webBillingProduct exists (common setup)
-    if (webProduct) {
+    // Default: return trial info based on package type
+    if (webProduct || rcProduct) {
       return {
-        formatted: '7 days free'
+        formatted: trialFormatted,
+        days: trialDays
       };
     }
     
@@ -517,11 +557,11 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               Your Family, Connected Like Never Before
             </h1>
             <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              Experience the future of family communication. Start with 7 days free, no commitment required.
+              Experience the future of family communication. Start with 3 days free, no commitment required.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">7-day free trial • Cancel anytime</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">3-day free trial • Cancel anytime</span>
             </div>
           </div>
 
@@ -577,12 +617,27 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       
                       {feature.visual === 'globe' && (
                         <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center">
-                          <div className="relative w-32 h-32 sm:w-40 sm:h-40">
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400/30 to-purple-500/30 blur-xl"></div>
-                            <div className="absolute inset-4 rounded-full border-2 border-blue-400/40"></div>
-                            <div className="absolute top-1/4 left-1/4 w-6 h-6 rounded-full bg-purple-400 shadow-lg"></div>
-                            <div className="absolute bottom-1/3 right-1/4 w-6 h-6 rounded-full bg-blue-400 shadow-lg"></div>
-                            <div className="absolute top-1/2 right-1/3 w-6 h-6 rounded-full bg-pink-400 shadow-lg"></div>
+                          <div className="relative w-32 h-32 sm:w-40 sm:h-40" style={{ animation: 'rotateGlobe 20s linear infinite' }}>
+                            {/* Globe sphere with texture */}
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/40 via-cyan-500/30 to-purple-500/40" style={{ 
+                              backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(59, 130, 246, 0.6), transparent 50%), radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.4), transparent 50%)',
+                              transform: 'rotateY(0deg)',
+                              animation: 'rotateGlobe 20s linear infinite'
+                            }}></div>
+                            {/* Globe outline */}
+                            <div className="absolute inset-2 rounded-full border-2 border-blue-400/50"></div>
+                            <div className="absolute inset-6 rounded-full border border-blue-400/30"></div>
+                            {/* Latitude lines */}
+                            <div className="absolute top-1/4 left-0 right-0 h-px bg-blue-400/30"></div>
+                            <div className="absolute bottom-1/4 left-0 right-0 h-px bg-blue-400/30"></div>
+                            {/* Longitude line */}
+                            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-blue-400/30"></div>
+                            {/* Location markers */}
+                            <div className="absolute top-[20%] left-[30%] w-4 h-4 rounded-full bg-purple-400 shadow-lg animate-pulse" style={{ animationDelay: '0s' }}></div>
+                            <div className="absolute bottom-[25%] right-[25%] w-4 h-4 rounded-full bg-blue-400 shadow-lg animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                            <div className="absolute top-[50%] right-[35%] w-4 h-4 rounded-full bg-pink-400 shadow-lg animate-pulse" style={{ animationDelay: '1s' }}></div>
+                            {/* Glow effect */}
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400/20 to-purple-500/20 blur-xl"></div>
                           </div>
                         </div>
                       )}
@@ -696,7 +751,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       
                       {freeTrial && (
                         <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 animate-pulse">
-                          🎁 7 Days Free
+                          {packageItem.packageType === 'MONTHLY' ? '🎁 3 Days Free' : '🎁 7 Days Free'}
                         </div>
                       )}
                       
@@ -721,7 +776,10 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                             {freeTrial ? (
                               <div className="space-y-1">
                                 <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
-                                  7 days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                                  {packageItem.packageType === 'MONTHLY' ? '3' : '7'} days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                                  {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
+                                    <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
+                                  )}
                                 </p>
                                 <p className="text-gray-400 text-xs sm:text-sm">
                                   Full access during trial • Cancel anytime
@@ -730,7 +788,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                             ) : (
                               <p className="text-gray-400 text-sm sm:text-base md:text-lg">
                                 {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
-                                {packageItem.packageType === 'ANNUAL' && 'Billed annually'}
+                                {packageItem.packageType === 'ANNUAL' && `Billed annually${getMonthlyPrice(packageItem) ? ` (${getMonthlyPrice(packageItem)}/month)` : ''}`}
                                 {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
                                 {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
                                 {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
@@ -777,7 +835,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Your 7-day free trial begins immediately. Cancel anytime during the trial with no charges. After the trial, your subscription will automatically renew unless cancelled at least 24 hours before the renewal date.
+                Your free trial begins immediately. Monthly plans include 3 days free, annual plans include 7 days free. Cancel anytime during the trial with no charges. After the trial, your subscription will automatically renew unless cancelled at least 24 hours before the renewal date.
               </p>
 
               {/* Restore purchases */}

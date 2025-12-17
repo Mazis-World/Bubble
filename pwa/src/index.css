@@ -327,6 +327,15 @@ select:focus-visible {
   animation: radarSweep 3s linear infinite;
 }
 
+@keyframes rotateGlobe {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
 @keyframes radar-sweep {
   0% {
     transform: translate(-50%, -50%) rotate(0deg);
