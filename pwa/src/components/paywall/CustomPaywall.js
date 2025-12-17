@@ -215,29 +215,40 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   const formatPrice = (packageItem) => {
     // Check webBillingProduct first (has formattedPrice)
     if (packageItem?.webBillingProduct?.currentPrice?.formattedPrice) {
-      const price = packageItem.webBillingProduct.currentPrice.formattedPrice;
-      // Fix any encoding issues (é instead of $)
-      return price.replace(/é/g, '$').replace(/€/g, '$');
+      let price = packageItem.webBillingProduct.currentPrice.formattedPrice;
+      // Fix encoding issues and spacing
+      price = price.replace(/é/g, '$').replace(/€/g, '$');
+      // Fix spacing: remove space between $ and number (e.g., "$ 4.99" -> "$4.99")
+      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
+      return price;
     }
     if (packageItem?.webBillingProduct?.price?.formattedPrice) {
-      const price = packageItem.webBillingProduct.price.formattedPrice;
-      return price.replace(/é/g, '$').replace(/€/g, '$');
+      let price = packageItem.webBillingProduct.price.formattedPrice;
+      price = price.replace(/é/g, '$').replace(/€/g, '$');
+      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
+      return price;
     }
     
     // Check rcBillingProduct
     if (packageItem?.rcBillingProduct?.currentPrice?.formattedPrice) {
-      const price = packageItem.rcBillingProduct.currentPrice.formattedPrice;
-      return price.replace(/é/g, '$').replace(/€/g, '$');
+      let price = packageItem.rcBillingProduct.currentPrice.formattedPrice;
+      price = price.replace(/é/g, '$').replace(/€/g, '$');
+      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
+      return price;
     }
     if (packageItem?.rcBillingProduct?.price?.formattedPrice) {
-      const price = packageItem.rcBillingProduct.price.formattedPrice;
-      return price.replace(/é/g, '$').replace(/€/g, '$');
+      let price = packageItem.rcBillingProduct.price.formattedPrice;
+      price = price.replace(/é/g, '$').replace(/€/g, '$');
+      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
+      return price;
     }
     
     // Legacy: Check product.priceString (if product exists)
     if (packageItem?.product?.priceString) {
-      const price = packageItem.product.priceString;
-      return price.replace(/é/g, '$').replace(/€/g, '$');
+      let price = packageItem.product.priceString;
+      price = price.replace(/é/g, '$').replace(/€/g, '$');
+      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
+      return price;
     }
     
     // Fallback: try to format from price amount and currency
@@ -554,14 +565,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               />
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
-              Your Family, Connected Like Never Before
+              Where Family Meets Technology
             </h1>
             <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              Experience the future of family communication. Start with 3 days free, no commitment required.
+              The most intuitive way to stay connected with your family. Try Premium free for 3 days—experience everything, risk nothing.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">3-day free trial • Cancel anytime</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">No credit card required • Cancel anytime</span>
             </div>
           </div>
 
@@ -616,28 +627,35 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       )}
                       
                       {feature.visual === 'globe' && (
-                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center">
-                          <div className="relative w-32 h-32 sm:w-40 sm:h-40" style={{ animation: 'rotateGlobe 20s linear infinite' }}>
-                            {/* Globe sphere with texture */}
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/40 via-cyan-500/30 to-purple-500/40" style={{ 
-                              backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(59, 130, 246, 0.6), transparent 50%), radial-gradient(circle at 70% 70%, rgba(168, 85, 247, 0.4), transparent 50%)',
-                              transform: 'rotateY(0deg)',
-                              animation: 'rotateGlobe 20s linear infinite'
-                            }}></div>
-                            {/* Globe outline */}
-                            <div className="absolute inset-2 rounded-full border-2 border-blue-400/50"></div>
-                            <div className="absolute inset-6 rounded-full border border-blue-400/30"></div>
-                            {/* Latitude lines */}
-                            <div className="absolute top-1/4 left-0 right-0 h-px bg-blue-400/30"></div>
-                            <div className="absolute bottom-1/4 left-0 right-0 h-px bg-blue-400/30"></div>
-                            {/* Longitude line */}
-                            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-blue-400/30"></div>
-                            {/* Location markers */}
-                            <div className="absolute top-[20%] left-[30%] w-4 h-4 rounded-full bg-purple-400 shadow-lg animate-pulse" style={{ animationDelay: '0s' }}></div>
-                            <div className="absolute bottom-[25%] right-[25%] w-4 h-4 rounded-full bg-blue-400 shadow-lg animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                            <div className="absolute top-[50%] right-[35%] w-4 h-4 rounded-full bg-pink-400 shadow-lg animate-pulse" style={{ animationDelay: '1s' }}></div>
-                            {/* Glow effect */}
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400/20 to-purple-500/20 blur-xl"></div>
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center" style={{ perspective: '800px', perspectiveOrigin: 'center center' }}>
+                          <div className="relative w-40 h-40 sm:w-48 sm:h-48" style={{ 
+                            transformStyle: 'preserve-3d',
+                            animation: 'rotateGlobe3D 20s linear infinite'
+                          }}>
+                            {/* 3D Globe Sphere with realistic appearance */}
+                            <div className="absolute inset-0 rounded-full" style={{
+                              background: 'radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.9), rgba(59, 130, 246, 0.7) 30%, rgba(30, 64, 175, 0.6) 50%, rgba(15, 23, 42, 0.8) 80%)',
+                              transformStyle: 'preserve-3d',
+                              boxShadow: 'inset -30px -30px 60px rgba(0, 0, 0, 0.6), inset 30px 30px 60px rgba(59, 130, 246, 0.4), 0 0 40px rgba(34, 211, 238, 0.3)',
+                              border: '2px solid rgba(34, 211, 238, 0.3)'
+                            }}>
+                              {/* Continents/landmasses with realistic shapes */}
+                              <div className="absolute top-[12%] left-[20%] w-14 h-20 bg-gradient-to-b from-emerald-700/70 to-emerald-900/50 rounded-t-full blur-[2px]" style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)' }}></div>
+                              <div className="absolute top-[32%] right-[15%] w-18 h-24 bg-gradient-to-b from-emerald-700/70 to-emerald-900/50 rounded-t-full blur-[2px]" style={{ clipPath: 'polygon(15% 0%, 85% 0%, 100% 40%, 90% 100%, 10% 100%, 0% 40%)' }}></div>
+                              <div className="absolute bottom-[18%] left-[25%] w-16 h-22 bg-gradient-to-b from-emerald-700/70 to-emerald-900/50 rounded-t-full blur-[2px]" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }}></div>
+                              {/* Latitude/longitude grid */}
+                              <div className="absolute top-1/4 left-0 right-0 h-px bg-cyan-400/30"></div>
+                              <div className="absolute bottom-1/4 left-0 right-0 h-px bg-cyan-400/30"></div>
+                              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-cyan-400/30"></div>
+                              <div className="absolute top-0 left-1/4 bottom-0 w-px bg-cyan-400/20"></div>
+                              <div className="absolute top-0 right-1/4 bottom-0 w-px bg-cyan-400/20"></div>
+                            </div>
+                            {/* Location markers with 3D positioning */}
+                            <div className="absolute top-[16%] left-[26%] w-5 h-5 rounded-full bg-purple-400 shadow-lg shadow-purple-400/60 animate-pulse" style={{ animationDelay: '0s', transform: 'translateZ(22px) scale(1.1)' }}></div>
+                            <div className="absolute bottom-[20%] right-[20%] w-5 h-5 rounded-full bg-blue-400 shadow-lg shadow-blue-400/60 animate-pulse" style={{ animationDelay: '0.5s', transform: 'translateZ(22px) scale(1.1)' }}></div>
+                            <div className="absolute top-[46%] right-[30%] w-5 h-5 rounded-full bg-pink-400 shadow-lg shadow-pink-400/60 animate-pulse" style={{ animationDelay: '1s', transform: 'translateZ(22px) scale(1.1)' }}></div>
+                            {/* Atmospheric glow effect */}
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400/15 to-blue-500/10 blur-2xl" style={{ transform: 'translateZ(-10px)' }}></div>
                           </div>
                         </div>
                       )}
@@ -751,7 +769,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       
                       {freeTrial && (
                         <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 animate-pulse">
-                          {packageItem.packageType === 'MONTHLY' ? '🎁 3 Days Free' : '🎁 7 Days Free'}
+                          🎁 {freeTrial.days || (packageItem.packageType === 'MONTHLY' ? 3 : 7)} Days Free
                         </div>
                       )}
                       
@@ -776,7 +794,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                             {freeTrial ? (
                               <div className="space-y-1">
                                 <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
-                                  {packageItem.packageType === 'MONTHLY' ? '3' : '7'} days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                                  {freeTrial.days || (packageItem.packageType === 'MONTHLY' ? 3 : 7)} days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
                                   {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
                                     <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
                                   )}
@@ -835,7 +853,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Your free trial begins immediately. Monthly plans include 3 days free, annual plans include 7 days free. Cancel anytime during the trial with no charges. After the trial, your subscription will automatically renew unless cancelled at least 24 hours before the renewal date.
+                Free trial begins immediately upon activation. Monthly subscriptions include 3 days free; annual subscriptions include 7 days free. Cancel anytime during your trial period with no charges. Your subscription will automatically renew after the trial ends unless cancelled at least 24 hours before the renewal date.
               </p>
 
               {/* Restore purchases */}
