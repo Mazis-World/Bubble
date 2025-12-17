@@ -509,9 +509,17 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
           <div className="text-center mb-8 sm:mb-10 md:mb-12 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.2s' }}>
             {/* Logo */}
             <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
-              <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-600/30 p-3">
-                <div className="w-full h-full rounded-full bg-black/20 flex items-center justify-center">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border-4 border-white/80"></div>
+              <div className="inline-block p-4 bg-white/10 backdrop-blur-lg rounded-full">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-600/30 p-2">
+                  <img 
+                    src="/familybubble-logo-icon-only.svg" 
+                    alt="FamilyBubble Logo"
+                    className="w-full h-full object-contain drop-shadow-2xl"
+                    onError={(e) => {
+                      e.target.src = '/familybubble-logo-icon-only-256x256.png';
+                      e.target.onerror = null;
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -707,7 +715,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       disabled={purchasing}
                       className={`w-full relative p-5 sm:p-6 md:p-7 rounded-2xl border-2 transition-all duration-300 text-left tap-target ${
                         isSelected
-                          ? 'border-purple-400 bg-purple-600/30 shadow-xl shadow-purple-500/50 scale-[1.02]'
+                          ? 'border-purple-400 bg-purple-600/40 shadow-xl shadow-purple-500/60 scale-[1.02]'
                           : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30 hover:border-white/30 hover:scale-[1.01]'
                       } ${purchasing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       style={{ 
@@ -739,43 +747,32 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                             <h3 className="text-white font-bold text-xl sm:text-2xl md:text-3xl">
                               {getPackageLabel(packageItem)}
                             </h3>
-                            {savings && (
-                              <span className="bg-emerald-500/30 text-emerald-200 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap border border-emerald-400/30">
-                                {savings}
-                              </span>
-                            )}
                           </div>
                           <div className="ml-10 sm:ml-11">
-                            {freeTrial ? (
-                              <div className="space-y-1">
-                                <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
-                                  {freeTrial.days} days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
-                                  {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
-                                    <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
-                                  )}
-                                </p>
+                            <div className="space-y-1">
+                              <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
+                                {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                                {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
+                                  <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
+                                )}
+                              </p>
+                              {freeTrial ? (
                                 <p className="text-gray-400 text-xs sm:text-sm">
                                   Full access during trial • Cancel anytime
                                 </p>
-                              </div>
-                            ) : (
-                              <p className="text-gray-400 text-sm sm:text-base md:text-lg">
-                                {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
-                                {packageItem.packageType === 'ANNUAL' && `Billed annually${getMonthlyPrice(packageItem) ? ` (${getMonthlyPrice(packageItem)}/month)` : ''}`}
-                                {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
-                                {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
-                                {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {!freeTrial && (
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-white font-bold text-2xl sm:text-3xl md:text-4xl whitespace-nowrap">
-                              {formatPrice(packageItem)}
+                              ) : (
+                                <p className="text-gray-400 text-xs sm:text-sm">
+                                  {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
+                                  {packageItem.packageType === 'ANNUAL' && `Billed annually${getMonthlyPrice(packageItem) ? ` (${getMonthlyPrice(packageItem)}/month)` : ''}`}
+                                  {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
+                                  {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
+                                  {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
+                                </p>
+                              )}
                             </div>
                           </div>
-                        )}
+                        </div>
+                      </div>
                       </div>
                     </button>
                   );
