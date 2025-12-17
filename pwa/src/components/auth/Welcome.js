@@ -24,17 +24,25 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
       <div className="max-w-md w-full text-center z-10 relative px-4 py-6 sm:py-8 md:py-10">
         {/* Logo */}
         <div className="inline-flex items-center justify-center mb-8 sm:mb-10 md:mb-12 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
-          <div className="inline-block p-4 bg-white/10 backdrop-blur-lg rounded-full">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-600/30 p-2">
-              <img 
-                src="/familybubble-logo-icon-only.svg" 
-                alt="FamilyBubble Logo"
-                className="w-full h-full object-contain drop-shadow-2xl"
-                onError={(e) => {
-                  e.target.src = '/familybubble-logo-icon-only-256x256.png';
-                  e.target.onerror = null;
-                }}
-              />
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32">
+            {/* Outer gradient ring */}
+            <div className="absolute inset-0 rounded-full" style={{
+              background: 'conic-gradient(from 135deg, rgba(99, 102, 241, 0.9) 0%, rgba(139, 92, 246, 0.95) 25%, rgba(168, 85, 247, 1) 50%, rgba(139, 92, 246, 0.95) 75%, rgba(99, 102, 241, 0.9) 100%)',
+              padding: '6px',
+              WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 8px), black calc(100% - 8px))',
+              mask: 'radial-gradient(farthest-side, transparent calc(100% - 8px), black calc(100% - 8px))'
+            }}>
+              <div className="w-full h-full rounded-full bg-purple-900 flex items-center justify-center p-2">
+                <img 
+                  src="/familybubble-logo-icon-only.svg" 
+                  alt="FamilyBubble Logo"
+                  className="w-full h-full object-contain drop-shadow-2xl"
+                  onError={(e) => {
+                    e.target.src = '/familybubble-logo-icon-only-256x256.png';
+                    e.target.onerror = null;
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
