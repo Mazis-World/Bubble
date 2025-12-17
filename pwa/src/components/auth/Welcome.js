@@ -4,7 +4,7 @@ import { PlusCircle, LogIn, ChevronRight, Sparkles } from 'lucide-react';
 const Welcome = ({ onLogin, onCreate, onJoin }) => {
   return (
     <div 
-      className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center p-4 overflow-hidden relative" 
+      className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center overflow-hidden relative" 
       style={{ 
         height: '100dvh',
         minHeight: '-webkit-fill-available',
@@ -21,7 +21,7 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
         <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-teal-600/10 rounded-full animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="max-w-md w-full text-center z-10 relative px-4 py-6 sm:py-8 md:py-10">
+      <div className="max-w-md w-full text-center z-10 relative px-4 py-8 sm:py-10 md:py-12">
         {/* Logo */}
         <div className="inline-flex items-center justify-center mb-8 sm:mb-10 md:mb-12 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden">
