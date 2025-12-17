@@ -112,15 +112,27 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
         return (order[aPeriod] || 99) - (order[bPeriod] || 99);
       });
 
-      // Log filtered packages in development for debugging
+      // Log filtered packages in development for debugging - FULL DETAILS
       if (process.env.NODE_ENV === 'development') {
-        console.log('Filtered RevenueCat packages (showing in paywall):', sortedPackages.map(p => ({
-          identifier: p.identifier,
-          packageType: p.packageType,
-          productId: p.product?.identifier,
-          productTitle: p.product?.title,
-          price: p.product?.priceString
-        })));
+        console.log('=== FULL PACKAGE DETAILS FOR PAYWALL ===');
+        sortedPackages.forEach((p, index) => {
+          console.log(`Package ${index + 1}:`, {
+            packageIdentifier: p.identifier,
+            packageType: p.packageType,
+            product: p.product,
+            productIdentifier: p.product?.identifier,
+            productTitle: p.product?.title,
+            productDescription: p.product?.description,
+            priceString: p.product?.priceString,
+            price: p.product?.price,
+            currencyCode: p.product?.currencyCode,
+            introPrice: p.product?.introPrice,
+            subscriptionPeriod: p.product?.subscriptionPeriod,
+            allProductKeys: p.product ? Object.keys(p.product) : 'NO PRODUCT',
+            fullProductObject: p.product
+          });
+        });
+        console.log('=== END PACKAGE DETAILS ===');
       }
 
       setPackages(sortedPackages);
@@ -202,6 +214,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
   const formatPrice = (packageItem) => {
     if (!packageItem?.product) {
+      console.warn('formatPrice: No product found', packageItem);
       return "Loading...";
     }
     
@@ -212,44 +225,81 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       return product.priceString;
     }
     
+    // Try webBillingProduct or rcBillingProduct if they exist
+    if (product.webBillingProduct?.priceString) {
+      return product.webBillingProduct.priceString;
+    }
+    if (product.rcBillingProduct?.priceString) {
+      return product.rcBillingProduct.priceString;
+    }
+    
     // Fallback: try to format from price and currencyCode
-    if (product.price !== undefined && product.currencyCode) {
+    const price = product.price || product.webBillingProduct?.price || product.rcBillingProduct?.price;
+    const currencyCode = product.currencyCode || product.webBillingProduct?.currencyCode || product.rcBillingProduct?.currencyCode;
+    
+    if (price !== undefined && currencyCode) {
       try {
         const formatter = new Intl.NumberFormat('en-US', {
           style: 'currency',
-          currency: product.currencyCode,
+          currency: currencyCode,
         });
         // Price might be in cents (divide by 100) or in dollars - try both
-        if (product.price > 1000) {
-          return formatter.format(product.price / 100);
+        if (price > 1000) {
+          return formatter.format(price / 100);
         }
-        return formatter.format(product.price);
+        return formatter.format(price);
       } catch (e) {
-        console.error('Error formatting price:', e);
+        console.error('Error formatting price:', e, { price, currencyCode });
       }
     }
     
+    console.warn('formatPrice: No price information found', {
+      product,
+      priceString: product.priceString,
+      price: product.price,
+      currencyCode: product.currencyCode,
+      webBillingProduct: product.webBillingProduct,
+      rcBillingProduct: product.rcBillingProduct
+    });
     return "Loading...";
   };
 
   const getPackageLabel = (packageItem) => {
-    // Use product identifier
+    // Use product identifier first
     if (packageItem?.product?.identifier) {
       return packageItem.product.identifier;
+    }
+    
+    // Try webBillingProduct or rcBillingProduct identifiers
+    if (packageItem?.product?.webBillingProduct?.identifier) {
+      return packageItem.product.webBillingProduct.identifier;
+    }
+    if (packageItem?.product?.rcBillingProduct?.identifier) {
+      return packageItem.product.rcBillingProduct.identifier;
+    }
+    
+    // If we're getting package identifier (like "rc_annual"), try to extract product info
+    // or use a more readable format
+    const packageIdentifier = packageItem?.identifier || '';
+    if (packageIdentifier.includes('monthly') || packageIdentifier.includes('Monthly')) {
+      return 'FamilyBubble Monthly';
+    }
+    if (packageIdentifier.includes('annual') || packageIdentifier.includes('yearly') || packageIdentifier.includes('Annual') || packageIdentifier.includes('Yearly')) {
+      return 'FamilyBubble Yearly';
     }
     
     // Fallback to package type labels
     const packageType = packageItem?.packageType || 'MONTHLY';
     const labels = {
-      MONTHLY: "Monthly",
-      ANNUAL: "Annual",
-      LIFETIME: "Lifetime",
-      SIX_MONTH: "6 Months",
-      THREE_MONTH: "3 Months",
-      TWO_MONTH: "2 Months",
-      WEEKLY: "Weekly",
+      MONTHLY: "FamilyBubble Monthly",
+      ANNUAL: "FamilyBubble Yearly",
+      LIFETIME: "FamilyBubble Lifetime",
+      SIX_MONTH: "FamilyBubble 6 Months",
+      THREE_MONTH: "FamilyBubble 3 Months",
+      TWO_MONTH: "FamilyBubble 2 Months",
+      WEEKLY: "FamilyBubble Weekly",
     };
-    return labels[packageType] || packageType;
+    return labels[packageType] || packageIdentifier || packageType;
   };
 
   const getSavings = (packageItem) => {
