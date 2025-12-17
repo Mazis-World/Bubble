@@ -584,51 +584,39 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       )}
                       
                       {feature.visual === 'globe' && (
-                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-visible border border-blue-500/20 flex items-center justify-center" style={{ perspective: '1200px', perspectiveOrigin: 'center center' }}>
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center" style={{ perspective: '1000px', perspectiveOrigin: 'center center' }}>
                           <div className="relative w-40 h-40 sm:w-48 sm:h-48" style={{ 
                             transformStyle: 'preserve-3d',
                             animation: 'rotateGlobe3D 20s linear infinite'
                           }}>
-                            {/* Outer glow ring for depth */}
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400/30 to-blue-500/20 blur-2xl" style={{ transform: 'scale(1.4) translateZ(-20px)' }}></div>
-                            
-                            {/* 3D Globe Sphere - Main sphere with proper spherical appearance */}
+                            {/* 3D Globe Sphere - Clean spherical appearance */}
                             <div className="absolute inset-0 rounded-full" style={{
-                              background: 'radial-gradient(ellipse 60% 100% at 30% 30%, rgba(34, 211, 238, 1), rgba(59, 130, 246, 0.85) 20%, rgba(30, 64, 175, 0.75) 40%, rgba(15, 23, 42, 0.9) 65%, rgba(0, 0, 0, 0.95) 100%)',
+                              background: 'radial-gradient(circle at 30% 30%, rgba(34, 211, 238, 0.95), rgba(59, 130, 246, 0.8) 25%, rgba(30, 64, 175, 0.7) 45%, rgba(15, 23, 42, 0.85) 70%, rgba(0, 0, 0, 0.9) 100%)',
                               transformStyle: 'preserve-3d',
                               boxShadow: `
-                                inset -50px -50px 100px rgba(0, 0, 0, 0.9),
-                                inset 50px 50px 100px rgba(59, 130, 246, 0.6),
-                                inset -20px 20px 40px rgba(0, 0, 0, 0.5),
-                                inset 20px -20px 40px rgba(34, 211, 238, 0.4),
-                                0 0 80px rgba(34, 211, 238, 0.5),
-                                0 0 150px rgba(59, 130, 246, 0.3)
+                                inset -60px -60px 120px rgba(0, 0, 0, 0.8),
+                                inset 60px 60px 120px rgba(59, 130, 246, 0.5),
+                                0 0 100px rgba(34, 211, 238, 0.4)
                               `,
-                              border: '3px solid rgba(34, 211, 238, 0.5)',
-                              filter: 'drop-shadow(0 0 30px rgba(34, 211, 238, 0.4))'
+                              border: '2px solid rgba(34, 211, 238, 0.3)'
                             }}>
-                              {/* Continents/landmasses with realistic shapes */}
-                              <div className="absolute top-[12%] left-[20%] w-14 h-20 bg-gradient-to-b from-emerald-500/90 to-emerald-700/70 rounded-t-full blur-[0.5px]" style={{ clipPath: 'polygon(20% 0%, 80% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%)' }}></div>
-                              <div className="absolute top-[32%] right-[15%] w-18 h-24 bg-gradient-to-b from-emerald-500/90 to-emerald-700/70 rounded-t-full blur-[0.5px]" style={{ clipPath: 'polygon(15% 0%, 85% 0%, 100% 40%, 90% 100%, 10% 100%, 0% 40%)' }}></div>
-                              <div className="absolute bottom-[18%] left-[25%] w-16 h-22 bg-gradient-to-b from-emerald-500/90 to-emerald-700/70 rounded-t-full blur-[0.5px]" style={{ clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)' }}></div>
-                              {/* Latitude/longitude grid lines - curved for sphere effect */}
-                              <div className="absolute top-1/4 left-0 right-0 h-px bg-cyan-400/50" style={{ borderRadius: '50%', transform: 'scaleY(0.3)' }}></div>
-                              <div className="absolute bottom-1/4 left-0 right-0 h-px bg-cyan-400/50" style={{ borderRadius: '50%', transform: 'scaleY(0.3)' }}></div>
-                              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-cyan-400/50"></div>
-                              <div className="absolute top-0 left-1/4 bottom-0 w-px bg-cyan-400/30"></div>
-                              <div className="absolute top-0 right-1/4 bottom-0 w-px bg-cyan-400/30"></div>
+                              {/* Continents - simplified and clean */}
+                              <div className="absolute top-[15%] left-[22%] w-12 h-16 bg-emerald-600/60 rounded-full blur-[1px]" style={{ clipPath: 'ellipse(40% 60% at 50% 50%)' }}></div>
+                              <div className="absolute top-[35%] right-[18%] w-14 h-18 bg-emerald-600/60 rounded-full blur-[1px]" style={{ clipPath: 'ellipse(35% 55% at 50% 50%)' }}></div>
+                              <div className="absolute bottom-[20%] left-[28%] w-13 h-17 bg-emerald-600/60 rounded-full blur-[1px]" style={{ clipPath: 'ellipse(38% 58% at 50% 50%)' }}></div>
+                              {/* Clean grid lines */}
+                              <div className="absolute top-1/4 left-0 right-0 h-px bg-cyan-400/30" style={{ borderRadius: '50%', transform: 'scaleY(0.25)' }}></div>
+                              <div className="absolute bottom-1/4 left-0 right-0 h-px bg-cyan-400/30" style={{ borderRadius: '50%', transform: 'scaleY(0.25)' }}></div>
+                              <div className="absolute left-1/2 top-0 bottom-0 w-px bg-cyan-400/30"></div>
                             </div>
                             
-                            {/* Location markers with 3D positioning and enhanced glow */}
-                            <div className="absolute top-[16%] left-[26%] w-5 h-5 rounded-full bg-purple-400 shadow-2xl shadow-purple-400/80 animate-pulse" style={{ animationDelay: '0s', transform: 'translateZ(28px) scale(1.3)', filter: 'drop-shadow(0 0 12px rgba(168, 85, 247, 1))' }}></div>
-                            <div className="absolute bottom-[20%] right-[20%] w-5 h-5 rounded-full bg-blue-400 shadow-2xl shadow-blue-400/80 animate-pulse" style={{ animationDelay: '0.5s', transform: 'translateZ(28px) scale(1.3)', filter: 'drop-shadow(0 0 12px rgba(59, 130, 246, 1))' }}></div>
-                            <div className="absolute top-[46%] right-[30%] w-5 h-5 rounded-full bg-pink-400 shadow-2xl shadow-pink-400/80 animate-pulse" style={{ animationDelay: '1s', transform: 'translateZ(28px) scale(1.3)', filter: 'drop-shadow(0 0 12px rgba(236, 72, 153, 1))' }}></div>
+                            {/* Location markers - clean and simple */}
+                            <div className="absolute top-[18%] left-[28%] w-4 h-4 rounded-full bg-purple-400 shadow-lg animate-pulse" style={{ animationDelay: '0s', transform: 'translateZ(20px)', filter: 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.8))' }}></div>
+                            <div className="absolute bottom-[22%] right-[22%] w-4 h-4 rounded-full bg-blue-400 shadow-lg animate-pulse" style={{ animationDelay: '0.5s', transform: 'translateZ(20px)', filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.8))' }}></div>
+                            <div className="absolute top-[48%] right-[32%] w-4 h-4 rounded-full bg-pink-400 shadow-lg animate-pulse" style={{ animationDelay: '1s', transform: 'translateZ(20px)', filter: 'drop-shadow(0 0 8px rgba(236, 72, 153, 0.8))' }}></div>
                             
-                            {/* Highlight for 3D depth - light reflection */}
-                            <div className="absolute top-[18%] left-[22%] w-20 h-20 rounded-full bg-white/15 blur-2xl" style={{ transform: 'translateZ(35px)' }}></div>
-                            
-                            {/* Secondary highlight for more depth */}
-                            <div className="absolute top-[25%] left-[30%] w-12 h-12 rounded-full bg-cyan-300/20 blur-xl" style={{ transform: 'translateZ(32px)' }}></div>
+                            {/* Subtle highlight for sphere depth */}
+                            <div className="absolute top-[20%] left-[25%] w-16 h-16 rounded-full bg-white/10 blur-xl" style={{ transform: 'translateZ(25px)' }}></div>
                           </div>
                         </div>
                       )}
