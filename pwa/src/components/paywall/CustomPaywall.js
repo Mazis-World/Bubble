@@ -233,12 +233,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const getPackageLabel = (packageItem) => {
-    // Use product title first (should be "FamilyBubble Monthly" or "FamilyBubble Yearly")
-    if (packageItem?.product?.title) {
-      return packageItem.product.title;
-    }
-    
-    // Use product identifier if title not available
+    // Use product identifier
     if (packageItem?.product?.identifier) {
       return packageItem.product.identifier;
     }
