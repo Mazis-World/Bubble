@@ -432,11 +432,15 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               />
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2">
-              Unlock FamilyBubble Premium
+              Start Your Free Week Today
             </h1>
-            <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto">
-              Connect with your family like never before
+            <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-2">
+              Try FamilyBubble Premium free for 7 days, then unlock unlimited family connections
             </p>
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2">
+              <Sparkles size={18} className="text-emerald-300" />
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">No credit card required to start</span>
+            </div>
           </div>
 
           {/* Two-column layout: Features left, Packages right on desktop */}
@@ -472,6 +476,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                   const isSelected = selectedPackage?.identifier === packageItem.identifier;
                   const savings = getSavings(packageItem);
                   const isPopular = packageItem.packageType === 'ANNUAL';
+                  const freeTrial = getFreeTrialInfo(packageItem);
 
                   return (
                     <button
@@ -486,8 +491,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       style={{ minHeight: '80px' }}
                     >
                       {isPopular && (
-                        <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg">
+                        <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
                           BEST VALUE
+                        </div>
+                      )}
+                      
+                      {freeTrial && (
+                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 animate-pulse">
+                          🎁 7 Days Free
                         </div>
                       )}
                       
@@ -508,19 +519,34 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-400 text-sm sm:text-base md:text-lg ml-10 sm:ml-11">
-                            {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
-                            {packageItem.packageType === 'ANNUAL' && 'Billed annually'}
-                            {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
-                            {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
-                            {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="text-white font-bold text-2xl sm:text-3xl md:text-4xl whitespace-nowrap">
-                            {formatPrice(packageItem)}
+                          <div className="ml-10 sm:ml-11">
+                            {freeTrial ? (
+                              <div className="space-y-1">
+                                <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
+                                  Start with 7 days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                                </p>
+                                <p className="text-gray-400 text-xs sm:text-sm">
+                                  Cancel anytime during your free trial
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-gray-400 text-sm sm:text-base md:text-lg">
+                                {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
+                                {packageItem.packageType === 'ANNUAL' && 'Billed annually'}
+                                {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
+                                {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
+                                {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
+                              </p>
+                            )}
                           </div>
                         </div>
+                        {!freeTrial && (
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-white font-bold text-2xl sm:text-3xl md:text-4xl whitespace-nowrap">
+                              {formatPrice(packageItem)}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </button>
                   );
@@ -542,14 +568,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                 ) : (
                   <>
                     <Sparkles size={24} className="sm:w-7 sm:h-7" />
-                    <span>Start Premium</span>
+                    <span>Start Free Trial</span>
                   </>
                 )}
               </button>
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Payment will be charged to your account. Subscription automatically renews unless cancelled at least 24 hours before the end of the current period.
+                Start your 7-day free trial today. No charge until your trial ends. Subscription automatically renews unless cancelled at least 24 hours before the end of the trial period.
               </p>
 
               {/* Restore purchases */}
