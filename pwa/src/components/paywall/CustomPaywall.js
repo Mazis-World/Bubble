@@ -373,12 +373,9 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     const trialDays = isMonthly ? 3 : 7;
     const trialFormatted = isMonthly ? '3 days free' : '7 days free';
     
-    // Check if product has trial configured (but always use our days value)
-    const webProduct = packageItem?.webBillingProduct;
-    const rcProduct = packageItem?.rcBillingProduct;
-    
-    // If either product exists, return trial info with our hardcoded days
-    if (webProduct || rcProduct) {
+    // Always return trial info based on package type (MONTHLY or ANNUAL)
+    // Only return null for non-subscription packages (LIFETIME, etc.)
+    if (packageItem.packageType === 'MONTHLY' || packageItem.packageType === 'ANNUAL') {
       return {
         formatted: trialFormatted,
         days: trialDays
