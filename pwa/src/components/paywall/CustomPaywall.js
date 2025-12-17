@@ -325,6 +325,58 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     return 'Monthly'; // Default fallback
   };
 
+  const getFreeTrialInfo = (packageItem) => {
+    // Check for free trial in webBillingProduct
+    const webProduct = packageItem?.webBillingProduct;
+    if (webProduct?.freeTrialPhase) {
+      return {
+        duration: webProduct.freeTrialPhase.duration,
+        period: webProduct.freeTrialPhase.period,
+        formatted: '7 days free'
+      };
+    }
+    
+    // Check subscription options for trial
+    if (webProduct?.subscriptionOptions) {
+      const baseOption = webProduct.subscriptionOptions.base_option;
+      if (baseOption?.trial) {
+        return {
+          duration: baseOption.trial.duration,
+          period: baseOption.trial.period,
+          formatted: '7 days free'
+        };
+      }
+    }
+    
+    // Check defaultSubscriptionOption
+    if (webProduct?.defaultSubscriptionOption?.trial) {
+      return {
+        duration: webProduct.defaultSubscriptionOption.trial.duration,
+        period: webProduct.defaultSubscriptionOption.trial.period,
+        formatted: '7 days free'
+      };
+    }
+    
+    // Check rcBillingProduct
+    const rcProduct = packageItem?.rcBillingProduct;
+    if (rcProduct?.freeTrialPhase) {
+      return {
+        duration: rcProduct.freeTrialPhase.duration,
+        period: rcProduct.freeTrialPhase.period,
+        formatted: '7 days free'
+      };
+    }
+    
+    // Default: assume 7-day trial if webBillingProduct exists (common setup)
+    if (webProduct) {
+      return {
+        formatted: '7 days free'
+      };
+    }
+    
+    return null;
+  };
+
   const getSavings = (packageItem) => {
     if (packageItem.packageType === 'ANNUAL' && packages.length > 0) {
       const monthlyPackage = packages.find(p => p.packageType === 'MONTHLY');
@@ -418,27 +470,27 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 sm:py-8 md:py-10">
           {/* Header - Full width on all screens */}
-          <div className="text-center mb-8 sm:mb-10 md:mb-12">
+          <div className="text-center mb-8 sm:mb-10 md:mb-12 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.2s' }}>
             {/* Logo */}
-            <div className="inline-flex items-center justify-center mb-6 sm:mb-8">
+            <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
               <img 
                 src="/familybubble-logo-icon-only.svg" 
                 alt="FamilyBubble Logo"
-                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32"
+                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 drop-shadow-2xl"
                 onError={(e) => {
                   e.target.src = '/familybubble-logo-icon-only-256x256.png';
                   e.target.onerror = null;
                 }}
               />
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
               Start Your Free Week Today
             </h1>
-            <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-2">
+            <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
               Try FamilyBubble Premium free for 7 days, then unlock unlimited family connections
             </p>
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2">
-              <Sparkles size={18} className="text-emerald-300" />
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
+              <Sparkles size={18} className="text-emerald-300 animate-pulse" />
               <span className="text-emerald-200 font-semibold text-sm sm:text-base">No credit card required to start</span>
             </div>
           </div>
@@ -446,7 +498,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
           {/* Two-column layout: Features left, Packages right on desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-start">
             {/* Left side - Features */}
-            <div className="order-2 lg:order-1">
+            <div className="order-2 lg:order-1 animate-slide-in-left" style={{ opacity: 0, animationDelay: '0.6s' }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 text-center lg:text-left">
                 Premium Features
               </h2>
@@ -456,9 +508,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                   return (
                     <div
                       key={index}
-                      className="flex items-center gap-4 sm:gap-5 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 backdrop-blur-sm hover:bg-white/10 transition-colors"
+                      className="flex items-center gap-4 sm:gap-5 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 backdrop-blur-sm hover:bg-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg animate-float-feature"
+                      style={{ 
+                        opacity: 0, 
+                        animationDelay: `${0.7 + index * 0.1}s`,
+                        animationFillMode: 'forwards'
+                      }}
                     >
-                      <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                      <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-110">
                         <Icon size={28} className="sm:w-8 sm:h-8 text-white" />
                       </div>
                       <p className="text-white text-base sm:text-lg md:text-xl leading-relaxed font-medium">{feature.text}</p>
@@ -469,7 +526,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
             </div>
 
             {/* Right side - Packages & Purchase */}
-            <div className="order-1 lg:order-2 lg:sticky lg:top-6">
+            <div className="order-1 lg:order-2 lg:sticky lg:top-6 animate-slide-in-right" style={{ opacity: 0, animationDelay: '0.6s' }}>
               {/* Packages */}
               <div className="space-y-4 sm:space-y-5 mb-6 sm:mb-8">
                 {packages.map((packageItem, index) => {
@@ -483,12 +540,16 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       key={packageItem.identifier}
                       onClick={() => setSelectedPackage(packageItem)}
                       disabled={purchasing}
-                      className={`w-full relative p-5 sm:p-6 md:p-7 rounded-2xl border-2 transition-all text-left tap-target ${
+                      className={`w-full relative p-5 sm:p-6 md:p-7 rounded-2xl border-2 transition-all duration-300 text-left tap-target ${
                         isSelected
                           ? 'border-purple-500 bg-purple-500/20 shadow-xl shadow-purple-500/40 scale-[1.02]'
-                          : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30 hover:border-white/30'
+                          : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30 hover:border-white/30 hover:scale-[1.01]'
                       } ${purchasing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                      style={{ minHeight: '80px' }}
+                      style={{ 
+                        minHeight: '80px',
+                        opacity: 0,
+                        animation: `fadeInUp 0.5s ease-out ${0.8 + index * 0.1}s forwards`
+                      }}
                     >
                       {isPopular && (
                         <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
@@ -557,8 +618,12 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               <button
                 onClick={handlePurchase}
                 disabled={!selectedPackage || purchasing}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl font-bold text-lg sm:text-xl md:text-2xl flex items-center justify-center gap-3 shadow-xl shadow-purple-600/40 transition-all active:scale-95 hover:shadow-2xl hover:shadow-purple-600/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 tap-target mb-4 sm:mb-5"
-                style={{ minHeight: '56px' }}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 sm:py-5 md:py-6 rounded-xl sm:rounded-2xl font-bold text-lg sm:text-xl md:text-2xl flex items-center justify-center gap-3 shadow-xl shadow-purple-600/40 transition-all duration-300 active:scale-95 hover:shadow-2xl hover:shadow-purple-600/50 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:scale-100 tap-target mb-4 sm:mb-5 animate-fade-in-up"
+                style={{ 
+                  minHeight: '56px',
+                  opacity: 0,
+                  animationDelay: `${1.2 + packages.length * 0.1}s`
+                }}
               >
                 {purchasing ? (
                   <>
