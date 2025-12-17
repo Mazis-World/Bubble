@@ -314,6 +314,19 @@ select:focus-visible {
 }
 
 /* Radar-specific animations - mobile optimized */
+@keyframes radarSweep {
+  0% {
+    transform: translate(-50%, -100%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -100%) rotate(360deg);
+  }
+}
+
+.radar-sweep-animation {
+  animation: radarSweep 3s linear infinite;
+}
+
 @keyframes radar-sweep {
   0% {
     transform: translate(-50%, -50%) rotate(0deg);

@@ -397,12 +397,42 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const features = [
-    { icon: Users, text: "Unlimited family members" },
-    { icon: MapPin, text: "Real-time location sharing" },
-    { icon: MessageCircle, text: "Status updates & emojis" },
-    { icon: Sparkles, text: "Shareable invite links" },
-    { icon: Shield, text: "Private & secure" },
-    { icon: Zap, text: "Instant notifications" },
+    { 
+      icon: Users, 
+      text: "Unlimited family members",
+      visual: "radar",
+      description: "See your entire family at a glance on the interactive radar"
+    },
+    { 
+      icon: MapPin, 
+      text: "Real-time location sharing",
+      visual: "globe",
+      description: "Track family locations on a beautiful 3D globe"
+    },
+    { 
+      icon: MessageCircle, 
+      text: "Status updates & emojis",
+      visual: "status",
+      description: "Share moments with custom status updates"
+    },
+    { 
+      icon: Sparkles, 
+      text: "Shareable invite links",
+      visual: "invite",
+      description: "Invite family members instantly with secure links"
+    },
+    { 
+      icon: Shield, 
+      text: "Private & secure",
+      visual: "security",
+      description: "End-to-end encrypted, family-only access"
+    },
+    { 
+      icon: Zap, 
+      text: "Instant notifications",
+      visual: "notifications",
+      description: "Stay connected with real-time alerts"
+    },
   ];
 
   if (loading) {
@@ -484,41 +514,148 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               />
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
-              Start Your Free Week Today
+              Your Family, Connected Like Never Before
             </h1>
-            <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              Try FamilyBubble Premium free for 7 days, then unlock unlimited family connections
+            <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
+              Experience the future of family communication. Start with 7 days free, no commitment required.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">No credit card required to start</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">7-day free trial • Cancel anytime</span>
             </div>
           </div>
 
           {/* Two-column layout: Features left, Packages right on desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 xl:gap-16 items-start">
-            {/* Left side - Features */}
+            {/* Left side - Features with Visuals */}
             <div className="order-2 lg:order-1 animate-slide-in-left" style={{ opacity: 0, animationDelay: '0.6s' }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 text-center lg:text-left">
-                Premium Features
+                Everything Your Family Needs
               </h2>
-              <div className="space-y-4 sm:space-y-5">
+              <div className="space-y-6 sm:space-y-8">
                 {features.map((feature, index) => {
                   const Icon = feature.icon;
                   return (
                     <div
                       key={index}
-                      className="flex items-center gap-4 sm:gap-5 bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 backdrop-blur-sm hover:bg-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg animate-float-feature"
+                      className="bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-6 md:p-8 backdrop-blur-sm hover:bg-white/10 transition-all duration-300 hover:scale-[1.01] hover:shadow-xl"
                       style={{ 
                         opacity: 0, 
-                        animationDelay: `${0.7 + index * 0.1}s`,
-                        animationFillMode: 'forwards'
+                        animation: `fadeInUp 0.6s ease-out ${0.7 + index * 0.1}s forwards`
                       }}
                     >
-                      <div className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-110">
-                        <Icon size={28} className="sm:w-8 sm:h-8 text-white" />
+                      <div className="flex items-start gap-4 sm:gap-5">
+                        <div className="flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                          <Icon size={24} className="sm:w-7 sm:h-7 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-bold text-lg sm:text-xl md:text-2xl mb-2">{feature.text}</h3>
+                          <p className="text-gray-400 text-sm sm:text-base leading-relaxed">{feature.description}</p>
+                        </div>
                       </div>
-                      <p className="text-white text-base sm:text-lg md:text-xl leading-relaxed font-medium">{feature.text}</p>
+                      
+                      {/* Visual Preview */}
+                      {feature.visual === 'radar' && (
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-cyan-900/20 to-blue-900/20 rounded-xl overflow-hidden border border-cyan-500/20">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            {/* Radar Circle */}
+                            <div className="relative w-40 h-40 sm:w-48 sm:h-48">
+                              <div className="absolute inset-0 rounded-full border-2 border-cyan-400/40"></div>
+                              <div className="absolute inset-4 rounded-full border border-cyan-400/30"></div>
+                              <div className="absolute inset-8 rounded-full border border-cyan-400/20"></div>
+                              {/* Radar Sweep */}
+                              <div className="absolute top-1/2 left-1/2 w-1 h-20 bg-gradient-to-b from-cyan-400 to-transparent origin-bottom transform -translate-x-1/2 -translate-y-full"
+                                style={{ animation: 'radarSweep 3s linear infinite' }}></div>
+                              {/* Family Bubbles */}
+                              <div className="absolute top-[15%] left-[25%] w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">👨</div>
+                              <div className="absolute top-[45%] right-[20%] w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">👩</div>
+                              <div className="absolute bottom-[20%] left-[20%] w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 border-2 border-white shadow-lg flex items-center justify-center text-white text-xs">👧</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {feature.visual === 'globe' && (
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl overflow-hidden border border-blue-500/20 flex items-center justify-center">
+                          <div className="relative w-32 h-32 sm:w-40 sm:h-40">
+                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-400/30 to-purple-500/30 blur-xl"></div>
+                            <div className="absolute inset-4 rounded-full border-2 border-blue-400/40"></div>
+                            <div className="absolute top-1/4 left-1/4 w-6 h-6 rounded-full bg-purple-400 shadow-lg"></div>
+                            <div className="absolute bottom-1/3 right-1/4 w-6 h-6 rounded-full bg-blue-400 shadow-lg"></div>
+                            <div className="absolute top-1/2 right-1/3 w-6 h-6 rounded-full bg-pink-400 shadow-lg"></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {feature.visual === 'status' && (
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-xl overflow-hidden border border-purple-500/20 p-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3 bg-white/5 rounded-lg p-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500"></div>
+                              <div className="flex-1">
+                                <div className="h-3 bg-white/20 rounded w-3/4 mb-2"></div>
+                                <div className="h-2 bg-white/10 rounded w-1/2"></div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-2xl">😊</div>
+                              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-2xl">❤️</div>
+                              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-2xl">⭐</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {feature.visual === 'invite' && (
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-emerald-900/20 to-teal-900/20 rounded-xl overflow-hidden border border-emerald-500/20 p-4 flex items-center justify-center">
+                          <div className="text-center space-y-3">
+                            <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg">
+                              <Sparkles size={32} className="text-white" />
+                            </div>
+                            <div className="h-3 bg-white/20 rounded w-32 mx-auto"></div>
+                            <div className="h-2 bg-white/10 rounded w-24 mx-auto"></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {feature.visual === 'security' && (
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-gray-900/20 to-slate-900/20 rounded-xl overflow-hidden border border-gray-500/20 p-4 flex items-center justify-center">
+                          <div className="text-center space-y-4">
+                            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center shadow-lg border-2 border-gray-500/50">
+                              <Shield size={40} className="text-white" />
+                            </div>
+                            <div className="space-y-2">
+                              <div className="h-2 bg-white/20 rounded w-40 mx-auto"></div>
+                              <div className="h-2 bg-white/10 rounded w-32 mx-auto"></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {feature.visual === 'notifications' && (
+                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-yellow-900/20 to-orange-900/20 rounded-xl overflow-hidden border border-yellow-500/20 p-4">
+                          <div className="space-y-3">
+                            <div className="bg-white/10 rounded-lg p-3 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+                                <Zap size={20} className="text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="h-3 bg-white/20 rounded w-full mb-1"></div>
+                                <div className="h-2 bg-white/10 rounded w-2/3"></div>
+                              </div>
+                            </div>
+                            <div className="bg-white/5 rounded-lg p-3 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                                <MapPin size={20} className="text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="h-3 bg-white/20 rounded w-full mb-1"></div>
+                                <div className="h-2 bg-white/10 rounded w-1/2"></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -584,10 +721,10 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                             {freeTrial ? (
                               <div className="space-y-1">
                                 <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
-                                  Start with 7 days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                                  7 days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
                                 </p>
                                 <p className="text-gray-400 text-xs sm:text-sm">
-                                  Cancel anytime during your free trial
+                                  Full access during trial • Cancel anytime
                                 </p>
                               </div>
                             ) : (
@@ -640,7 +777,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Start your 7-day free trial today. No charge until your trial ends. Subscription automatically renews unless cancelled at least 24 hours before the end of the trial period.
+                Your 7-day free trial begins immediately. Cancel anytime during the trial with no charges. After the trial, your subscription will automatically renew unless cancelled at least 24 hours before the renewal date.
               </p>
 
               {/* Restore purchases */}
