@@ -213,73 +213,66 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const formatPrice = (packageItem) => {
-    if (!packageItem?.product) {
-      console.warn('formatPrice: No product found', packageItem);
-      return "Loading...";
+    // Check webBillingProduct first (has formattedPrice)
+    if (packageItem?.webBillingProduct?.currentPrice?.formattedPrice) {
+      return packageItem.webBillingProduct.currentPrice.formattedPrice;
+    }
+    if (packageItem?.webBillingProduct?.price?.formattedPrice) {
+      return packageItem.webBillingProduct.price.formattedPrice;
     }
     
-    const product = packageItem.product;
-    
-    // Try priceString first (formatted price from RevenueCat)
-    if (product.priceString) {
-      return product.priceString;
+    // Check rcBillingProduct
+    if (packageItem?.rcBillingProduct?.currentPrice?.formattedPrice) {
+      return packageItem.rcBillingProduct.currentPrice.formattedPrice;
+    }
+    if (packageItem?.rcBillingProduct?.price?.formattedPrice) {
+      return packageItem.rcBillingProduct.price.formattedPrice;
     }
     
-    // Try webBillingProduct or rcBillingProduct if they exist
-    if (product.webBillingProduct?.priceString) {
-      return product.webBillingProduct.priceString;
-    }
-    if (product.rcBillingProduct?.priceString) {
-      return product.rcBillingProduct.priceString;
+    // Legacy: Check product.priceString (if product exists)
+    if (packageItem?.product?.priceString) {
+      return packageItem.product.priceString;
     }
     
-    // Fallback: try to format from price and currencyCode
-    const price = product.price || product.webBillingProduct?.price || product.rcBillingProduct?.price;
-    const currencyCode = product.currencyCode || product.webBillingProduct?.currencyCode || product.rcBillingProduct?.currencyCode;
+    // Fallback: try to format from price amount and currency
+    const priceObj = packageItem?.webBillingProduct?.currentPrice || 
+                     packageItem?.webBillingProduct?.price ||
+                     packageItem?.rcBillingProduct?.currentPrice ||
+                     packageItem?.rcBillingProduct?.price;
     
-    if (price !== undefined && currencyCode) {
+    if (priceObj?.amount && priceObj?.currency) {
       try {
         const formatter = new Intl.NumberFormat('en-US', {
           style: 'currency',
-          currency: currencyCode,
+          currency: priceObj.currency,
         });
-        // Price might be in cents (divide by 100) or in dollars - try both
-        if (price > 1000) {
-          return formatter.format(price / 100);
-        }
-        return formatter.format(price);
+        // Amount is in cents (4790 = $47.90)
+        return formatter.format(priceObj.amount / 100);
       } catch (e) {
-        console.error('Error formatting price:', e, { price, currencyCode });
+        console.error('Error formatting price:', e, priceObj);
       }
     }
     
-    console.warn('formatPrice: No price information found', {
-      product,
-      priceString: product.priceString,
-      price: product.price,
-      currencyCode: product.currencyCode,
-      webBillingProduct: product.webBillingProduct,
-      rcBillingProduct: product.rcBillingProduct
-    });
     return "Loading...";
   };
 
   const getPackageLabel = (packageItem) => {
-    // Use product identifier first
+    // Use webBillingProduct identifier first (e.g., "familyBubble_Yearly")
+    if (packageItem?.webBillingProduct?.identifier) {
+      return packageItem.webBillingProduct.identifier;
+    }
+    
+    // Use rcBillingProduct identifier
+    if (packageItem?.rcBillingProduct?.identifier) {
+      return packageItem.rcBillingProduct.identifier;
+    }
+    
+    // Legacy: Check product.identifier (if product exists)
     if (packageItem?.product?.identifier) {
       return packageItem.product.identifier;
     }
     
-    // Try webBillingProduct or rcBillingProduct identifiers
-    if (packageItem?.product?.webBillingProduct?.identifier) {
-      return packageItem.product.webBillingProduct.identifier;
-    }
-    if (packageItem?.product?.rcBillingProduct?.identifier) {
-      return packageItem.product.rcBillingProduct.identifier;
-    }
-    
-    // If we're getting package identifier (like "rc_annual"), try to extract product info
-    // or use a more readable format
+    // If we're getting package identifier (like "$rc_annual"), try to extract product info
     const packageIdentifier = packageItem?.identifier || '';
     if (packageIdentifier.includes('monthly') || packageIdentifier.includes('Monthly')) {
       return 'FamilyBubble Monthly';
