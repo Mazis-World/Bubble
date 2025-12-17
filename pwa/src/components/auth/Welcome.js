@@ -21,9 +21,9 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
         <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-teal-600/10 rounded-full animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="max-w-md w-full text-center z-10 relative">
+      <div className="max-w-md w-full text-center z-10 relative px-4 py-6 sm:py-8 md:py-10">
         {/* Logo */}
-        <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
+        <div className="inline-flex items-center justify-center mb-6 sm:mb-8 md:mb-10 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
           <div className="inline-block p-4 bg-white/10 backdrop-blur-lg rounded-full">
             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-600/30">
               <img 
