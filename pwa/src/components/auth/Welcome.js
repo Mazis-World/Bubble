@@ -4,13 +4,14 @@ import { PlusCircle, LogIn, ChevronRight, Sparkles } from 'lucide-react';
 const Welcome = ({ onLogin, onCreate, onJoin }) => {
   return (
     <div 
-      className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-start overflow-y-auto relative" 
+      className="h-screen bg-gradient-to-br from-gray-950 via-black to-blue-950 text-white flex flex-col items-center justify-center overflow-hidden relative" 
       style={{ 
         height: '100dvh',
         minHeight: '-webkit-fill-available',
         maxHeight: '100vh',
-        paddingTop: 'max(env(safe-area-inset-top), 1rem)',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        overflow: 'hidden'
       }}
     >
       {/* Background decorative bubbles */}
@@ -20,9 +21,9 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
         <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-teal-600/10 rounded-full animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="max-w-md w-full text-center z-10 relative px-4 py-4 sm:py-6 md:py-8">
+      <div className="max-w-md w-full text-center z-10 relative px-4 py-2 sm:py-4 md:py-6">
         {/* Logo */}
-        <div className="inline-flex items-center justify-center mb-4 sm:mb-6 md:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
+        <div className="inline-flex items-center justify-center mb-3 sm:mb-4 md:mb-6 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
           <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full overflow-hidden">
             {/* Diagonal gradient background */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-pink-500"></div>
@@ -54,7 +55,7 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
           {/* Create New Bubble Card */}
           <div
             onClick={onCreate}
-            className="group bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 backdrop-blur-sm hover:bg-white/10 hover:border-purple-500/50 active:bg-white/10 active:scale-[0.98] transition-all duration-300 cursor-pointer hover:scale-[1.01] hover:shadow-xl tap-target animate-fade-in-up"
+            className="group bg-white/5 border border-white/10 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 md:p-5 backdrop-blur-sm hover:bg-white/10 hover:border-purple-500/50 active:bg-white/10 active:scale-[0.98] transition-all duration-300 cursor-pointer hover:scale-[1.01] hover:shadow-xl tap-target animate-fade-in-up"
             style={{ 
               opacity: 0, 
               animationDelay: '0.6s',
@@ -97,7 +98,7 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
         </div>
 
         {/* Sign In Link */}
-        <div className="mt-6 sm:mt-8 text-gray-400 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.8s' }}>
+        <div className="mt-4 sm:mt-5 md:mt-6 text-gray-400 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.8s' }}>
           <p className="text-sm sm:text-base">
             Already have an account?{' '}
             <span
