@@ -770,11 +770,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                                 </p>
                               )}
                             </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      </div>
                     </button>
+                  );
+                })}
+              </div>
                   );
                 })}
               </div>
