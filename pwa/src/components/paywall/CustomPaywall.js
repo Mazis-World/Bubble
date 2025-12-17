@@ -367,11 +367,9 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const getFreeTrialInfo = (packageItem) => {
-    // Different trial periods: Monthly = 3 days, Annual = 7 days
-    // ALWAYS use these values regardless of what RevenueCat returns
-    const isMonthly = packageItem.packageType === 'MONTHLY';
-    const trialDays = isMonthly ? 3 : 7;
-    const trialFormatted = isMonthly ? '3 days free' : '7 days free';
+    // All subscriptions get 3 days free trial
+    const trialDays = 3;
+    const trialFormatted = '3 days free';
     
     // Always return trial info based on package type (MONTHLY or ANNUAL)
     // Only return null for non-subscription packages (LIFETIME, etc.)
@@ -728,9 +726,15 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                         </div>
                       )}
                       
-                      {freeTrial && (
+                      {freeTrial && packageItem.packageType === 'MONTHLY' && (
                         <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 animate-pulse">
                           🎁 {freeTrial.days} Days Free
+                        </div>
+                      )}
+                      
+                      {savings && packageItem.packageType === 'ANNUAL' && (
+                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
+                          💰 {savings}
                         </div>
                       )}
                       
@@ -814,7 +818,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Free trial begins immediately upon activation. Monthly subscriptions include 3 days free; annual subscriptions include 7 days free. Cancel anytime during your trial period with no charges. Your subscription will automatically renew after the trial ends unless canceled at least 24 hours before the renewal date.
+                Free trial begins immediately upon activation. All subscriptions include 3 days free. Cancel anytime during your trial period with no charges. Your subscription will automatically renew after the trial ends unless canceled at least 24 hours before the renewal date.
               </p>
 
               {/* Restore purchases */}
