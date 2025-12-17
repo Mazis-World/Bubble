@@ -509,15 +509,19 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
           <div className="text-center mb-8 sm:mb-10 md:mb-12 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.2s' }}>
             {/* Logo */}
             <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
-              <img 
-                src="/familybubble-logo-icon-only.svg" 
-                alt="FamilyBubble Logo"
-                className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 drop-shadow-2xl"
-                onError={(e) => {
-                  e.target.src = '/familybubble-logo-icon-only-256x256.png';
-                  e.target.onerror = null;
-                }}
-              />
+              <div className="inline-block p-4 bg-white/10 backdrop-blur-lg rounded-full">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-600/30">
+                  <img 
+                    src="/familybubble-logo-icon-only.svg" 
+                    alt="FamilyBubble Logo"
+                    className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 drop-shadow-2xl"
+                    onError={(e) => {
+                      e.target.src = '/familybubble-logo-icon-only-256x256.png';
+                      e.target.onerror = null;
+                    }}
+                  />
+                </div>
+              </div>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
               Where Family Meets Technology

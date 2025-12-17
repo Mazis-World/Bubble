@@ -24,15 +24,19 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
       <div className="max-w-md w-full text-center z-10 relative">
         {/* Logo */}
         <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
-          <img 
-            src="/familybubble-logo-icon-only.svg" 
-            alt="FamilyBubble Logo"
-            className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 drop-shadow-2xl"
-            onError={(e) => {
-              e.target.src = '/familybubble-logo-icon-only-256x256.png';
-              e.target.onerror = null;
-            }}
-          />
+          <div className="inline-block p-4 bg-white/10 backdrop-blur-lg rounded-full">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-purple-600/30">
+              <img 
+                src="/familybubble-logo-icon-only.svg" 
+                alt="FamilyBubble Logo"
+                className="w-12 h-12 sm:w-14 sm:h-14 drop-shadow-2xl"
+                onError={(e) => {
+                  e.target.src = '/familybubble-logo-icon-only-256x256.png';
+                  e.target.onerror = null;
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Heading with gradient */}
