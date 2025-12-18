@@ -7,6 +7,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [purchasing, setPurchasing] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -78,19 +79,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       
       // Filter to prioritize our specific products, but allow all packages for testing
       // Expected product identifiers: familyBubble_Monthly, familyBubble_Yearly
-      const expectedProductIds = ['familyBubble_Monthly', 'familyBubble_Yearly'];
-      const filteredPackages = currentOffering.availablePackages.filter(pkg => {
-        const productId = (pkg.product?.identifier || '').toLowerCase();
-        const packageIdentifier = (pkg.identifier || '').toLowerCase();
-        const productTitle = (pkg.product?.title || '').toLowerCase();
-        
-        // Check if it matches our expected product identifiers
-        const matchesProduct = expectedProductIds.some(id => 
-          productId.includes(id.toLowerCase()) || 
-          packageIdentifier.includes(id.toLowerCase()) ||
-          productTitle.includes('familybubble')
-        );
-        
+      const filteredPackages = currentOffering.availablePackages.filter(() => {
         // Include all packages - don't exclude test/default products for testing
         return true;
       });
@@ -312,30 +301,6 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     return 'month'; // safe default
   };
 
-  const getMonthlyPrice = (packageItem) => {
-    if (packageItem.packageType === 'ANNUAL') {
-      const priceObj = packageItem?.webBillingProduct?.currentPrice || 
-                       packageItem?.webBillingProduct?.price ||
-                       packageItem?.rcBillingProduct?.currentPrice ||
-                       packageItem?.rcBillingProduct?.price;
-      
-      if (priceObj?.amount && priceObj?.currency) {
-        try {
-          const formatter = new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: priceObj.currency,
-          });
-          // Calculate monthly: annual price / 12
-          const monthlyAmount = (priceObj.amount / 100) / 12;
-          return formatter.format(monthlyAmount);
-        } catch (e) {
-          console.error('Error calculating monthly price:', e);
-        }
-      }
-    }
-    return null;
-  };
-
   const getPackageLabel = (packageItem) => {
     // Get the identifier from webBillingProduct or rcBillingProduct
     const identifier = packageItem?.webBillingProduct?.identifier || 
@@ -421,11 +386,30 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     return false;
   };
 
-  const getFreeTrialInfo = (packageItem) => {
-    // All subscriptions get 3 days free trial
-    const trialDays = 3;
+  const getTrialDays = (pkg) => {
+    if (!isSubscriptionPackage(pkg)) return null;
 
-    if (!isSubscriptionPackage(packageItem)) return null;
+    if (pkg?.packageType === 'ANNUAL') return 7;
+    if (pkg?.packageType === 'MONTHLY') return 3;
+
+    const period =
+      pkg?.webBillingProduct?.subscriptionPeriod ||
+      pkg?.rcBillingProduct?.subscriptionPeriod ||
+      pkg?.product?.subscriptionPeriod;
+    if (period && /Y/i.test(period)) return 7;
+    if (period && /M/i.test(period)) return 3;
+
+    const id = (pkg?.identifier || pkg?.product?.identifier || '').toLowerCase();
+    if (id.includes('year')) return 7;
+    if (id.includes('month')) return 3;
+
+    return 3;
+  };
+
+  const getFreeTrialInfo = (packageItem) => {
+    const trialDays = getTrialDays(packageItem);
+
+    if (!trialDays) return null;
 
     return {
       formatted: `${trialDays} days free`,
@@ -584,11 +568,11 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               Where Family Meets Technology
             </h1>
             <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              The most intuitive way to stay connected with your family. Try Premium free for 3 days—experience everything, risk nothing.
+              The most intuitive way to keep your family close. Enjoy Premium on us—7 days for yearly, 3 days for monthly—experience everything, risk nothing.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Try free for 3 days • No commitment</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Try free: 3 days monthly • 7 days yearly</span>
             </div>
           </div>
 
@@ -764,9 +748,10 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                   const savings = getSavings(packageItem);
                   const freeTrial =
                     getFreeTrialInfo(packageItem) ||
-                    (isSubscriptionPackage(packageItem)
-                      ? { days: 3, formatted: '3 days free' }
-                      : null);
+                    (() => {
+                      const trialDays = getTrialDays(packageItem);
+                      return trialDays ? { days: trialDays, formatted: `${trialDays} days free` } : null;
+                    })();
                   const freeTrialLabel =
                     freeTrial && typeof freeTrial.days === 'number'
                       ? `${freeTrial.days} days free, then `
@@ -865,7 +850,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Free trial begins immediately upon activation. All subscriptions include 3 days free. Cancel anytime during your trial period with no charges. Your subscription will automatically renew after the trial ends unless canceled at least 24 hours before the renewal date.
+                Your trial begins immediately—7 days for yearly plans, 3 days for monthly. Cancel anytime during your trial period with no charges. Subscriptions renew automatically after the trial ends unless canceled at least 24 hours before renewal.
               </p>
 
               {/* Restore purchases */}
