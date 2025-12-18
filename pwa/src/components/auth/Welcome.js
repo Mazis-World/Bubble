@@ -21,7 +21,7 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
         <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-teal-600/10 rounded-full animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="max-w-md w-full text-center z-10 relative px-4 py-5 sm:py-6 md:py-8">
+      <div className="max-w-md w-full text-center z-10 relative px-4 py-2 sm:py-4 md:py-6">
         {/* Logo */}
         <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
           <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden">
