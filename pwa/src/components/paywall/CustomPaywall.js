@@ -568,7 +568,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               Where Family Meets Technology
             </h1>
             <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              The most intuitive way to keep your family close. Enjoy Premium on us—7 days for yearly, 3 days for monthly—experience everything, risk nothing.
+              The most intuitive way to keep your family close. See them on a beautiful globe. Share moments instantly. Know they're safe, always. This is the future of how families connect.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
