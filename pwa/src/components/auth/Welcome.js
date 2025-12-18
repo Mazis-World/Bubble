@@ -29,7 +29,14 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-pink-500"></div>
             {/* White center ring */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full border-3 sm:border-4 border-white"></div>
+              <div 
+                className="rounded-full border-white"
+                style={{
+                  width: '50%',
+                  height: '50%',
+                  borderWidth: '3px',
+                }}
+              />
             </div>
           </div>
         </div>
