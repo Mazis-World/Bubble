@@ -720,10 +720,10 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       key={packageItem.identifier}
                       onClick={() => setSelectedPackage(packageItem)}
                       disabled={purchasing}
-                      className={`w-full relative p-5 sm:p-6 md:p-7 rounded-2xl border-2 transition-all duration-300 text-left tap-target ${
+                      className={`w-full relative p-5 sm:p-6 rounded-2xl border-2 transition-all duration-300 text-left tap-target ${
                         isSelected
-                          ? 'border-purple-400 bg-gray-900/90 shadow-xl shadow-purple-500/50 scale-[1.02]'
-                          : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30 hover:border-white/30 hover:scale-[1.01]'
+                          ? 'border-purple-400 bg-gray-900/90 shadow-xl shadow-purple-500/50'
+                          : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30 hover:border-white/30'
                       } ${purchasing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       style={{ 
                         minHeight: '100px',
@@ -733,52 +733,48 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                     >
                       {/* Checkmark indicator - top left */}
                       {isSelected && (
-                        <div className="absolute top-4 left-4 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-purple-500 flex items-center justify-center shadow-lg z-10">
-                          <Check size={14} className="sm:w-4 sm:h-4 text-white" />
+                        <div className="absolute top-4 left-4 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center z-10">
+                          <Check size={14} className="text-white" />
                         </div>
                       )}
                       
-                      {/* Savings badge for Yearly - top right */}
+                      {/* Savings badge for Yearly - top right (always show for ANNUAL with savings) */}
                       {savings && packageItem.packageType === 'ANNUAL' && (
-                        <div className="absolute -top-2 sm:-top-3 right-4 bg-emerald-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
+                        <div className="absolute -top-2 right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
                           <Gift size={12} className="text-orange-300" />
                           <span>{savings}</span>
                         </div>
                       )}
                       
-                      {/* Free trial badge - top right (only if no savings badge) */}
-                      {freeTrial && !(savings && packageItem.packageType === 'ANNUAL') && (
-                        <div className="absolute -top-2 sm:-top-3 right-4 bg-emerald-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
+                      {/* Free trial badge - top right (only for MONTHLY or if no savings for ANNUAL) */}
+                      {freeTrial && (packageItem.packageType === 'MONTHLY' || (packageItem.packageType === 'ANNUAL' && !savings)) && (
+                        <div className="absolute -top-2 right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
                           <Gift size={12} className="text-orange-300" />
                           <span>{freeTrial.days} Days Free</span>
                         </div>
                       )}
                       
-                      <div className="flex items-start gap-4 sm:gap-5">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-white font-bold text-xl sm:text-2xl md:text-3xl mb-2">
-                            {getPackageLabel(packageItem)}
-                          </h3>
-                          <p className="text-emerald-400 font-semibold text-sm sm:text-base md:text-lg mb-1">
-                            {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
-                            {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
-                              <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
-                            )}
+                      {/* Content - add left padding for checkmark spacing */}
+                      <div className="pl-10 pr-12">
+                        <h3 className="text-white font-bold text-xl sm:text-2xl mb-2">
+                          {getPackageLabel(packageItem)}
+                        </h3>
+                        <p className="text-emerald-400 font-semibold text-sm sm:text-base mb-1">
+                          {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                        </p>
+                        {freeTrial ? (
+                          <p className="text-gray-400 text-xs sm:text-sm">
+                            Full access during trial • Cancel anytime
                           </p>
-                          {freeTrial ? (
-                            <p className="text-gray-400 text-xs sm:text-sm">
-                              Full access during trial • Cancel anytime
-                            </p>
-                          ) : (
-                            <p className="text-gray-400 text-xs sm:text-sm">
-                              {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
-                              {packageItem.packageType === 'ANNUAL' && `Billed annually${getMonthlyPrice(packageItem) ? ` (${getMonthlyPrice(packageItem)}/month)` : ''}`}
-                              {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
-                              {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
-                              {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
-                            </p>
-                          )}
-                        </div>
+                        ) : (
+                          <p className="text-gray-400 text-xs sm:text-sm">
+                            {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
+                            {packageItem.packageType === 'ANNUAL' && 'Billed annually'}
+                            {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
+                            {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
+                            {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
+                          </p>
+                        )}
                       </div>
                     </button>
                   );
