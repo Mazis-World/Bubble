@@ -213,42 +213,41 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   };
 
   const formatPrice = (packageItem) => {
-    // Check webBillingProduct first (has formattedPrice)
-    if (packageItem?.webBillingProduct?.currentPrice?.formattedPrice) {
-      let price = packageItem.webBillingProduct.currentPrice.formattedPrice;
+    // Helper to clean price and remove any period text
+    const cleanPrice = (priceStr) => {
+      if (!priceStr) return priceStr;
+      let price = String(priceStr);
       // Fix encoding issues and spacing
       price = price.replace(/é/g, '$').replace(/€/g, '$');
       // Fix spacing: remove space between $ and number (e.g., "$ 4.99" -> "$4.99")
       price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
-      return price;
+      // Remove ANY occurrence of period text (case insensitive, with or without slash/space)
+      // This catches: "/month", "month", " month", "/year", "year", etc.
+      price = price.replace(/\/?\s*(month|year|mo|yr|monthly|yearly)\s*/gi, '');
+      // Also catch if it's directly attached: "47,90month" -> "47,90"
+      price = price.replace(/([0-9,.])(month|year|mo|yr|monthly|yearly)/gi, '$1');
+      return price.trim();
+    };
+    
+    // Check webBillingProduct first (has formattedPrice)
+    if (packageItem?.webBillingProduct?.currentPrice?.formattedPrice) {
+      return cleanPrice(packageItem.webBillingProduct.currentPrice.formattedPrice);
     }
     if (packageItem?.webBillingProduct?.price?.formattedPrice) {
-      let price = packageItem.webBillingProduct.price.formattedPrice;
-      price = price.replace(/é/g, '$').replace(/€/g, '$');
-      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
-      return price;
+      return cleanPrice(packageItem.webBillingProduct.price.formattedPrice);
     }
     
     // Check rcBillingProduct
     if (packageItem?.rcBillingProduct?.currentPrice?.formattedPrice) {
-      let price = packageItem.rcBillingProduct.currentPrice.formattedPrice;
-      price = price.replace(/é/g, '$').replace(/€/g, '$');
-      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
-      return price;
+      return cleanPrice(packageItem.rcBillingProduct.currentPrice.formattedPrice);
     }
     if (packageItem?.rcBillingProduct?.price?.formattedPrice) {
-      let price = packageItem.rcBillingProduct.price.formattedPrice;
-      price = price.replace(/é/g, '$').replace(/€/g, '$');
-      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
-      return price;
+      return cleanPrice(packageItem.rcBillingProduct.price.formattedPrice);
     }
     
     // Legacy: Check product.priceString (if product exists)
     if (packageItem?.product?.priceString) {
-      let price = packageItem.product.priceString;
-      price = price.replace(/é/g, '$').replace(/€/g, '$');
-      price = price.replace(/\$\s+/g, '$').replace(/\s+\$/g, '$');
-      return price;
+      return cleanPrice(packageItem.product.priceString);
     }
     
     // Fallback: try to format from price amount and currency
@@ -271,6 +270,46 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     }
     
     return "Loading...";
+  };
+
+  const getBillingPeriodLabel = (packageItem) => {
+    const map = {
+      ANNUAL: 'year',
+      MONTHLY: 'month',
+      WEEKLY: 'week',
+      SIX_MONTH: '6 months',
+      THREE_MONTH: '3 months',
+      TWO_MONTH: '2 months',
+      LIFETIME: 'lifetime',
+    };
+
+    if (packageItem?.packageType && map[packageItem.packageType]) {
+      return map[packageItem.packageType];
+    }
+
+    // Fall back to subscription period codes like P1Y/P1M/P1W
+    const period =
+      packageItem?.webBillingProduct?.subscriptionPeriod ||
+      packageItem?.rcBillingProduct?.subscriptionPeriod ||
+      packageItem?.product?.subscriptionPeriod;
+
+    if (period) {
+      if (/Y/i.test(period)) return 'year';
+      if (/M/i.test(period)) return 'month';
+      if (/W/i.test(period)) return 'week';
+    }
+
+    // Last resort: infer from identifiers
+    const identifier = (
+      packageItem?.identifier ||
+      packageItem?.product?.identifier ||
+      ''
+    ).toLowerCase();
+    if (identifier.includes('year') || identifier.includes('annual')) return 'year';
+    if (identifier.includes('month')) return 'month';
+    if (identifier.includes('week')) return 'week';
+
+    return 'month'; // safe default
   };
 
   const getMonthlyPrice = (packageItem) => {
@@ -366,21 +405,32 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     return 'Monthly'; // Default fallback
   };
 
+  const isSubscriptionPackage = (pkg) => {
+    const subscriptionTypes = ['MONTHLY', 'ANNUAL', 'WEEKLY', 'SIX_MONTH', 'THREE_MONTH', 'TWO_MONTH', 'CUSTOM'];
+    if (pkg?.packageType && subscriptionTypes.includes(pkg.packageType)) return true;
+
+    const period =
+      pkg?.webBillingProduct?.subscriptionPeriod ||
+      pkg?.rcBillingProduct?.subscriptionPeriod ||
+      pkg?.product?.subscriptionPeriod;
+    if (period) return true;
+
+    const id = (pkg?.identifier || pkg?.product?.identifier || '').toLowerCase();
+    if (['month', 'year', 'annual', 'week'].some((word) => id.includes(word))) return true;
+
+    return false;
+  };
+
   const getFreeTrialInfo = (packageItem) => {
     // All subscriptions get 3 days free trial
     const trialDays = 3;
-    const trialFormatted = '3 days free';
-    
-    // Always return trial info based on package type (MONTHLY or ANNUAL)
-    // Only return null for non-subscription packages (LIFETIME, etc.)
-    if (packageItem.packageType === 'MONTHLY' || packageItem.packageType === 'ANNUAL') {
-      return {
-        formatted: trialFormatted,
-        days: trialDays
-      };
-    }
-    
-    return null;
+
+    if (!isSubscriptionPackage(packageItem)) return null;
+
+    return {
+      formatted: `${trialDays} days free`,
+      days: trialDays,
+    };
   };
 
   const getSavings = (packageItem) => {
@@ -712,8 +762,15 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                 {packages.map((packageItem, index) => {
                   const isSelected = selectedPackage?.identifier === packageItem.identifier;
                   const savings = getSavings(packageItem);
-                  const isPopular = packageItem.packageType === 'ANNUAL';
-                  const freeTrial = getFreeTrialInfo(packageItem);
+                  const freeTrial =
+                    getFreeTrialInfo(packageItem) ||
+                    (isSubscriptionPackage(packageItem)
+                      ? { days: 3, formatted: '3 days free' }
+                      : null);
+                  const freeTrialLabel =
+                    freeTrial && typeof freeTrial.days === 'number'
+                      ? `${freeTrial.days} days free, then `
+                      : '';
 
                   return (
                     <button
@@ -760,7 +817,8 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                           {getPackageLabel(packageItem)}
                         </h3>
                         <p className="text-emerald-400 font-semibold text-sm sm:text-base mb-1">
-                          {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                          {freeTrialLabel}
+                          {formatPrice(packageItem)}/{getBillingPeriodLabel(packageItem)}
                         </p>
                         {freeTrial ? (
                           <p className="text-gray-400 text-xs sm:text-sm">
