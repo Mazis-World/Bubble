@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap } from 'lucide-react';
+import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap, Gift } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
 
 const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
@@ -722,46 +722,44 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                       disabled={purchasing}
                       className={`w-full relative p-5 sm:p-6 md:p-7 rounded-2xl border-2 transition-all duration-300 text-left tap-target ${
                         isSelected
-                          ? 'border-purple-400 bg-purple-600/30 shadow-xl shadow-purple-500/50 scale-[1.02]'
+                          ? 'border-purple-400 bg-gray-900/90 shadow-xl shadow-purple-500/50 scale-[1.02]'
                           : 'border-white/20 bg-white/5 active:bg-white/10 active:border-white/30 hover:border-white/30 hover:scale-[1.01]'
                       } ${purchasing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       style={{ 
-                        minHeight: '80px',
+                        minHeight: '100px',
                         opacity: 0,
                         animation: `fadeInUp 0.5s ease-out ${0.8 + index * 0.1}s forwards`
                       }}
                     >
-                      {isPopular && (
-                        <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
-                          BEST VALUE
+                      {/* Checkmark indicator - top left */}
+                      {isSelected && (
+                        <div className="absolute top-4 left-4 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-purple-500 flex items-center justify-center shadow-lg z-10">
+                          <Check size={14} className="sm:w-4 sm:h-4 text-white" />
                         </div>
                       )}
                       
-                      {freeTrial && (
-                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
-                          🎁 {freeTrial.days} Days Free
+                      {/* Savings badge for Yearly - top right */}
+                      {savings && packageItem.packageType === 'ANNUAL' && (
+                        <div className="absolute -top-2 sm:-top-3 right-4 bg-emerald-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
+                          <Gift size={12} className="text-orange-300" />
+                          <span>{savings}</span>
                         </div>
                       )}
                       
-                      {savings && packageItem.packageType === 'ANNUAL' && !freeTrial && (
-                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10">
-                          🎁 {savings}
+                      {/* Free trial badge - top right (only if no savings badge) */}
+                      {freeTrial && !(savings && packageItem.packageType === 'ANNUAL') && (
+                        <div className="absolute -top-2 sm:-top-3 right-4 bg-emerald-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
+                          <Gift size={12} className="text-orange-300" />
+                          <span>{freeTrial.days} Days Free</span>
                         </div>
                       )}
                       
                       <div className="flex items-start gap-4 sm:gap-5">
-                        <div className="flex-shrink-0 pt-1">
-                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 flex items-center justify-center ${
-                            isSelected ? 'border-purple-400 bg-purple-500 shadow-lg' : 'border-white/40'
-                          }`}>
-                            {isSelected && <Check size={16} className="sm:w-4 sm:h-4 text-white" />}
-                          </div>
-                        </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-white font-bold text-xl sm:text-2xl md:text-3xl mb-2">
                             {getPackageLabel(packageItem)}
                           </h3>
-                          <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg mb-1">
+                          <p className="text-emerald-400 font-semibold text-sm sm:text-base md:text-lg mb-1">
                             {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
                             {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
                               <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>

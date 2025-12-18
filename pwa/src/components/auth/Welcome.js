@@ -21,44 +21,37 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
         <div className="absolute top-1/2 left-1/2 w-48 h-48 bg-teal-600/10 rounded-full animate-blob animation-delay-4000"></div>
       </div>
 
-      <div className="max-w-md w-full text-center z-10 relative px-4 py-2 sm:py-4 md:py-6">
+      <div className="max-w-md w-full text-center z-10 relative px-4 py-5 sm:py-6 md:py-8">
         {/* Logo */}
-        <div className="inline-flex items-center justify-center mb-3 sm:mb-4 md:mb-6 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
-          <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full overflow-hidden">
+        <div className="inline-flex items-center justify-center mb-6 sm:mb-8 animate-scale-in" style={{ opacity: 0, animationDelay: '0.1s' }}>
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden">
             {/* Diagonal gradient background */}
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 via-blue-500 to-pink-500"></div>
             {/* White center ring */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div 
-                className="rounded-full border-white"
-                style={{
-                  width: '50%',
-                  height: '50%',
-                  borderWidth: '3px',
-                }}
-              />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full border-4 border-white"></div>
             </div>
           </div>
         </div>
 
         {/* Heading with gradient */}
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
           Welcome to FamilyBubble
         </h1>
         
         {/* Subtitle */}
-        <p className="text-gray-300 text-sm sm:text-base md:text-lg px-4 max-w-md mx-auto mb-3 sm:mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
+        <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-md mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
           One bubble. One shared space. Instantly connect with your family circle.
         </p>
 
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 mb-4 sm:mb-5 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
-          <Sparkles size={16} className="sm:w-[18px] sm:h-[18px] text-emerald-300 animate-pulse" />
-          <span className="text-emerald-200 font-semibold text-xs sm:text-sm">Your Family Galaxy Awaits</span>
+        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
+          <Sparkles size={18} className="text-emerald-300 animate-pulse" />
+          <span className="text-emerald-200 font-semibold text-sm sm:text-base">Your Family Galaxy Awaits</span>
         </div>
 
         {/* Action Cards */}
-        <div className="mt-4 sm:mt-5 space-y-3 sm:space-y-4">
+        <div className="mt-4 sm:mt-4 md:mt-5 space-y-3 sm:space-y-4">
           {/* Create New Bubble Card */}
           <div
             onClick={onCreate}
