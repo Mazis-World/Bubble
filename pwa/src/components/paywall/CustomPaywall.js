@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap } from 'lucide-react';
+import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap, Gift } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
 
 const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
@@ -7,7 +7,6 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [purchasing, setPurchasing] = useState(false);
-  // eslint-disable-next-line no-unused-vars
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -78,9 +77,21 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       }
       
       // Filter to prioritize our specific products, but allow all packages for testing
-      // Include all packages - don't exclude test/default products for testing
-      const filteredPackages = currentOffering.availablePackages.filter(() => {
-        // Include all packages for testing
+      // Expected product identifiers: familyBubble_Monthly, familyBubble_Yearly
+      const expectedProductIds = ['familyBubble_Monthly', 'familyBubble_Yearly'];
+      const filteredPackages = currentOffering.availablePackages.filter(pkg => {
+        const productId = (pkg.product?.identifier || '').toLowerCase();
+        const packageIdentifier = (pkg.identifier || '').toLowerCase();
+        const productTitle = (pkg.product?.title || '').toLowerCase();
+        
+        // Check if it matches our expected product identifiers
+        const matchesProduct = expectedProductIds.some(id => 
+          productId.includes(id.toLowerCase()) || 
+          packageIdentifier.includes(id.toLowerCase()) ||
+          productTitle.includes('familybubble')
+        );
+        
+        // Include all packages - don't exclude test/default products for testing
         return true;
       });
 
@@ -701,6 +712,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                 {packages.map((packageItem, index) => {
                   const isSelected = selectedPackage?.identifier === packageItem.identifier;
                   const savings = getSavings(packageItem);
+                  const isPopular = packageItem.packageType === 'ANNUAL';
                   const freeTrial = getFreeTrialInfo(packageItem);
 
                   return (
@@ -726,47 +738,42 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                         </div>
                       )}
                       
-                      {/* Savings badge for Yearly - top right (only badge, only on Yearly) */}
+                      {/* Savings badge for Yearly - top right (always show for ANNUAL with savings) */}
                       {savings && packageItem.packageType === 'ANNUAL' && (
-                        <div className="absolute -top-3 sm:-top-4 right-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 animate-pulse">
-                          🎁 {savings}
+                        <div className="absolute -top-2 right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
+                          <Gift size={12} className="text-orange-300" />
+                          <span>{savings}</span>
                         </div>
                       )}
                       
-                      {/* Content - flex layout with left content and right price */}
-                      <div className="flex items-center justify-between gap-4 pl-10 pr-12">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-white font-bold text-xl sm:text-2xl mb-2">
-                            {getPackageLabel(packageItem)}
-                          </h3>
-                          {(packageItem.packageType === 'MONTHLY' || packageItem.packageType === 'ANNUAL') ? (
-                            <div>
-                              <p className="text-emerald-300 font-semibold text-sm sm:text-base md:text-lg">
-                                {freeTrial?.days || 3} days free, then {formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
-                                {packageItem.packageType === 'ANNUAL' && getMonthlyPrice(packageItem) && (
-                                  <span className="text-gray-400 font-normal"> ({getMonthlyPrice(packageItem)}/month)</span>
-                                )}
-                              </p>
-                              <p className="text-gray-400 text-xs sm:text-sm">
-                                Full access during trial • Cancel anytime
-                              </p>
-                            </div>
-                          ) : (
-                            <p className="text-gray-400 text-sm sm:text-base md:text-lg">
-                              {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
-                              {packageItem.packageType === 'ANNUAL' && `Billed annually${getMonthlyPrice(packageItem) ? ` (${getMonthlyPrice(packageItem)}/month)` : ''}`}
-                              {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
-                              {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
-                              {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
-                            </p>
-                          )}
+                      {/* Free trial badge - top right (only for MONTHLY or if no savings for ANNUAL) */}
+                      {freeTrial && (packageItem.packageType === 'MONTHLY' || (packageItem.packageType === 'ANNUAL' && !savings)) && (
+                        <div className="absolute -top-2 right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap shadow-lg z-10 flex items-center gap-1">
+                          <Gift size={12} className="text-orange-300" />
+                          <span>{freeTrial.days} Days Free</span>
                         </div>
-                        {!(packageItem.packageType === 'MONTHLY' || packageItem.packageType === 'ANNUAL') && !freeTrial && (
-                          <div className="text-right flex-shrink-0">
-                            <div className="text-white font-bold text-2xl sm:text-3xl md:text-4xl whitespace-nowrap">
-                              {formatPrice(packageItem)}
-                            </div>
-                          </div>
+                      )}
+                      
+                      {/* Content - add left padding for checkmark spacing */}
+                      <div className="pl-10 pr-12">
+                        <h3 className="text-white font-bold text-xl sm:text-2xl mb-2">
+                          {getPackageLabel(packageItem)}
+                        </h3>
+                        <p className="text-emerald-400 font-semibold text-sm sm:text-base mb-1">
+                          {freeTrial ? `${freeTrial.days} days free, then ` : ''}{formatPrice(packageItem)}/{packageItem.packageType === 'MONTHLY' ? 'month' : 'year'}
+                        </p>
+                        {freeTrial ? (
+                          <p className="text-gray-400 text-xs sm:text-sm">
+                            Full access during trial • Cancel anytime
+                          </p>
+                        ) : (
+                          <p className="text-gray-400 text-xs sm:text-sm">
+                            {packageItem.packageType === 'MONTHLY' && 'Billed monthly'}
+                            {packageItem.packageType === 'ANNUAL' && 'Billed annually'}
+                            {packageItem.packageType === 'LIFETIME' && 'One-time payment'}
+                            {packageItem.packageType === 'SIX_MONTH' && 'Billed every 6 months'}
+                            {packageItem.packageType === 'THREE_MONTH' && 'Billed every 3 months'}
+                          </p>
                         )}
                       </div>
                     </button>
