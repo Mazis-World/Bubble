@@ -161,6 +161,7 @@ pwa/node_modules/.bin/webpack-dev-server.cmd
 pwa/node_modules/.bin/webpack-dev-server.ps1
 pwa/node_modules/.bin/webpack.cmd
 pwa/node_modules/.bin/webpack.ps1
+pwa/node_modules/.cache/default-development/3.pack_
 pwa/node_modules/.cache/.eslintcache
 pwa/node_modules/.cache/babel-loader/0a0fa55aa98341e75a10fcb99083854aa2fdee622b919cb8c1b572910194c892.json
 pwa/node_modules/.cache/babel-loader/0a3efc19591d368a0ca397db0ce71c7ea04621e59abe35c5b7f9e656bb1aa67d.json
