@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
-import StatusButton from '../ui/StatusButton';
 import MemberBubble from '../ui/MemberBubble';
 import ProfileView from '../ui/ProfileView';
 import ProfileEditForm from '../ui/ProfileEditForm';
 import EmojiPicker from '../ui/EmojiPicker';
 import LocationStep from '../ui/LocationStep';
-import { Circle, Plus, Share2, Settings, Globe, Users } from 'lucide-react';
+import NotificationSettings from '../ui/NotificationSettings';
+import { Circle, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { analyticsService } from '../../services/analytics';
 
 const Bubble = ({
   bubbleData,
@@ -37,7 +38,6 @@ const Bubble = ({
   const [statusText, setStatusText] = useState('');
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
-  const [toggleEnabled, setToggleEnabled] = useState(true); // Enabled
 
   const handleShare = async () => {
     if (!inviteToken || inviteToken === 'Generating...') return;
@@ -125,10 +125,12 @@ const Bubble = ({
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* View Toggle - Modern glassmorphic design */}
-          {toggleEnabled && (
-            <div className="flex items-center gap-0.5 sm:gap-1 glass-light rounded-2xl p-1 sm:p-1.5">
+          <div className="flex items-center gap-0.5 sm:gap-1 glass-light rounded-2xl p-1 sm:p-1.5">
               <button
-                onClick={() => setViewMode('cluster')}
+                onClick={() => {
+                  setViewMode('cluster');
+                  analyticsService.trackViewChange('cluster');
+                }}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 flex items-center gap-1 sm:gap-2 font-semibold text-xs sm:text-sm ${
                   viewMode === 'cluster'
                     ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-lg glow-blue scale-105'
@@ -140,7 +142,10 @@ const Bubble = ({
                 <span className="hidden sm:inline">Bubbles</span>
               </button>
               <button
-                onClick={() => setViewMode('globe')}
+                onClick={() => {
+                  setViewMode('globe');
+                  analyticsService.trackViewChange('globe');
+                }}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 flex items-center gap-1 sm:gap-2 font-semibold text-xs sm:text-sm ${
                   viewMode === 'globe'
                     ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-lg glow-blue scale-105'
@@ -154,7 +159,10 @@ const Bubble = ({
             </div>
           )}
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={() => {
+              setShowSettings(true);
+              analyticsService.trackSettingsOpen();
+            }}
             className="flex items-center justify-center text-gray-300 hover:text-white transition-all duration-300 p-1.5 sm:p-2 glass-light hover:bg-white/10 rounded-xl active:scale-95"
           >
             <Settings size={18} className="sm:w-5 sm:h-5" />
@@ -170,6 +178,7 @@ const Bubble = ({
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
+              analyticsService.trackMemberProfileView(member.id);
             }}
           />
         ) : (
@@ -179,6 +188,7 @@ const Bubble = ({
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
+              analyticsService.trackMemberProfileView(member.id);
             }}
           />
         )}
@@ -432,7 +442,12 @@ const Bubble = ({
           </button>
         </div>
         
-        <div className="border-t border-gray-800" />
+        <div className="my-6 border-t border-gray-800" />
+        
+        {/* Notification Settings */}
+        <NotificationSettings />
+        
+        <div className="border-t border-gray-800 mt-6" />
         <div className="space-y-3 mt-6">
           <button
             onClick={onLogout}

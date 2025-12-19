@@ -22,7 +22,6 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
     ? 'w-16 h-16 sm:w-14 sm:h-14' 
     : 'w-14 h-14 sm:w-12 sm:h-12';
   const statusIconSize = isOwner ? 'w-7 h-7 sm:w-6 sm:h-6' : memberTier === 2 ? 'w-6 h-6 sm:w-5 sm:h-5' : 'w-5 h-5 sm:w-4 sm:h-4';
-  const iconSize = isOwner ? 16 : memberTier === 2 ? 14 : 12;
   const borderWidth = isOwner ? 'border-2' : memberTier === 2 ? 'border-2' : 'border-2';
 
   const StatusIcon = ({ status }) => {

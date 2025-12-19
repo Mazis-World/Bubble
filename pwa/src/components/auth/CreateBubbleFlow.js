@@ -1,13 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronRight, Circle, ShieldCheck, Star, Plus, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, ChevronRight, Circle, Plus } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
 import LocationStep from '../ui/LocationStep';
 import imageCompression from 'browser-image-compression';
-
-// Helper to generate a random invite code
-const generateInviteCode = () => {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
 
 const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase }) => {
   const [step, setStep] = useState(1);

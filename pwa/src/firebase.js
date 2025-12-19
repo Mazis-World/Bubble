@@ -3,6 +3,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import { getStorage } from "firebase/storage";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Validate required environment variables
 const requiredEnvVars = {
@@ -59,6 +60,18 @@ const functions = getFunctions(app);
 const storage = getStorage(app);
 const googleProvider = new GoogleAuthProvider();
 
+// Initialize Analytics (only in browser environment)
+let analytics = null;
+if (typeof window !== 'undefined') {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  }).catch((error) => {
+    console.warn('Analytics initialization failed:', error);
+  });
+}
+
 // Export them
-export { app, auth, db, functions, storage, googleProvider };
+export { app, auth, db, functions, storage, googleProvider, analytics };
 

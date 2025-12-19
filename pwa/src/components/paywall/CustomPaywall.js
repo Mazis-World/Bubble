@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap, Gift } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
+import { analyticsService } from '../../services/analytics';
 
 const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   const [packages, setPackages] = useState([]);
@@ -12,6 +13,8 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
   useEffect(() => {
     loadOfferings();
+    // Track paywall view
+    analyticsService.trackSubscriptionView('default');
   }, []);
 
   const loadOfferings = async () => {
@@ -153,6 +156,18 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       
       if (typeof premiumEntitlement !== "undefined") {
         // Purchase successful!
+        const packageType = getPackageLabel(selectedPackage).toLowerCase();
+        const price = formatPrice(selectedPackage);
+        const trialDays = getTrialDays(selectedPackage) || 0;
+        
+        // Track purchase success
+        analyticsService.trackPurchaseSuccess(packageType, price, trialDays);
+        
+        // Track trial start if applicable
+        if (trialDays > 0) {
+          analyticsService.trackTrialStart(packageType, trialDays);
+        }
+        
         if (onPurchaseSuccess) {
           onPurchaseSuccess();
         }
@@ -192,6 +207,10 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
         }
       }
 
+      // Track purchase failure
+      const packageType = selectedPackage ? getPackageLabel(selectedPackage).toLowerCase() : 'unknown';
+      analyticsService.trackPurchaseFailure(packageType, err.message || err.toString());
+      
       setError("Purchase failed. Please try again.");
       setPurchasing(false);
       
@@ -868,14 +887,20 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                     const premiumEntitlement = customerInfo.entitlements.active["FamilyBubble Premium"];
                     
                     if (typeof premiumEntitlement !== "undefined") {
+                      // Track successful restore
+                      analyticsService.trackSubscriptionRestore(true);
                       if (onPurchaseSuccess) {
                         onPurchaseSuccess();
                       }
                     } else {
+                      // Track failed restore
+                      analyticsService.trackSubscriptionRestore(false);
                       setError("No active subscriptions found to restore.");
                     }
                   } catch (err) {
                     console.error("Restore error:", err);
+                    // Track failed restore
+                    analyticsService.trackSubscriptionRestore(false);
                     setError("Failed to restore purchases. Please try again.");
                   }
                 }}

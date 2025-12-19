@@ -43,5 +43,7 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "categories": ["social", "family", "lifestyle"],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "permissions": ["notifications"],
+  "gcm_sender_id": "804761460768"
 }

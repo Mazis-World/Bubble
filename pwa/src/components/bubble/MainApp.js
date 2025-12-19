@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API } from '../../services/bubble';
 import Bubble from './Bubble';
 import { db } from '../../firebase';
-import { collection, onSnapshot, query, where, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { notificationService } from '../../services/notifications';
+import { analyticsService } from '../../services/analytics';
 
 const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onJoinProcessed }) => {
   const [bubbleData, setBubbleData] = useState(null);
@@ -14,6 +16,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const unsubscribeRef = useRef(null);
   const currentBubbleIdRef = useRef(null);
+  const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
 
   const setupRealtimeListener = React.useCallback((bubbleId, memberId) => {
     // Clean up previous listener
@@ -53,6 +56,43 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       if (!currentMember && allMembers.length > 0) {
         console.warn("Current member not found, using first member. Looking for userId:", memberId, "Available members:", allMembers.map(m => ({ id: m.id, userId: m.userId, name: m.name })));
       }
+
+      // Handle notifications for status updates and new members
+      if (previousMembersRef.current.size > 0) {
+        // Check for status updates from other members
+        allMembers.forEach(member => {
+          // Skip current user's own updates
+          if (member.userId === memberId || member.userId === userId || member.id === currentMember?.id) {
+            return;
+          }
+
+          const previousMember = previousMembersRef.current.get(member.id);
+          
+          if (previousMember) {
+            // Member exists - check for status changes
+            if (previousMember.status !== member.status || previousMember.statusText !== member.statusText) {
+              // Status changed - show notification
+              const previousStatus = previousMember.status;
+              notificationService.notifyStatusUpdate(member, previousStatus);
+            }
+          } else {
+            // New member joined
+            notificationService.notifyNewMember(member);
+          }
+        });
+      }
+
+      // Update previous members map
+      const newPreviousMembers = new Map();
+      allMembers.forEach(member => {
+        newPreviousMembers.set(member.id, {
+          status: member.status,
+          statusText: member.statusText,
+          name: member.name,
+          photoURL: member.photoURL
+        });
+      });
+      previousMembersRef.current = newPreviousMembers;
 
       const bubbleDataToSet = {
         bubble,
@@ -121,6 +161,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           onBubbleCreated(); // Clear the creation data from App.js
           
           if (result && result.bubbleId) {
+            // Track bubble creation
+            analyticsService.trackBubbleCreate(result.bubbleId, 1);
             // Store bubbleId for future reference
             localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
             currentBubbleIdRef.current = result.bubbleId;
@@ -230,6 +272,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           
           // Store bubbleId for future reference
           if (result && result.bubbleId) {
+            // Track bubble join
+            analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
             localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
             currentBubbleIdRef.current = result.bubbleId;
             
@@ -238,10 +282,9 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
             await new Promise(resolve => setTimeout(resolve, 1000));
             
             // Load initial bubble data immediately
-            let retryCount = 0;
             const maxRetries = 3;
             
-            while (retryCount < maxRetries) {
+            for (let retryCount = 0; retryCount < maxRetries; retryCount++) {
               try {
                 console.log(`Loading bubble (attempt ${retryCount + 1}/${maxRetries})...`);
                 const bubbleData = await API.getBubbleById(result.bubbleId, userId);
@@ -267,10 +310,10 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
                 console.error(`Error loading bubble (attempt ${retryCount + 1}):`, loadError);
               }
               
-              retryCount++;
-              if (retryCount < maxRetries) {
-                console.log(`Retrying in ${retryCount * 500}ms...`);
-                await new Promise(resolve => setTimeout(resolve, retryCount * 500));
+              if (retryCount < maxRetries - 1) {
+                const delay = (retryCount + 1) * 500;
+                console.log(`Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
               }
             }
             
@@ -388,7 +431,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     return () => {
       clearInterval(locationInterval);
     };
-  }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id]); // updateLocation intentionally excluded to prevent re-creation
 
   const handleStatusChange = async (status, location = null, statusText = null) => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.currentMember || !bubbleData.currentMember.id) {
@@ -408,6 +452,19 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     
     // Wait for both, but don't block on location
     await Promise.all([statusPromise, locationPromise]);
+    
+    // Track status update
+    analyticsService.trackStatusUpdate(
+      bubbleData.bubble.id,
+      status,
+      location !== null,
+      statusText !== null && statusText !== ''
+    );
+    
+    // Track location update if provided
+    if (location) {
+      analyticsService.trackLocationUpdate(bubbleData.bubble.id);
+    }
     
     // Don't reload entire bubble - the realtime listener will update automatically
     // loadBubble(); // Removed - causes unnecessary delay
@@ -429,6 +486,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         userId,
         imageFile
       );
+      // Track photo update
+      analyticsService.trackPhotoUpdate(bubbleData.bubble.id);
       // Reload bubble data to reflect the new photo
       loadBubble();
       return { success: true };
@@ -449,6 +508,9 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         bubbleData.currentMember.id,
         profileData
       );
+      // Track profile update
+      const fieldsUpdated = Object.keys(profileData);
+      analyticsService.trackProfileUpdate(bubbleData.bubble.id, fieldsUpdated);
       // Reload bubble data to reflect the changes
       loadBubble();
       return { success: true };
@@ -481,6 +543,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     try {
       const { token } = await API.generateReferral(bubbleData.bubble.id, bubbleData.currentMember.id);
       setInviteToken(token);
+      // Track invite generation
+      analyticsService.trackInviteGenerate(bubbleData.bubble.id);
     } catch (error) {
       console.error("Error generating invite:", error);
       setShowInvite(false);
@@ -493,7 +557,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center" style={{ minHeight: '100dvh' }}>
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Loading your bubble...</p>

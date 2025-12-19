@@ -7,7 +7,8 @@ import JoinBubbleFlow from './components/auth/JoinBubbleFlow';
 import CreateBubbleFlow from './components/auth/CreateBubbleFlow';
 import WelcomeWalkthrough from './components/auth/WelcomeWalkthrough';
 import CustomPaywall from './components/paywall/CustomPaywall';
-import { Purchases, LogLevel } from '@revenuecat/purchases-js'
+import { Purchases, LogLevel } from '@revenuecat/purchases-js';
+import { analyticsService } from './services/analytics';
 
 
 export default function FamilyBubbleApp() {
@@ -20,7 +21,6 @@ export default function FamilyBubbleApp() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLapsedSubscriber, setIsLapsedSubscriber] = useState(false);
   const [pendingJoinToken, setPendingJoinToken] = useState(null);
-  const [anonymousId, setAnonymousId] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [pendingPurchaseSuccess, setPendingPurchaseSuccess] = useState(null);
@@ -41,14 +41,16 @@ export default function FamilyBubbleApp() {
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []); // Run only on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount - pendingJoinToken intentionally excluded to prevent re-triggering
   
   // Navigate to join flow when token is available and user is not logged in
   useEffect(() => {
     if (pendingJoinToken && !currentUser && !loading && view !== 'join') {
       setView('join');
     }
-  }, [pendingJoinToken, currentUser, loading, view]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingJoinToken, currentUser, loading]); // view intentionally excluded to prevent loops
 
   useEffect(() => {
     const initializePurchases = async (user) => {
@@ -129,10 +131,21 @@ export default function FamilyBubbleApp() {
     };
 
     const unsubscribe = auth.onAuthStateChanged(async user => {
+      const previousUser = currentUser;
       setCurrentUser(user);
       setLoading(false);
 
       if (user && !user.isAnonymous) { // Don't run for the temporary anonymous user
+        // Track login if this is a new user session
+        if (!previousUser || previousUser.uid !== user.uid) {
+          analyticsService.setUserId(user.uid);
+          analyticsService.trackLogin('email');
+          analyticsService.setUserProperties({
+            user_id: user.uid,
+            email: user.email || 'unknown'
+          });
+        }
+        
         try {
         await initializePurchases(user);
         } catch (error) {
@@ -147,6 +160,9 @@ export default function FamilyBubbleApp() {
         }
       } else if (user && user.isAnonymous) {
         // This case is handled by the login logic after account creation
+      } else if (!user && previousUser) {
+        // User logged out
+        analyticsService.trackLogout();
       }
     });
     
@@ -158,9 +174,11 @@ export default function FamilyBubbleApp() {
         customerInfoListenerRef.current = null;
       }
     };
-  }, [auth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth]); // currentUser, joinToken, view intentionally excluded - handled separately
 
   const handleLogout = () => {
+    analyticsService.trackLogout();
     auth.signOut().then(async () => {
       if (Purchases.isConfigured()) {
         try {
@@ -193,9 +211,6 @@ export default function FamilyBubbleApp() {
           console.log("Pre-configuring Purchases...");
         }
         const appUserId = currentUser?.uid || Purchases.generateRevenueCatAnonymousAppUserId();
-        if (!currentUser) {
-          setAnonymousId(appUserId);
-        }
         
         const revenueCatApiKey = process.env.REACT_APP_REVENUECAT_API_KEY;
         if (revenueCatApiKey) {
@@ -251,7 +266,7 @@ export default function FamilyBubbleApp() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 flex items-center justify-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-blue-950 flex items-center justify-center" style={{ minHeight: '100dvh' }}>
         <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
       </div>
     );
@@ -307,7 +322,9 @@ export default function FamilyBubbleApp() {
                       // Create user account first
                       const { email, password } = joinData;
                       if (email && password) {
-                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                        await createUserWithEmailAndPassword(auth, email, password);
+                        // Track sign up
+                        analyticsService.trackSignUp('email');
                         // User will be automatically set via onAuthStateChanged
                         // Store join data to process after authentication
                         setJoinToken(joinData);
@@ -321,6 +338,7 @@ export default function FamilyBubbleApp() {
                       setPendingJoinToken(null);
                     } catch (error) {
                       console.error("Error creating account:", error);
+                      analyticsService.trackError('signup_error', error.message);
                       alert(`Account creation failed: ${error.message}`);
                     }
                   }} 
@@ -370,6 +388,7 @@ export default function FamilyBubbleApp() {
     return (
       <WelcomeWalkthrough 
         onComplete={() => {
+          analyticsService.trackWalkthroughComplete();
           setShowWalkthrough(false);
           setView('main');
           // The bubble creation will continue in MainApp when bubbleCreationData is set
@@ -381,7 +400,7 @@ export default function FamilyBubbleApp() {
   // Show purchase error view
   if (view === 'purchaseError') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-rose-900 text-white flex flex-col items-center justify-center p-4 text-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
+      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-rose-900 text-white flex flex-col items-center justify-center p-4 text-center" style={{ minHeight: '100dvh' }}>
         <div className="max-w-md w-full z-10">
           <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-lg">
             <div className="w-16 h-16 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -421,7 +440,7 @@ export default function FamilyBubbleApp() {
 
   if (view === 'main' && isLapsedSubscriber && !isSubscribed) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center" style={{ minHeight: '100dvh', minHeight: '-webkit-fill-available' }}>
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center" style={{ minHeight: '100dvh' }}>
           <h1 className="text-3xl font-bold text-white mb-4">Your Subscription has Expired</h1>
           <p className="text-gray-400 mb-8">Please renew your subscription to continue using premium features.</p>
           <button

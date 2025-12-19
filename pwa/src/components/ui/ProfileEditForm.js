@@ -1,6 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import CustomSelect from './CustomSelect';
 
+const relationshipOptions = [
+  { value: '', label: 'Select your role', disabled: true },
+  { value: 'Mom', label: 'Mom' },
+  { value: 'Dad', label: 'Dad' },
+  { value: 'Brother', label: 'Brother' },
+  { value: 'Sister', label: 'Sister' },
+  { value: 'Son', label: 'Son' },
+  { value: 'Daughter', label: 'Daughter' },
+  { value: 'Grandma', label: 'Grandma' },
+  { value: 'Grandpa', label: 'Grandpa' },
+  { value: 'Aunt', label: 'Aunt' },
+  { value: 'Uncle', label: 'Uncle' },
+  { value: 'Cousin', label: 'Cousin' },
+  { value: 'Guardian', label: 'Guardian' },
+  { value: 'Friend', label: 'Friend' },
+  { value: 'Custom', label: 'Custom' },
+];
+
 const ProfileEditForm = ({ member, bubbleId, onSave }) => {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
@@ -22,25 +40,8 @@ const ProfileEditForm = ({ member, bubbleId, onSave }) => {
       }
       setQuote(member.quote || '');
     }
-  }, [member]);
-
-  const relationshipOptions = [
-    { value: '', label: 'Select your role', disabled: true },
-    { value: 'Mom', label: 'Mom' },
-    { value: 'Dad', label: 'Dad' },
-    { value: 'Brother', label: 'Brother' },
-    { value: 'Sister', label: 'Sister' },
-    { value: 'Son', label: 'Son' },
-    { value: 'Daughter', label: 'Daughter' },
-    { value: 'Grandma', label: 'Grandma' },
-    { value: 'Grandpa', label: 'Grandpa' },
-    { value: 'Aunt', label: 'Aunt' },
-    { value: 'Uncle', label: 'Uncle' },
-    { value: 'Cousin', label: 'Cousin' },
-    { value: 'Guardian', label: 'Guardian' },
-    { value: 'Friend', label: 'Friend' },
-    { value: 'Custom', label: 'Custom' },
-  ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member]); // relationshipOptions is a constant defined outside component, no need to include
 
   const handleSubmit = async (e) => {
     e.preventDefault();
