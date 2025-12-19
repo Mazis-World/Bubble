@@ -854,7 +854,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
               {/* Legal text */}
               <p className="text-gray-500 text-[10px] sm:text-xs md:text-sm text-center mb-4 sm:mb-5 px-2 sm:px-4 leading-relaxed">
-                Your trial begins immediately—7 days for yearly plans, 3 days for monthly. Cancel anytime during your trial period with no charges. Subscriptions renew automatically after the trial ends unless canceled at least 24 hours before renewal.
+                Your trial begins immediately. Cancel anytime during your trial period with no charges. Subscriptions renew automatically after the trial ends unless canceled at least 24 hours before renewal.
               </p>
 
               {/* Restore purchases */}
