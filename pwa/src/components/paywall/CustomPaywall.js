@@ -390,12 +390,12 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     if (!isSubscriptionPackage(pkg)) return null;
 
     // Check packageType first (most reliable)
-    if (pkg?.packageType === 'ANNUAL') return 7;
+    if (pkg?.packageType === 'ANNUAL') return 3;
     if (pkg?.packageType === 'MONTHLY') return 3;
 
     // Check identifiers for annual/yearly (before monthly to avoid conflicts)
     const id = (pkg?.identifier || pkg?.product?.identifier || '').toLowerCase();
-    if (id.includes('year') || id.includes('annual') || id.includes('yearly')) return 7;
+    if (id.includes('year') || id.includes('annual') || id.includes('yearly')) return 3;
     if (id.includes('month')) return 3;
 
     // Check subscription period
@@ -403,7 +403,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       pkg?.webBillingProduct?.subscriptionPeriod ||
       pkg?.rcBillingProduct?.subscriptionPeriod ||
       pkg?.product?.subscriptionPeriod;
-    if (period && /Y/i.test(period)) return 7;
+    if (period && /Y/i.test(period)) return 3;
     if (period && /M/i.test(period)) return 3;
 
     // Default: monthly gets 3 days
