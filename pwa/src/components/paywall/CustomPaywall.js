@@ -17,7 +17,10 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
     analyticsService.trackSubscriptionView('default');
   }, []);
 
-  const loadOfferings = async () => {
+  const loadOfferings = async (retryCount = 0) => {
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY = 1000; // 1 second
+    
     try {
       setLoading(true);
       setError(null);
@@ -42,56 +45,97 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       const purchases = Purchases.getSharedInstance();
       const offerings = await purchases.getOfferings();
       
-      // Use "FamilyBubble Offering" if available, otherwise fall back to current offering
-      let currentOffering = offerings.all["FamilyBubble Offering"] || offerings.current;
+      // Always use "FamilyBubble" offering - no fallback, no guesses
+      const currentOffering = offerings.all["FamilyBubble"];
       
       if (process.env.NODE_ENV === 'development') {
         console.log('Available offerings:', Object.keys(offerings.all || {}));
-        console.log('Using offering:', currentOffering?.identifier || 'current');
+        console.log('Looking for offering: "FamilyBubble"');
+        console.log('Found offering:', currentOffering?.identifier || 'NOT FOUND');
+        if (currentOffering) {
+          console.log('Offering packages:', currentOffering.availablePackages?.map(p => ({
+            identifier: p.identifier,
+            productId: p.product?.identifier,
+            packageType: p.packageType
+          })));
+        }
       }
 
       if (!currentOffering) {
-        console.error('No current offering found in RevenueCat');
-        setError("No subscription packages available. Please ensure your RevenueCat offering is configured and active.");
+        console.error('FamilyBubble offering not found in RevenueCat. Available offerings:', Object.keys(offerings.all || {}));
+        
+        // Retry if we haven't exhausted retries
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Retrying to load FamilyBubble offering (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          setTimeout(() => {
+            loadOfferings(retryCount + 1);
+          }, RETRY_DELAY);
+          return;
+        }
+        
+        setError("No subscription packages available. Please ensure your RevenueCat 'FamilyBubble' offering is configured and active.");
         setLoading(false);
         return;
       }
 
       if (!currentOffering.availablePackages || currentOffering.availablePackages.length === 0) {
-        console.error('Current offering has no available packages:', currentOffering);
-        setError("No subscription packages available in the current offering. Please check your RevenueCat dashboard.");
+        console.error('FamilyBubble offering has no available packages:', currentOffering);
+        setError("No subscription packages available in the FamilyBubble offering. Please check your RevenueCat dashboard.");
         setLoading(false);
         return;
       }
 
-      // RevenueCat Products:
-      // - FamilyBubble Monthly (familyBubble_Monthly) → MONTHLY package type
-      // - FamilyBubble Yearly (familyBubble_Yearly) → ANNUAL package type
+      // RevenueCat Products (from FamilyBubble offering):
+      // - Monthly: monthly_FamilyBubble
+      // - Yearly: yearly_FamilyBubble
       // Entitlement: "FamilyBubble Premium"
       
       // Log all available packages for debugging
       if (process.env.NODE_ENV === 'development') {
-        console.log('All RevenueCat packages in offering:', currentOffering.availablePackages.map(p => ({
+        console.log('All RevenueCat packages in FamilyBubble offering:', currentOffering.availablePackages.map(p => ({
           identifier: p.identifier,
           packageType: p.packageType,
           productId: p.product?.identifier,
           productTitle: p.product?.title,
-          price: p.product?.priceString
+          price: p.product?.priceString || p.webBillingProduct?.currentPrice?.formattedPrice || p.rcBillingProduct?.currentPrice?.formattedPrice
         })));
       }
       
-      // Filter to prioritize our specific products, but allow all packages for testing
-      // Expected product identifiers: familyBubble_Monthly, familyBubble_Yearly
-      const filteredPackages = currentOffering.availablePackages.filter(() => {
-        // Include all packages - don't exclude test/default products for testing
-        return true;
+      // Filter to only include our specific products: monthly_FamilyBubble and yearly_FamilyBubble
+      const expectedProductIds = ['monthly_FamilyBubble', 'yearly_FamilyBubble'];
+      const filteredPackages = currentOffering.availablePackages.filter((pkg) => {
+        const productId = pkg.product?.identifier || pkg.webBillingProduct?.identifier || pkg.rcBillingProduct?.identifier;
+        const matches = expectedProductIds.includes(productId);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Package ${pkg.identifier}: productId=${productId}, matches=${matches}`);
+        }
+        
+        return matches;
       });
 
-      // Use all available packages (including test products)
+      // Use filtered packages (only monthly_FamilyBubble and yearly_FamilyBubble)
       let packagesToUse = filteredPackages;
 
       if (packagesToUse.length === 0) {
-        setError("No subscription packages available. Please try again later.");
+        console.error('No packages found with expected product IDs (monthly_FamilyBubble, yearly_FamilyBubble). Available packages:', 
+          currentOffering.availablePackages.map(p => ({
+            identifier: p.identifier,
+            productId: p.product?.identifier || p.webBillingProduct?.identifier || p.rcBillingProduct?.identifier,
+            packageType: p.packageType
+          }))
+        );
+        
+        // Retry if we haven't exhausted retries (sometimes products take a moment to load)
+        if (retryCount < MAX_RETRIES) {
+          console.log(`Retrying to load packages (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+          setTimeout(() => {
+            loadOfferings(retryCount + 1);
+          }, RETRY_DELAY);
+          return;
+        }
+        
+        setError("No subscription packages available. Please ensure monthly_FamilyBubble and yearly_FamilyBubble products are configured in the FamilyBubble offering.");
         setLoading(false);
         return;
       }
@@ -135,6 +179,20 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       setLoading(false);
     } catch (err) {
       console.error("Error loading offerings:", err);
+      
+      // Retry on network/transient errors if we haven't exhausted retries
+      if (retryCount < MAX_RETRIES && (
+        err?.message?.includes('network') || 
+        err?.message?.includes('timeout') ||
+        err?.message?.includes('fetch')
+      )) {
+        console.log(`Retrying after error (attempt ${retryCount + 1}/${MAX_RETRIES})...`);
+        setTimeout(() => {
+          loadOfferings(retryCount + 1);
+        }, RETRY_DELAY);
+        return;
+      }
+      
       const errorMessage = err?.message || err?.toString() || 'Unknown error';
       setError(`Failed to load subscription options: ${errorMessage}. Please check your RevenueCat API key and configuration.`);
       setLoading(false);
