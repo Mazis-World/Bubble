@@ -67,10 +67,16 @@ export default function FamilyBubbleApp() {
         return;
       }
 
-      await Purchases.configure({
-        apiKey: revenueCatApiKey,
-        appUserId: user.uid,
-      });
+      if (!Purchases.isConfigured()) {
+        await Purchases.configure({
+          apiKey: revenueCatApiKey,
+          appUserId: user.uid,
+        });
+      } else {
+        // Keep the existing RevenueCat identity (often anonymous from checkout)
+        // and alias it to the Firebase user so the purchase is not orphaned.
+        await Purchases.getSharedInstance().logIn(user.uid);
+      }
 
       // Get initial customer info
       const purchases = Purchases.getSharedInstance();
@@ -101,17 +107,7 @@ export default function FamilyBubbleApp() {
             const hasSubscription = typeof updatedPremiumEntitlement !== "undefined";
 
             if (hasSubscription && !prevSubscribed) {
-              // New subscription detected - show walkthrough
               setIsLapsedSubscriber(false);
-              
-              // Check for pending purchase success callback
-              setPendingPurchaseSuccess(prev => {
-                if (prev) {
-                  setShowWalkthrough(true);
-                  setView('walkthrough');
-                }
-                return null;
-              });
               return true;
             } else if (hasSubscription) {
               setIsLapsedSubscriber(false);
@@ -196,6 +192,11 @@ export default function FamilyBubbleApp() {
   };
   
   const handlePurchase = async (onSuccess) => {
+    if (isSubscribed && onSuccess) {
+      onSuccess();
+      return;
+    }
+
     // Store the success callback to execute after purchase
     if (onSuccess) {
       setPendingPurchaseSuccess(() => onSuccess);
@@ -303,6 +304,7 @@ export default function FamilyBubbleApp() {
           const errorMessage = error?.message || error?.toString() || '';
           const isCancelled = error?.code === 2;
           
+          setShowCustomPaywall(false);
           if (!isCancelled && !errorMessage.includes('Purchase failure simulated')) {
             setPurchaseError("Your purchase could not be completed. Please try again.");
             setView('purchaseError');
@@ -349,12 +351,21 @@ export default function FamilyBubbleApp() {
                 />;
       case 'create':
         return <CreateBubbleFlow 
+                  isSubscribed={isSubscribed}
                   onComplete={async (data) => {
                     setBubbleCreationData(data);
                     try {
-                      await createUserWithEmailAndPassword(auth, data.email, data.password);
+                      const credential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+                      if (Purchases.isConfigured() && credential?.user?.uid) {
+                        try {
+                          await Purchases.getSharedInstance().logIn(credential.user.uid);
+                        } catch (rcError) {
+                          console.error("RevenueCat login after signup failed:", rcError);
+                        }
+                      }
                     } catch (error) {
                       console.error("Firebase user creation failed:", error);
+                      setBubbleCreationData(null);
                       alert(`Account creation failed: ${error.message}`);
                     }
                   }}
@@ -363,19 +374,33 @@ export default function FamilyBubbleApp() {
                 />;
       case 'login':
         return <Login onLoginSuccess={() => setView('main')} onBack={handleLoginBack} />;
+      case 'purchaseError':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-rose-900 text-white flex flex-col items-center justify-center p-4 text-center" style={{ minHeight: '100dvh' }}>
+            <div className="max-w-md w-full z-10">
+              <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-lg">
+                <h1 className="text-4xl font-bold mb-2">Purchase Failed</h1>
+                <p className="text-gray-400 mb-8">
+                  {purchaseError || "An unexpected error occurred. Please try again."}
+                </p>
+                <button
+                  onClick={() => {
+                    setPurchaseError(null);
+                    setView('create');
+                  }}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-xl font-semibold"
+                >
+                  Go Back
+                </button>
+              </div>
+            </div>
+          </div>
+        );
       case 'welcome':
       default:
         return <Welcome 
                   onLogin={resetAuthFlow} 
-                  onCreate={() => {
-                    console.log("Create Bubble clicked - showing paywall");
-                    // Show paywall first, then proceed to create flow after purchase
-                    handlePurchase(() => {
-                      console.log("Purchase success callback - proceeding to create flow");
-                      // After purchase success, proceed to create flow
-                      setView('create');
-                    });
-                  }}
+                  onCreate={() => setView('create')}
                   onJoin={() => setView('join')} 
                 />;
     }
@@ -383,8 +408,8 @@ export default function FamilyBubbleApp() {
 
   // If we are here, currentUser exists.
   
-  // Show walkthrough after successful purchase
-  if (view === 'walkthrough' || showWalkthrough) {
+  // Show walkthrough after successful purchase, but never delay bubble creation.
+  if ((view === 'walkthrough' || showWalkthrough) && !bubbleCreationData) {
     return (
       <WelcomeWalkthrough 
         onComplete={() => {
