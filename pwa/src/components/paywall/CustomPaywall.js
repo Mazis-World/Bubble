@@ -235,6 +235,20 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       }
     } catch (err) {
       console.error("Purchase error:", err);
+
+      // Already subscribed / "product already owned" should complete the flow.
+      try {
+        const purchases = Purchases.getSharedInstance();
+        const customerInfo = await purchases.getCustomerInfo();
+        if (typeof customerInfo.entitlements.active["FamilyBubble Premium"] !== "undefined") {
+          if (onPurchaseSuccess) {
+            onPurchaseSuccess();
+          }
+          return;
+        }
+      } catch (checkErr) {
+        console.error("Error checking customer info after purchase error:", checkErr);
+      }
       
       // Check if user canceled
       if (err.code === 2) {
