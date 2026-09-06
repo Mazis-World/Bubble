@@ -4,7 +4,7 @@ import CustomSelect from '../ui/CustomSelect';
 import LocationStep from '../ui/LocationStep';
 import imageCompression from 'browser-image-compression';
 
-const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase }) => {
+const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) => {
   const [step, setStep] = useState(1);
   const [bubbleName, setBubbleName] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -31,11 +31,11 @@ const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase }) => {
       relationshipRole,
       location,
     };
-    // Show paywall after clicking "Create Bubble" button
-    if (handlePurchase) {
+    // Only show paywall once, after profile details are collected.
+    // Skip if this session already has an active subscription.
+    if (!isSubscribed && handlePurchase) {
       handlePurchase(() => onComplete(bubbleData));
     } else {
-      // Fallback if handlePurchase is not provided
       onComplete(bubbleData);
     }
   };
