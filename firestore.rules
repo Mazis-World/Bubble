@@ -52,8 +52,8 @@ service cloud.firestore {
     // BUBBLES Collection
     // ============================================================================
     match /bubbles/{bubbleId} {
-      // Only bubble members can read bubble data
-      allow read: if isBubbleMember(bubbleId);
+      // Members and the owner can read bubble data
+      allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
       
       // Only authenticated users can create bubbles (they become the owner)
       allow create: if isAuthenticated() &&
@@ -71,14 +71,16 @@ service cloud.firestore {
       // NODES Subcollection
       // ============================================================================
       match /nodes/{nodeId} {
-        // Bubble members can read nodes
-        allow read: if isBubbleMember(bubbleId);
+        // Members and the owner can read nodes
+        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
         
-        // Only bubble members can create nodes (when joining)
-        allow create: if isBubbleMember(bubbleId) &&
-                       request.resource.data.keys().hasAll(['userId', 'fullName', 'tier', 'createdAt']) &&
+        // Owner can create the first node in the same batch as bubble creation.
+        // Members can create nodes when joining. Field is `name` (not fullName).
+        allow create: if isAuthenticated() &&
+                       (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
+                       request.resource.data.keys().hasAll(['userId', 'name', 'tier', 'createdAt']) &&
                        request.resource.data.userId is string &&
-                       request.resource.data.fullName is string &&
+                       request.resource.data.name is string &&
                        request.resource.data.tier is int;
         
         // Users can update their own node, or bubble owner can update any node
