@@ -1,4 +1,4 @@
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import {
   collection,
   doc,
@@ -15,7 +15,6 @@ import {
   arrayRemove,
   collectionGroup,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Bubble from '../models/Bubble';
 import BubbleNode from '../models/BubbleNode';
 import BubbleEdge from '../models/BubbleEdge';
@@ -40,36 +39,63 @@ import User from '../models/User';
 // Tier system: Tier 1 = owner, Tier 2 = immediate family, Tier 3+ = extended
 // ============================================================================
 
-const uploadImage = async (imageFile, userId, timeoutMs = 8000) => {
+// Firebase Storage is not enabled on this project (bucket 404 / CORS preflight
+// fails). Keep photos in Firestore as compressed JPEG data URLs instead.
+const MAX_PHOTO_DIMENSION = 384;
+const MAX_PHOTO_DATA_URL_CHARS = 350000;
+
+const fileToCompressedDataUrl = async (imageFile) => {
+  if (typeof document === 'undefined' || typeof createImageBitmap !== 'function') {
+    throw new Error('Photo compression is only available in the browser.');
+  }
+
+  const bitmap = await createImageBitmap(imageFile);
+  try {
+    const scale = Math.min(1, MAX_PHOTO_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) {
+      throw new Error('Could not prepare photo.');
+    }
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    let quality = 0.74;
+    let dataUrl = canvas.toDataURL('image/jpeg', quality);
+    while (dataUrl.length > MAX_PHOTO_DATA_URL_CHARS && quality > 0.35) {
+      quality = Math.max(0.35, quality - 0.1);
+      dataUrl = canvas.toDataURL('image/jpeg', quality);
+    }
+    if (dataUrl.length > MAX_PHOTO_DATA_URL_CHARS) {
+      throw new Error('Photo is too large after compression. Try a smaller image.');
+    }
+    return dataUrl;
+  } finally {
+    if (typeof bitmap.close === 'function') {
+      bitmap.close();
+    }
+  }
+};
+
+const uploadImage = async (imageFile, userId) => {
   if (!imageFile) return null;
   if (!userId) {
     console.warn("No userId provided for image upload, skipping");
     return null;
   }
 
-  const fileWithType =
-    imageFile.type && imageFile.type.startsWith('image/')
-      ? imageFile
-      : new File([imageFile], imageFile.name || 'photo.jpg', { type: 'image/jpeg' });
-  
   try {
-    const uniqueId = Date.now();
-    const imageRef = ref(storage, `user_photos/${userId}/${uniqueId}`);
-    console.log("Attempting to upload image to:", `user_photos/${userId}/${uniqueId}`);
-    const uploadPromise = (async () => {
-      const snapshot = await uploadBytes(imageRef, fileWithType);
-      return getDownloadURL(snapshot.ref);
-    })();
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Photo upload timed out')), timeoutMs);
-    });
-    const downloadURL = await Promise.race([uploadPromise, timeoutPromise]);
-    console.log("Image uploaded successfully, URL:", downloadURL);
-    return downloadURL;
+    const dataUrl = await fileToCompressedDataUrl(imageFile);
+    console.log("Photo prepared for Firestore, length:", dataUrl.length);
+    return dataUrl;
   } catch (error) {
-    console.error("Error uploading image:", error);
+    console.error("Error preparing photo:", error);
     console.error("Error code:", error.code, "Error message:", error.message);
-    // Join/create must not wait on Storage CORS or rule failures.
     return null;
   }
 };
@@ -741,7 +767,7 @@ export const API = {
       if (!uploadedPhotoUrl) {
         throw new Error('Photo upload failed');
       }
-      console.log("Photo uploaded successfully:", uploadedPhotoUrl);
+      console.log("Photo uploaded successfully, length:", uploadedPhotoUrl.length);
     } catch (uploadError) {
       console.error("Photo upload failed:", uploadError);
       throw new Error(`Failed to upload photo: ${uploadError.message}`);
