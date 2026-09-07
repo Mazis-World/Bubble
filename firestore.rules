@@ -180,6 +180,12 @@ service cloud.firestore {
                       isBubbleOwner(resource.data.bubbleId));
     }
     
+    // Collection group queries on edges (invite lookup) require this recursive
+    // path. Nested /bubbles/{id}/edges rules do not apply to collectionGroup().
+    match /{path=**}/edges/{edgeId} {
+      allow read: if isAuthenticated() && resource.data.referralToken is string;
+    }
+
     // Default: deny all other access
     match /{document=**} {
       allow read, write: if false;
