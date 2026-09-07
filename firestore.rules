@@ -169,10 +169,17 @@ service cloud.firestore {
                      request.resource.data.bubbleId is string &&
                      request.resource.data.token is string;
       
-      // Only the creator or bubble owner can update invitations
+      // Creator/owner can edit invites. Joiners may only mark a pending invite used.
       allow update: if isAuthenticated() &&
-                     (request.resource.data.createdBy == request.auth.uid || 
-                      isBubbleOwner(request.resource.data.bubbleId));
+                     (
+                       resource.data.createdBy == request.auth.uid ||
+                       isBubbleOwner(resource.data.bubbleId) ||
+                       (
+                         request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['accepted', 'acceptedBy', 'acceptedAt', 'used']) &&
+                         request.resource.data.accepted == true
+                       )
+                     );
       
       // Only the creator or bubble owner can delete invitations
       allow delete: if isAuthenticated() &&
