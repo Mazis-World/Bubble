@@ -1,4 +1,4 @@
-import { auth, db, storage } from '../firebase';
+import { app, auth, db } from '../firebase';
 import {
   collection,
   doc,
@@ -15,7 +15,7 @@ import {
   arrayRemove,
   collectionGroup,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Bubble from '../models/Bubble';
 import BubbleNode from '../models/BubbleNode';
 import BubbleEdge from '../models/BubbleEdge';
@@ -40,7 +40,63 @@ import User from '../models/User';
 // Tier system: Tier 1 = owner, Tier 2 = immediate family, Tier 3+ = extended
 // ============================================================================
 
-const uploadImage = async (imageFile, userId, timeoutMs = 8000) => {
+const STORAGE_BUCKETS = [
+  'familybubble-ecfa6.appspot.com',
+  'familybubble-ecfa6.firebasestorage.app',
+];
+
+const uploadToStorage = async (imageFile, userId, bucket, timeoutMs) => {
+  const bucketStorage = getStorage(app, `gs://${bucket}`);
+  const uniqueId = Date.now();
+  const path = `user_photos/${userId}/${uniqueId}`;
+  const imageRef = ref(bucketStorage, path);
+  console.log("Attempting Storage upload:", bucket || '(default)', path);
+  const uploadPromise = (async () => {
+    const snapshot = await uploadBytes(imageRef, imageFile, {
+      contentType: imageFile.type || 'image/jpeg',
+    });
+    return getDownloadURL(snapshot.ref);
+  })();
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Photo upload timed out')), timeoutMs);
+  });
+  return Promise.race([uploadPromise, timeoutPromise]);
+};
+
+const fileToCompressedDataUrl = async (imageFile) => {
+  if (typeof document === 'undefined' || typeof createImageBitmap !== 'function') {
+    throw new Error('Photo compression is only available in the browser.');
+  }
+  const bitmap = await createImageBitmap(imageFile);
+  try {
+    const maxDim = 384;
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('Could not prepare photo.');
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    let quality = 0.74;
+    let dataUrl = canvas.toDataURL('image/jpeg', quality);
+    while (dataUrl.length > 350000 && quality > 0.35) {
+      quality = Math.max(0.35, quality - 0.1);
+      dataUrl = canvas.toDataURL('image/jpeg', quality);
+    }
+    if (dataUrl.length > 350000) {
+      throw new Error('Photo is too large after compression. Try a smaller image.');
+    }
+    return dataUrl;
+  } finally {
+    if (typeof bitmap.close === 'function') bitmap.close();
+  }
+};
+
+const uploadImage = async (imageFile, userId, timeoutMs = 12000) => {
   if (!imageFile) return null;
   if (!userId) {
     console.warn("No userId provided for image upload, skipping");
@@ -51,25 +107,23 @@ const uploadImage = async (imageFile, userId, timeoutMs = 8000) => {
     imageFile.type && imageFile.type.startsWith('image/')
       ? imageFile
       : new File([imageFile], imageFile.name || 'photo.jpg', { type: 'image/jpeg' });
-  
+
   try {
-    const uniqueId = Date.now();
-    const imageRef = ref(storage, `user_photos/${userId}/${uniqueId}`);
-    console.log("Attempting to upload image to:", `user_photos/${userId}/${uniqueId}`);
-    const uploadPromise = (async () => {
-      const snapshot = await uploadBytes(imageRef, fileWithType);
-      return getDownloadURL(snapshot.ref);
-    })();
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Photo upload timed out')), timeoutMs);
-    });
-    const downloadURL = await Promise.race([uploadPromise, timeoutPromise]);
-    console.log("Image uploaded successfully, URL:", downloadURL);
+    const downloadURL = await Promise.any(
+      STORAGE_BUCKETS.map((bucket) => uploadToStorage(fileWithType, userId, bucket, timeoutMs))
+    );
+    console.log("Image uploaded to Firebase Storage:", downloadURL);
     return downloadURL;
   } catch (error) {
-    console.error("Error uploading image:", error);
-    console.error("Error code:", error.code, "Error message:", error.message);
-    // Join/create must not wait on Storage CORS or rule failures.
+    console.warn("Firebase Storage upload failed on all buckets:", error?.errors?.[0]?.message || error.message);
+  }
+
+  try {
+    const dataUrl = await fileToCompressedDataUrl(fileWithType);
+    console.warn("Firebase Storage is not ready; stored a compressed photo in Firestore instead.");
+    return dataUrl;
+  } catch (error) {
+    console.error("Error preparing photo:", error);
     return null;
   }
 };
