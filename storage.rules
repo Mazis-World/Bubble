@@ -1,15 +1,16 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // User photos - users can upload/read/delete their own photos
+    // User photos - users can upload their own photos; signed-in family can read them
     match /user_photos/{userId}/{allPaths=**} {
-      // Allow read if user is authenticated and accessing their own photos
-      allow read: if request.auth != null && request.auth.uid == userId;
-      
-      // Allow write (upload/update/delete) if user is authenticated and accessing their own photos
+      allow read: if request.auth != null;
+
       allow write: if request.auth != null && request.auth.uid == userId
-        && request.resource.size < 5 * 1024 * 1024 // 5MB max file size
-        && request.resource.contentType.matches('image/.*'); // Only images
+        && request.resource.size < 5 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType == 'application/octet-stream'
+        );
     }
     
     // Default: deny all other access
@@ -18,4 +19,3 @@ service firebase.storage {
     }
   }
 }
-

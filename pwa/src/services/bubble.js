@@ -40,27 +40,36 @@ import User from '../models/User';
 // Tier system: Tier 1 = owner, Tier 2 = immediate family, Tier 3+ = extended
 // ============================================================================
 
-const uploadImage = async (imageFile, userId) => {
+const uploadImage = async (imageFile, userId, timeoutMs = 8000) => {
   if (!imageFile) return null;
   if (!userId) {
     console.warn("No userId provided for image upload, skipping");
     return null;
   }
+
+  const fileWithType =
+    imageFile.type && imageFile.type.startsWith('image/')
+      ? imageFile
+      : new File([imageFile], imageFile.name || 'photo.jpg', { type: 'image/jpeg' });
   
   try {
     const uniqueId = Date.now();
     const imageRef = ref(storage, `user_photos/${userId}/${uniqueId}`);
     console.log("Attempting to upload image to:", `user_photos/${userId}/${uniqueId}`);
-    const snapshot = await uploadBytes(imageRef, imageFile);
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    const uploadPromise = (async () => {
+      const snapshot = await uploadBytes(imageRef, fileWithType);
+      return getDownloadURL(snapshot.ref);
+    })();
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Photo upload timed out')), timeoutMs);
+    });
+    const downloadURL = await Promise.race([uploadPromise, timeoutPromise]);
     console.log("Image uploaded successfully, URL:", downloadURL);
     return downloadURL;
   } catch (error) {
     console.error("Error uploading image:", error);
     console.error("Error code:", error.code, "Error message:", error.message);
-    // If upload fails (e.g., USER_NOT_FOUND from Storage rules), return null and continue without photo
-    // The user document can be created without a photo
-    // This is not a critical error - we can add the photo later
+    // Join/create must not wait on Storage CORS or rule failures.
     return null;
   }
 };
@@ -82,17 +91,6 @@ export const API = {
     const existingUserDoc = await getDoc(userRef);
     
     let uploadedPhotoUrl = null;
-    
-    // Try to upload photo first (if it fails, we'll continue without photo)
-    if (imageFile) {
-      try {
-        uploadedPhotoUrl = await uploadImage(imageFile, userId);
-        console.log("Photo uploaded successfully:", uploadedPhotoUrl ? "Yes" : "No");
-      } catch (uploadError) {
-        console.error("Photo upload failed, continuing without photo:", uploadError);
-        uploadedPhotoUrl = null;
-      }
-    }
     
     // Create user document if it doesn't exist
     if (!existingUserDoc.exists()) {
@@ -206,6 +204,19 @@ export const API = {
         throw new Error("Node was not created - document does not exist after commit");
       }
       console.log("Node verified:", verifyNodeDoc.id);
+
+      if (imageFile) {
+        try {
+          uploadedPhotoUrl = await uploadImage(imageFile, userId);
+          if (uploadedPhotoUrl) {
+            await setDoc(userRef, { photoURL: uploadedPhotoUrl }, { merge: true });
+            await setDoc(nodeRef, { photoUrl: uploadedPhotoUrl }, { merge: true });
+            console.log("Photo attached after bubble create");
+          }
+        } catch (photoError) {
+          console.error("Photo upload after create failed; bubble is already saved:", photoError);
+        }
+      }
       
       return { bubbleId: bubbleRef.id, nodeId: nodeRef.id };
     } catch (batchError) {
@@ -396,18 +407,9 @@ export const API = {
       console.error("Error checking for existing user:", checkError);
       throw new Error(`Failed to check user document: ${checkError.message}`);
     }
-    
-    // Try to upload photo first
-    if (userPhotoFile) {
-      try {
-        console.log("Attempting to upload photo...");
-        uploadedPhotoUrl = await uploadImage(userPhotoFile, userId);
-        console.log("Photo uploaded successfully:", uploadedPhotoUrl ? uploadedPhotoUrl : "No URL returned");
-      } catch (uploadError) {
-        console.error("Photo upload failed (continuing without photo):", uploadError);
-        uploadedPhotoUrl = null;
-      }
-    }
+
+    // Do not upload photos before join. Storage CORS/billing failures would
+    // block writing the user and bubble membership.
     
     if (!existingUserDoc || !existingUserDoc.exists()) {
       console.log("*** CREATING USER DOCUMENT IN FIRESTORE ***");
@@ -487,18 +489,20 @@ export const API = {
       console.log("Query executed, found", querySnapshot.size, "edges");
     } catch (queryError) {
       console.error("Error querying edges:", queryError);
-      
-      // Check if it's an index error
-      if (queryError.message && queryError.message.includes('COLLECTION_GROUP')) {
-        const indexError = new Error(
-          `Firestore index required. Please create the index by clicking this link:\n` +
-          `https://console.firebase.google.com/v1/r/project/familybubble-ecfa6/firestore/indexes?create_exemption=Cltwcm9qZWN0cy9mYW1pbHlidWJibGUtZWNmYTYvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2VkZ2VzL2ZpZWxkcy9yZWZlcnJhbFRva2VuEAIaEQoNcmVmZXJyYWxUb2tlbhAB\n\n` +
-          `After creating the index, wait 1-2 minutes for it to build, then try again.`
-        );
-        throw indexError;
+      try {
+        q = query(collectionGroup(db, 'edges'), where('referralToken', '==', token));
+        querySnapshot = await getDocs(q);
+        console.log("Fallback token query found", querySnapshot.size, "edges");
+      } catch (fallbackError) {
+        if (queryError.message && queryError.message.includes('COLLECTION_GROUP')) {
+          throw new Error(
+            `Firestore index required. Please create the index by clicking this link:\n` +
+            `https://console.firebase.google.com/v1/r/project/familybubble-ecfa6/firestore/indexes?create_exemption=Cltwcm9qZWN0cy9mYW1pbHlidWJibGUtZWNmYTYvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2VkZ2VzL2ZpZWxkcy9yZWZlcnJhbFRva2VuEAIaEQoNcmVmZXJyYWxUb2tlbhAB\n\n` +
+            `After creating the index, wait 1-2 minutes for it to build, then try again.`
+          );
+        }
+        throw new Error(`Failed to find invite code: ${fallbackError.message}`);
       }
-      
-      throw new Error(`Failed to find invite code: ${queryError.message}`);
     }
 
     if (querySnapshot.empty) {
@@ -686,6 +690,19 @@ export const API = {
         console.log("✓ User in bubble members:", userInMembers);
         if (!userInMembers) {
           console.error("✗ WARNING: User not in bubble's members array!");
+        }
+      }
+
+      if (userPhotoFile) {
+        try {
+          uploadedPhotoUrl = await uploadImage(userPhotoFile, userId);
+          if (uploadedPhotoUrl) {
+            await updateDoc(userRef, { photoURL: uploadedPhotoUrl });
+            await updateDoc(nodeRef, { photoUrl: uploadedPhotoUrl });
+            console.log("Photo attached after join");
+          }
+        } catch (photoError) {
+          console.error("Photo upload after join failed; membership is already saved:", photoError);
         }
       }
       
