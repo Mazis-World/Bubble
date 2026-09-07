@@ -6,17 +6,19 @@ import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'fi
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
 
-const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onJoinProcessed }) => {
+const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onInitiateJoin, onJoinProcessed }) => {
   const [bubbleData, setBubbleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [inviteToken, setInviteToken] = useState('');
+  const [manualInviteCode, setManualInviteCode] = useState('');
+  const [joiningManual, setJoiningManual] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const unsubscribeRef = useRef(null);
   const currentBubbleIdRef = useRef(null);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
+  const joinAttemptedRef = useRef(null);
 
   const setupRealtimeListener = React.useCallback((bubbleId, memberId) => {
     // Clean up previous listener
@@ -207,62 +209,58 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         });
     } else if (initialJoinToken && userId) {
       // Handle join bubble flow - user is now authenticated
+      const inviteCode = typeof initialJoinToken === 'string'
+        ? initialJoinToken
+        : initialJoinToken.inviteToken;
+      if (!inviteCode) {
+        setLoading(true);
+        loadBubble();
+        return;
+      }
+      if (joinAttemptedRef.current === `${userId}:${inviteCode}`) {
+        return;
+      }
+      joinAttemptedRef.current = `${userId}:${inviteCode}`;
+
       setLoading(true);
-      const { inviteToken, firstName, lastName, imageFile, relationshipRole, location } = initialJoinToken;
-      const userName = `${firstName} ${lastName}`.trim();
+      const { firstName, lastName, imageFile, relationshipRole, location } = typeof initialJoinToken === 'string'
+        ? {}
+        : initialJoinToken;
       
       console.log("=== MAINAPP: Processing join bubble ===");
       console.log("userId:", userId);
-      console.log("userName:", userName);
-      console.log("inviteToken:", inviteToken);
+      console.log("inviteCode:", inviteCode);
       console.log("location:", location);
-      console.log("initialJoinToken:", initialJoinToken);
       
       // FIRST: Ensure user document exists before joining
       const ensureUserDocument = async () => {
         console.log("Ensuring user document exists...");
-        try {
-          const userRef = doc(db, 'users', userId);
-          const userDoc = await getDoc(userRef);
-          
-          if (!userDoc.exists()) {
-            console.log("✗ User document does not exist, creating it NOW...");
-            console.log("  Collection: users");
-            console.log("  Document ID:", userId);
-            console.log("  Full path: users/", userId);
-            
-            await setDoc(userRef, {
-              fullName: userName,
-              photoURL: null,
-              createdAt: serverTimestamp(),
-              premium: false,
-              bubbles: [],
-            });
-            
-            // Verify it was created
-            const verifyDoc = await getDoc(userRef);
-            if (verifyDoc.exists()) {
-              console.log("✓ User document created and verified in MainApp");
-              console.log("✓ Document data:", verifyDoc.data());
-            } else {
-              console.error("✗ CRITICAL: User document creation failed - document does not exist after creation!");
-            }
-          } else {
-            console.log("✓ User document already exists");
-            console.log("  Document data:", userDoc.data());
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userRef);
+        let resolvedName = `${firstName || ''} ${lastName || ''}`.trim();
+
+        if (!userDoc.exists()) {
+          resolvedName = resolvedName || 'Family Member';
+          await setDoc(userRef, {
+            fullName: resolvedName,
+            photoURL: null,
+            createdAt: serverTimestamp(),
+            premium: false,
+            bubbles: [],
+          });
+        } else {
+          const existingName = userDoc.data()?.fullName;
+          if (!resolvedName && existingName) {
+            resolvedName = existingName;
           }
-        } catch (userDocError) {
-          console.error("✗ ERROR ensuring user document exists:", userDocError);
-          console.error("  Error code:", userDocError.code);
-          console.error("  Error message:", userDocError.message);
-          // Continue anyway - joinBubble will try to create it
         }
+
+        return resolvedName || 'Family Member';
       };
       
-      // Call ensureUserDocument, then proceed with joinBubble
-      ensureUserDocument().then(() => {
+      ensureUserDocument().then((userName) => {
         console.log("Calling API.joinBubble...");
-        API.joinBubble(inviteToken, userName, imageFile, relationshipRole, userId, location)
+        API.joinBubble(inviteCode, userName, imageFile, relationshipRole, userId, location)
         .then(async (result) => {
           console.log("Join bubble successful, result:", result);
           
@@ -345,11 +343,9 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         .catch(error => {
           console.error("Error joining bubble:", error);
           console.error("Error stack:", error.stack);
+          joinAttemptedRef.current = null;
           setLoading(false);
           alert(`Failed to join bubble: ${error.message}`);
-          if (onJoinProcessed) {
-            onJoinProcessed(); // Clear the join token even on error
-          }
         });
       }).catch(error => {
         console.error("Error ensuring user document:", error);
@@ -433,6 +429,48 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id]); // updateLocation intentionally excluded to prevent re-creation
+
+  const joinWithInviteCode = async (rawCode) => {
+    const inviteCode = (rawCode || '').trim().toUpperCase();
+    if (!inviteCode || !userId) return;
+
+    setJoiningManual(true);
+    setLoading(true);
+    try {
+      localStorage.setItem('familyBubble_pendingJoin', inviteCode);
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      const userName = userDoc.exists() ? (userDoc.data()?.fullName || 'Family Member') : 'Family Member';
+      if (!userDoc.exists()) {
+        await setDoc(userRef, {
+          fullName: userName,
+          photoURL: null,
+          createdAt: serverTimestamp(),
+          premium: false,
+          bubbles: [],
+        });
+      }
+      const result = await API.joinBubble(inviteCode, userName, null, 'Family Member', userId);
+      if (result?.bubbleId) {
+        analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
+        localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+        localStorage.removeItem('familyBubble_pendingJoin');
+        currentBubbleIdRef.current = result.bubbleId;
+        if (onJoinProcessed) onJoinProcessed();
+        const data = await API.getBubbleById(result.bubbleId, userId);
+        if (data?.bubble) {
+          setBubbleData(data);
+          setupRealtimeListener(result.bubbleId, userId);
+        }
+      }
+    } catch (error) {
+      console.error("Error joining bubble:", error);
+      alert(`Failed to join bubble: ${error.message}`);
+    } finally {
+      setJoiningManual(false);
+      setLoading(false);
+    }
+  };
 
   const handleStatusChange = async (status, location = null, statusText = null) => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.currentMember || !bubbleData.currentMember.id) {
@@ -568,15 +606,38 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
   if (!bubbleData) {
     return (
-      <div className="h-screen bg-gray-950 flex items-center justify-center overflow-hidden" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
-        <div className="text-center">
-          <p className="text-gray-400 mb-4">No bubble found.</p>
+      <div className="h-screen bg-gray-950 flex items-center justify-center overflow-hidden p-4" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
+        <div className="text-center max-w-sm w-full">
+          <p className="text-gray-400 mb-4">No bubble found. Paste an invite code to join one.</p>
+          <input
+            type="text"
+            placeholder="BUBXXXXXXXX"
+            value={manualInviteCode}
+            onChange={(e) => setManualInviteCode(e.target.value.toUpperCase())}
+            autoCapitalize="characters"
+            className="w-full text-center font-mono tracking-widest px-4 py-3 mb-3 bg-gray-900 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500"
+          />
           <button
-            onClick={() => loadBubble()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 tap-target"
+            onClick={() => joinWithInviteCode(manualInviteCode)}
+            disabled={joiningManual || manualInviteCode.trim().length < 3}
+            className="w-full px-4 py-3 mb-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 tap-target"
           >
-            Retry
+            {joiningManual ? 'Joining…' : 'Join bubble'}
           </button>
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => onInitiateCreate ? onInitiateCreate() : loadBubble()}
+              className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 tap-target"
+            >
+              Create a bubble
+            </button>
+            <button
+              onClick={() => loadBubble()}
+              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 tap-target"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     );

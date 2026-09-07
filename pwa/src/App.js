@@ -10,6 +10,7 @@ import CustomPaywall from './components/paywall/CustomPaywall';
 import { Purchases, LogLevel } from '@revenuecat/purchases-js';
 import { analyticsService } from './services/analytics';
 
+const PENDING_JOIN_KEY = 'familyBubble_pendingJoin';
 
 export default function FamilyBubbleApp() {
   const auth = getAuth();
@@ -28,29 +29,58 @@ export default function FamilyBubbleApp() {
   const customerInfoListenerRef = useRef(null);
   const onBubbleCreatedCallback = React.useCallback(() => setBubbleCreationData(null), []);
   const onInitiateCreateCallback = React.useCallback(() => setView('create'), []);
+  const onInitiateJoinCallback = React.useCallback(() => setView('join'), []);
+
+  const persistPendingJoin = React.useCallback((token) => {
+    if (!token) return;
+    localStorage.setItem(PENDING_JOIN_KEY, token);
+    setPendingJoinToken(token);
+  }, []);
+
+  const clearPendingJoin = React.useCallback(() => {
+    localStorage.removeItem(PENDING_JOIN_KEY);
+    setPendingJoinToken(null);
+    setJoinToken(null);
+  }, []);
 
   // Handle URL parameters for join links - check on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const joinToken = urlParams.get('join');
-    
-    if (joinToken && !pendingJoinToken) {
-      // Store the token first before cleaning up URL
-      setPendingJoinToken(joinToken);
-      
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+    const fromUrl = urlParams.get('join');
+    const fromStore = localStorage.getItem(PENDING_JOIN_KEY);
+    const token = fromUrl || fromStore;
+
+    if (token) {
+      persistPendingJoin(token);
+      if (fromUrl) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount - pendingJoinToken intentionally excluded to prevent re-triggering
+  }, [persistPendingJoin]);
   
-  // Navigate to join flow when token is available and user is not logged in
+  // Logged-out users go through the join wizard. Logged-in users with an
+  // invite code skip the wizard so join still runs in MainApp.
   useEffect(() => {
-    if (pendingJoinToken && !currentUser && !loading && view !== 'join') {
-      setView('join');
+    if (!pendingJoinToken || loading) return;
+
+    if (!currentUser) {
+      if (view !== 'join') setView('join');
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingJoinToken, currentUser, loading]); // view intentionally excluded to prevent loops
+
+    setJoinToken(prev => {
+      if (prev?.inviteToken === pendingJoinToken) return prev;
+      return {
+        inviteToken: pendingJoinToken,
+        firstName: prev?.firstName || '',
+        lastName: prev?.lastName || '',
+        imageFile: prev?.imageFile || null,
+        relationshipRole: prev?.relationshipRole || 'Family Member',
+        location: prev?.location || null,
+      };
+    });
+    if (view !== 'main') setView('main');
+  }, [pendingJoinToken, currentUser, loading, view]);
 
   useEffect(() => {
     const initializePurchases = async (user) => {
@@ -336,8 +366,7 @@ export default function FamilyBubbleApp() {
                         setJoinToken(joinData);
                       setView('main');
                       }
-                      // Clear pending token after use
-                      setPendingJoinToken(null);
+                      persistPendingJoin(joinData.inviteToken);
                     } catch (error) {
                       console.error("Error creating account:", error);
                       analyticsService.trackError('signup_error', error.message);
@@ -345,7 +374,7 @@ export default function FamilyBubbleApp() {
                     }
                   }} 
                   onBack={() => {
-                    setPendingJoinToken(null);
+                    clearPendingJoin();
                     setView('welcome');
                   }} 
                 />;
@@ -496,7 +525,8 @@ export default function FamilyBubbleApp() {
         onUpgrade={handlePurchase}
         onRestorePurchases={handleRestorePurchases}
         onInitiateCreate={onInitiateCreateCallback}
-        onJoinProcessed={() => setJoinToken(null)}
+        onInitiateJoin={onInitiateJoinCallback}
+        onJoinProcessed={clearPendingJoin}
       />
     </div>
   );
