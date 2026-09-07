@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap, Gift } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
 import { analyticsService } from '../../services/analytics';
@@ -11,13 +11,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
   // eslint-disable-next-line no-unused-vars
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadOfferings();
-    // Track paywall view
-    analyticsService.trackSubscriptionView('default');
-  }, []);
-
-  const loadOfferings = async (retryCount = 0) => {
+  const loadOfferings = useCallback(async (retryCount = 0) => {
     const MAX_RETRIES = 2;
     const RETRY_DELAY = 1000; // 1 second
     
@@ -197,7 +191,12 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       setError(`Failed to load subscription options: ${errorMessage}. Please check your RevenueCat API key and configuration.`);
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadOfferings();
+    analyticsService.trackSubscriptionView('default');
+  }, [loadOfferings]);
 
   const handlePurchase = async () => {
     if (!selectedPackage) return;
