@@ -133,10 +133,14 @@ service cloud.firestore {
       // EDGES Subcollection
       // ============================================================================
       match /edges/{edgeId} {
-        // Members/owners can read edges. Pending invites are readable so joiners
-        // can look up a referral token before they are members.
-        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId) ||
-                     resource.data.accepted == false;
+        allow get: if isAuthenticated() &&
+                     (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId) ||
+                      resource.data.accepted == false);
+
+        // Collection group invite lookup cannot use get()/exists() — those
+        // make Firestore reject the whole query. Constrain list to token docs
+        // so joiners can query where referralToken == token before they are members.
+        allow list: if isAuthenticated() && resource.data.referralToken is string;
         
         // Members can create invite edges. Field names match BubbleEdge.toFirestore().
         allow create: if canAccessBubble(bubbleId) &&
