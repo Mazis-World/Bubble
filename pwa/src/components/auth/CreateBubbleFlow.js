@@ -159,8 +159,8 @@ const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) 
                   try {
                     // Compress image before storing
                     const compressedFile = await imageCompression(file, {
-                      maxSizeMB: 1,
-                      maxWidthOrHeight: 512,
+                      maxSizeMB: 0.25,
+                      maxWidthOrHeight: 384,
                       useWebWorker: true
                     });
                     setImageFile(compressedFile);

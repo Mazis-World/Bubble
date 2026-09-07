@@ -392,8 +392,8 @@ const Bubble = ({
               try {
                 // Compress image
                 const compressedFile = await imageCompression(file, {
-                  maxSizeMB: 1,
-                  maxWidthOrHeight: 512,
+                  maxSizeMB: 0.25,
+                  maxWidthOrHeight: 384,
                   useWebWorker: true
                 });
                 
