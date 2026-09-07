@@ -133,10 +133,9 @@ export const API = {
       }
     }
 
-    // Now create the batch for bubble-related operations
-    const batch = writeBatch(db);
-
-    // 1. Create the Bubble document
+    // Create the bubble, then membership, then the owner node.
+    // These cannot share one batch: rules evaluate get()/exists() against
+    // the pre-commit state, so the first node would be denied.
     const bubbleRef = doc(collection(db, 'bubbles'));
     const bubble = new Bubble(
       bubbleRef.id,
@@ -148,7 +147,6 @@ export const API = {
       'private', // visibility
       [userId] // members - Add owner to members list
     );
-    batch.set(bubbleRef, bubble.toFirestore());
 
     // 2. Create the Node document for the owner in the subcollection
     // Owner is tier 1, center of the universe, root node
@@ -181,17 +179,19 @@ export const API = {
       `${firstName} ${lastName}`,
       locationData
     );
-    batch.set(nodeRef, node.toFirestore());
 
-    // 3. Update the User document with bubble membership
-    batch.set(userRef, {
-      bubbles: arrayUnion(bubbleRef.id)
-    }, { merge: true });
-
-    console.log("Committing batch for create bubble - bubbleId:", bubbleRef.id, "userId:", userId);
+    console.log("Creating bubble - bubbleId:", bubbleRef.id, "userId:", userId);
     try {
-      await batch.commit();
-      console.log("Batch committed successfully");
+      await setDoc(bubbleRef, bubble.toFirestore());
+      console.log("Bubble document created:", bubbleRef.id);
+
+      await setDoc(userRef, {
+        bubbles: arrayUnion(bubbleRef.id)
+      }, { merge: true });
+      console.log("User membership updated for bubble:", bubbleRef.id);
+
+      await setDoc(nodeRef, node.toFirestore());
+      console.log("Owner node created:", nodeRef.id);
       
       // Verify bubble was created
       const verifyBubbleDoc = await getDoc(bubbleRef);
@@ -209,7 +209,7 @@ export const API = {
       
       return { bubbleId: bubbleRef.id, nodeId: nodeRef.id };
     } catch (batchError) {
-      console.error("Error committing batch:", batchError);
+      console.error("Error creating bubble:", batchError);
       throw new Error(`Failed to create bubble: ${batchError.message}`);
     }
   },
@@ -478,7 +478,11 @@ export const API = {
     let q;
     let querySnapshot;
     try {
-      q = query(collectionGroup(db, 'edges'), where('referralToken', '==', token));
+      q = query(
+        collectionGroup(db, 'edges'),
+        where('referralToken', '==', token),
+        where('accepted', '==', false)
+      );
       querySnapshot = await getDocs(q);
       console.log("Query executed, found", querySnapshot.size, "edges");
     } catch (queryError) {
@@ -544,11 +548,7 @@ export const API = {
 
     console.log("Found bubble:", bubbleId, "for user:", userId);
 
-    // Now create the batch for all bubble-related operations
-    const batch = writeBatch(db);
-
-    // 1. Create a new node for the user in the bubble
-    // This is a participant node (planet), not an owner (sun)
+    // Create a new node for the user in the bubble
     const nodeRef = doc(collection(db, 'bubbles', bubbleId, 'nodes'));
     
     // Prepare location data with timestamp if provided
@@ -559,7 +559,7 @@ export const API = {
         longitude: location.longitude,
         timestamp: serverTimestamp(),
         accuracy: location.accuracy || null,
-        address: location.address || null, // Store address if provided
+        address: location.address || null,
       };
     }
     
@@ -578,25 +578,32 @@ export const API = {
       userName,
       locationData
     );
+
+    // Record membership first so node create passes member checks.
+    try {
+      await updateDoc(userRef, {
+        bubbles: arrayUnion(bubbleId),
+      });
+      console.log("User membership updated for join:", bubbleId);
+    } catch (membershipError) {
+      console.error("Error updating user bubbles before join:", membershipError);
+      throw new Error(`Failed to join bubble: ${membershipError.message}`);
+    }
+
+    const batch = writeBatch(db);
     batch.set(nodeRef, node.toFirestore());
-    
-    // 2. Update the edge to accept the invite and link the nodes
+
+    // Update the edge to accept the invite and link the nodes
     batch.update(edgeDoc.ref, {
-        toNode: nodeRef.id, // Link to the new node
+        toNode: nodeRef.id,
         accepted: true,
         acceptedAt: serverTimestamp(),
-        tier: newMemberTier, // Store the tier in the edge
+        tier: newMemberTier,
     });
 
-    // 3. Add the userId to the bubble's members list
+    // Add the userId to the bubble's members list
     batch.update(bubbleRef, {
         members: arrayUnion(userId),
-    });
-
-    // 4. Update the user document with bubble membership
-    // User document already exists (created in STEP 1), so we can safely update it
-    batch.update(userRef, {
-      bubbles: arrayUnion(bubbleId), // Add bubble to user's bubbles array
     });
 
     console.log("Committing batch for join bubble - bubbleId:", bubbleId, "userId:", userId);
@@ -604,7 +611,6 @@ export const API = {
     console.log("  1. Create node:", nodeRef.id);
     console.log("  2. Update edge:", edgeDoc.id);
     console.log("  3. Update bubble members:", bubbleId);
-    console.log("  4. Update user bubbles array:", userId);
     
     try {
       await batch.commit();

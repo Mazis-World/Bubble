@@ -25,6 +25,36 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/bubbles/$(bubbleId)) &&
              get(/databases/$(database)/documents/bubbles/$(bubbleId)).data.ownerId == request.auth.uid;
     }
+
+    // Same checks against the post-batch state. Needed when a bubble, its
+    // first node, and the owner's membership are written together.
+    function isBubbleMemberAfter(bubbleId) {
+      return isAuthenticated() &&
+             existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.bubbles.hasAny([bubbleId]);
+    }
+
+    function isBubbleOwnerAfter(bubbleId) {
+      return isAuthenticated() &&
+             existsAfter(/databases/$(database)/documents/bubbles/$(bubbleId)) &&
+             getAfter(/databases/$(database)/documents/bubbles/$(bubbleId)).data.ownerId == request.auth.uid;
+    }
+
+    function canAccessBubble(bubbleId) {
+      return isBubbleMember(bubbleId) || isBubbleOwner(bubbleId) ||
+             isBubbleMemberAfter(bubbleId) || isBubbleOwnerAfter(bubbleId);
+    }
+
+    function isValidNodeCreate() {
+      return request.resource.data.userId == request.auth.uid &&
+             request.resource.data.userId is string &&
+             request.resource.data.tier is int &&
+             request.resource.data.keys().hasAll(['userId', 'tier', 'createdAt']) &&
+             (
+               (request.resource.data.keys().hasAny(['name']) && request.resource.data.name is string) ||
+               (request.resource.data.keys().hasAny(['fullName']) && request.resource.data.fullName is string)
+             );
+    }
     
     // ============================================================================
     // USERS Collection
@@ -52,8 +82,9 @@ service cloud.firestore {
     // BUBBLES Collection
     // ============================================================================
     match /bubbles/{bubbleId} {
-      // Members and the owner can read bubble data
-      allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
+      // Invitees can read a bubble by ID (from a join token) without listing all bubbles.
+      allow get: if isAuthenticated();
+      allow list: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
       
       // Only authenticated users can create bubbles (they become the owner)
       allow create: if isAuthenticated() &&
@@ -61,8 +92,17 @@ service cloud.firestore {
                      request.resource.data.keys().hasAll(['name', 'ownerId', 'createdAt']) &&
                      request.resource.data.name is string;
       
-      // Only bubble owner can update bubble data
-      allow update: if isBubbleOwner(bubbleId);
+      // Owner can update any bubble fields. Joiners may only add themselves to members.
+      allow update: if isBubbleOwner(bubbleId) ||
+                     (
+                       isAuthenticated() &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+                       (
+                         !('members' in resource.data) ||
+                         request.resource.data.members.hasAll(resource.data.members)
+                       ) &&
+                       request.resource.data.members.hasAny([request.auth.uid])
+                     );
       
       // Only bubble owner can delete bubbles
       allow delete: if isBubbleOwner(bubbleId);
@@ -71,17 +111,15 @@ service cloud.firestore {
       // NODES Subcollection
       // ============================================================================
       match /nodes/{nodeId} {
-        // Members and the owner can read nodes
-        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
+        // Invitees can read a node by ID from a pending invite. Listing stays members-only.
+        allow get: if isAuthenticated();
+        allow list: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
         
         // Owner can create the first node in the same batch as bubble creation.
-        // Members can create nodes when joining. Field is `name` (not fullName).
+        // Members can create nodes when joining. Field may be `name` or `fullName`.
         allow create: if isAuthenticated() &&
-                       (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
-                       request.resource.data.keys().hasAll(['userId', 'name', 'tier', 'createdAt']) &&
-                       request.resource.data.userId is string &&
-                       request.resource.data.name is string &&
-                       request.resource.data.tier is int;
+                       canAccessBubble(bubbleId) &&
+                       isValidNodeCreate();
         
         // Users can update their own node, or bubble owner can update any node
         allow update: if isBubbleMember(bubbleId) &&
@@ -95,18 +133,18 @@ service cloud.firestore {
       // EDGES Subcollection
       // ============================================================================
       match /edges/{edgeId} {
-        // Bubble members can read edges
-        allow read: if isBubbleMember(bubbleId);
+        // Members/owners can read edges. Pending invites are readable so joiners
+        // can look up a referral token before they are members.
+        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId) ||
+                     resource.data.accepted == false;
         
-        // Only bubble members can create edges
-        allow create: if isBubbleMember(bubbleId) &&
-                       request.resource.data.keys().hasAll(['fromNodeId', 'toNodeId', 'relationship', 'createdAt']) &&
-                       request.resource.data.fromNodeId is string &&
-                       request.resource.data.toNodeId is string &&
-                       request.resource.data.relationship is string;
+        // Members can create invite edges. Field names match BubbleEdge.toFirestore().
+        allow create: if canAccessBubble(bubbleId) &&
+                       request.resource.data.keys().hasAll(['fromNode', 'createdAt']) &&
+                       request.resource.data.fromNode is string;
         
-        // Only bubble owner can update edges
-        allow update: if isBubbleOwner(bubbleId);
+        // Owner can update any edge. Joiners can accept a pending invite.
+        allow update: if isBubbleOwner(bubbleId) || canAccessBubble(bubbleId);
         
         // Only bubble owner can delete edges
         allow delete: if isBubbleOwner(bubbleId);

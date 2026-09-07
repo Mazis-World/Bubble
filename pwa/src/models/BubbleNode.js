@@ -52,6 +52,8 @@ class BubbleNode {
             lastUpdated: this.lastUpdated,
             photoUrl: this.photoUrl || null,
             name: this.name,
+            // Older security rules required `fullName` on nodes.
+            fullName: this.name,
             lastKnownLocation: this.lastKnownLocation || null,
         };
     }
