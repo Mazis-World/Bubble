@@ -226,6 +226,44 @@ const findInviteByToken = async (rawToken) => {
   return null;
 };
 
+const STORED_BUBBLE_ID_KEY = 'familyBubble_bubbleId';
+const STORED_BUBBLE_USER_KEY = 'familyBubble_bubbleUserId';
+
+export const sessionBubble = {
+  get(userId) {
+    try {
+      const storedId = localStorage.getItem(STORED_BUBBLE_ID_KEY);
+      const storedUser = localStorage.getItem(STORED_BUBBLE_USER_KEY);
+      if (!storedId) return null;
+      if (userId && storedUser && storedUser !== userId) {
+        localStorage.removeItem(STORED_BUBBLE_ID_KEY);
+        localStorage.removeItem(STORED_BUBBLE_USER_KEY);
+        return null;
+      }
+      return storedId;
+    } catch (error) {
+      return null;
+    }
+  },
+  set(userId, bubbleId) {
+    try {
+      if (!bubbleId) return;
+      localStorage.setItem(STORED_BUBBLE_ID_KEY, bubbleId);
+      if (userId) localStorage.setItem(STORED_BUBBLE_USER_KEY, userId);
+    } catch (error) {
+      console.warn("Could not persist bubble id:", error);
+    }
+  },
+  clear() {
+    try {
+      localStorage.removeItem(STORED_BUBBLE_ID_KEY);
+      localStorage.removeItem(STORED_BUBBLE_USER_KEY);
+    } catch (error) {
+      // ignore
+    }
+  },
+};
+
 export const API = {
   createBubble: async (
     userId,
@@ -394,12 +432,25 @@ export const API = {
       return null; // No bubbles for this user
     }
     
-    // For now, return the first bubble (can be enhanced to show bubble selector)
-    // In multi-universe mode, user can switch between their bubbles
-    const bubbleId = user.bubbles[0];
-    console.log("Loading bubble for user:", userId, "bubbleId:", bubbleId);
+    const bubbleIds = [...new Set((user.bubbles || []).filter(Boolean))];
+    const preferredId = sessionBubble.get(userId);
+    const orderedIds = preferredId && bubbleIds.includes(preferredId)
+      ? [preferredId, ...bubbleIds.filter((id) => id !== preferredId)]
+      : bubbleIds;
 
-    return API.getBubbleById(bubbleId, userId);
+    for (const bubbleId of orderedIds) {
+      const data = await API.getBubbleById(bubbleId, userId);
+      if (data?.bubble) {
+        sessionBubble.set(userId, bubbleId);
+        return data;
+      }
+      console.warn("Skipping missing or unreadable bubble:", bubbleId);
+    }
+
+    if (preferredId && !bubbleIds.includes(preferredId)) {
+      sessionBubble.clear();
+    }
+    return null;
   },
 
   getUserBubbles: async (userId) => {
@@ -447,16 +498,33 @@ export const API = {
     const bubbleDoc = await getDoc(bubbleRef);
     
     if (!bubbleDoc.exists()) {
-      console.error("Bubble document does not exist:", bubbleId);
+      console.warn("Bubble document does not exist:", bubbleId);
       return null;
     }
     
     const bubble = Bubble.fromFirestore(bubbleDoc);
     console.log("Found bubble:", bubble.bubbleId, "name:", bubble.name);
 
-    // Get all nodes for that bubble
     const nodesRef = collection(db, 'bubbles', bubbleId, 'nodes');
-    const nodesSnapshot = await getDocs(nodesRef);
+    let nodesSnapshot = null;
+    let listError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        nodesSnapshot = await getDocs(nodesRef);
+        listError = null;
+        break;
+      } catch (error) {
+        listError = error;
+        console.warn(`Listing bubble members failed (attempt ${attempt + 1}):`, error.code || error.message);
+        if (error.code !== 'permission-denied' || attempt === 2) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+      }
+    }
+    if (!nodesSnapshot) {
+      throw listError || new Error('Failed to load bubble members.');
+    }
     const allMembers = nodesSnapshot.docs.map(d => {
       const node = BubbleNode.fromFirestore(d);
       return { id: node.nodeId, ...node };

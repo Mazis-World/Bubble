@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { API } from '../../services/bubble';
+import { API, sessionBubble } from '../../services/bubble';
 import Bubble from './Bubble';
 import { db } from '../../firebase';
 import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -109,26 +109,27 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   }, [userId]);
 
   const loadBubble = React.useCallback(async () => {
-    // Support both authenticated users and anonymous users
     const nodeUserId = userId || localStorage.getItem('familyBubble_nodeUserId');
-    const storedBubbleId = localStorage.getItem('familyBubble_bubbleId');
-    
-    let bubbleId = storedBubbleId;
     let data = null;
+    let bubbleId = null;
 
-    // Try to load bubble data
-    if (bubbleId) {
-      console.log("Loading bubble from localStorage:", bubbleId);
-      data = await API.getBubbleById(bubbleId, nodeUserId || userId);
-    } else if (userId) {
-      console.log("Loading bubble from user document for userId:", userId);
+    if (userId) {
+      console.log("Loading bubble from user memberships for userId:", userId);
       data = await API.getUserBubble(userId);
-      if (data) {
+      if (data?.bubble) {
         bubbleId = data.bubble.id;
-        localStorage.setItem('familyBubble_bubbleId', bubbleId);
+        sessionBubble.set(userId, bubbleId);
         console.log("Found bubble from user document:", bubbleId);
       } else {
-        console.log("No bubble found in user document - user may not have created/joined a bubble yet");
+        sessionBubble.clear();
+        console.log("No readable bubble in user document");
+      }
+    } else {
+      const storedBubbleId = sessionBubble.get(null);
+      if (storedBubbleId) {
+        console.log("Loading bubble from localStorage:", storedBubbleId);
+        data = await API.getBubbleById(storedBubbleId, nodeUserId);
+        bubbleId = data?.bubble?.id || null;
       }
     }
 
@@ -167,7 +168,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
             // Track bubble creation
             analyticsService.trackBubbleCreate(result.bubbleId, 1);
             // Store bubbleId for future reference
-            localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+            sessionBubble.set(userId, result.bubbleId);
             currentBubbleIdRef.current = result.bubbleId;
             
             // Wait a moment for Firestore to propagate
@@ -273,7 +274,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           if (result && result.bubbleId) {
             // Track bubble join
             analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
-            localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+            sessionBubble.set(userId, result.bubbleId);
             currentBubbleIdRef.current = result.bubbleId;
             
             // Wait a moment for Firestore to propagate the changes
@@ -354,7 +355,11 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         alert(`Failed to ensure user document: ${error.message}`);
       });
     } else if (userId) {
-      // Normal bubble loading if not creating a new one and user is authenticated
+      const pendingJoin = localStorage.getItem('familyBubble_pendingJoin');
+      if (pendingJoin && !initialJoinToken) {
+        setLoading(true);
+        return;
+      }
       setLoading(true);
       loadBubble();
     } else {
@@ -454,7 +459,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       const result = await API.joinBubble(inviteCode, userName, null, 'Family Member', userId);
       if (result?.bubbleId) {
         analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
-        localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+        sessionBubble.set(userId, result.bubbleId);
         localStorage.removeItem('familyBubble_pendingJoin');
         currentBubbleIdRef.current = result.bubbleId;
         if (onJoinProcessed) onJoinProcessed();

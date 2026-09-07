@@ -9,6 +9,7 @@ import WelcomeWalkthrough from './components/auth/WelcomeWalkthrough';
 import CustomPaywall from './components/paywall/CustomPaywall';
 import { Purchases, LogLevel } from '@revenuecat/purchases-js';
 import { analyticsService } from './services/analytics';
+import { sessionBubble } from './services/bubble';
 
 const PENDING_JOIN_KEY = 'familyBubble_pendingJoin';
 
@@ -205,6 +206,7 @@ export default function FamilyBubbleApp() {
 
   const handleLogout = () => {
     analyticsService.trackLogout();
+    sessionBubble.clear();
     auth.signOut().then(async () => {
       if (Purchases.isConfigured()) {
         try {
@@ -352,21 +354,16 @@ export default function FamilyBubbleApp() {
                   onComplete={async (joinData) => {
                     try {
                       // Create user account first
+                      persistPendingJoin(joinData.inviteToken);
                       const { email, password } = joinData;
                       if (email && password) {
                         await createUserWithEmailAndPassword(auth, email, password);
-                        // Track sign up
                         analyticsService.trackSignUp('email');
-                        // User will be automatically set via onAuthStateChanged
-                        // Store join data to process after authentication
                         setJoinToken(joinData);
-                        // The auth state change will handle switching to main view
                       } else {
-                        // Fallback if no email/password (shouldn't happen in new flow)
                         setJoinToken(joinData);
-                      setView('main');
+                        setView('main');
                       }
-                      persistPendingJoin(joinData.inviteToken);
                     } catch (error) {
                       console.error("Error creating account:", error);
                       analyticsService.trackError('signup_error', error.message);
