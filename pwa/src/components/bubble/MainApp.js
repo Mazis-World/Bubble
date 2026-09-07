@@ -12,6 +12,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const [showStatus, setShowStatus] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [inviteToken, setInviteToken] = useState('');
   const [manualInviteCode, setManualInviteCode] = useState('');
   const [joiningManual, setJoiningManual] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
