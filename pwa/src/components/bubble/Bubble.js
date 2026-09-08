@@ -174,7 +174,6 @@ const Bubble = ({
                 <span className="hidden sm:inline">Map</span>
               </button>
             </div>
-          )}
           <button
             onClick={() => {
               setShowSettings(true);
