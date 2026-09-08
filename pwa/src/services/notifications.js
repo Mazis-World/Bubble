@@ -1,14 +1,21 @@
 /**
- * Browser Notification Service
- * Handles browser notifications for status updates and other events
+ * Notification service: system-tray push via the service worker when possible,
+ * with a page Notification fallback. FCM delivers alerts when the app is closed.
  */
+
+import { mergeFcmTokens } from './pushPayload';
+
+const PUSH_SW_URL = '/firebase-messaging-sw.js';
 
 class NotificationService {
   constructor() {
     this.permission = null;
     this.preferences = this.loadPreferences();
-    this.previousMemberStates = new Map(); // Track previous states to detect changes
+    this.previousMemberStates = new Map();
     this.isInitialized = false;
+    this.pushRegistration = null;
+    this.fcmToken = null;
+    this.foregroundUnsub = null;
   }
 
   /**
@@ -36,6 +43,12 @@ class NotificationService {
     return true;
   }
 
+  canUseServiceWorkerNotifications() {
+    return typeof navigator !== 'undefined'
+      && !!navigator.serviceWorker
+      && typeof navigator.serviceWorker.register === 'function';
+  }
+
   /**
    * Request notification permission from the user
    */
@@ -44,20 +57,23 @@ class NotificationService {
       throw new Error('This browser does not support notifications');
     }
 
-    if (this.permission === 'granted') {
+    if (Notification.permission === 'granted') {
+      this.permission = 'granted';
+      await this.enablePush();
       return true;
     }
 
-    if (this.permission === 'denied') {
+    if (Notification.permission === 'denied') {
+      this.permission = 'denied';
       throw new Error('Notification permission was denied. Please enable it in your browser settings.');
     }
 
     try {
       const permission = await Notification.requestPermission();
       this.permission = permission;
-      
+
       if (permission === 'granted') {
-        // Show a welcome notification
+        await this.enablePush();
         this.show('Notifications enabled!', {
           body: 'You\'ll now receive notifications for status updates and other important events.',
           icon: '/favicon.svg',
@@ -66,7 +82,7 @@ class NotificationService {
         });
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error requesting notification permission:', error);
@@ -78,11 +94,61 @@ class NotificationService {
    * Check if notifications are enabled
    */
   isEnabled() {
-    return this.permission === 'granted' && this.preferences.enabled;
+    return this.getPermission() === 'granted' && this.preferences.enabled;
+  }
+
+  async getPushRegistration() {
+    if (!this.canUseServiceWorkerNotifications()) return null;
+    if (this.pushRegistration) return this.pushRegistration;
+    try {
+      const existing = await navigator.serviceWorker.getRegistration(PUSH_SW_URL);
+      if (existing) {
+        this.pushRegistration = existing;
+        return existing;
+      }
+      this.pushRegistration = await navigator.serviceWorker.register(PUSH_SW_URL, { scope: '/' });
+      return this.pushRegistration;
+    } catch (error) {
+      console.warn('Push service worker registration failed:', error);
+      return null;
+    }
+  }
+
+  async showViaPush(title, options) {
+    const registration = await this.getPushRegistration();
+    if (!registration || typeof registration.showNotification !== 'function') {
+      return null;
+    }
+    await registration.showNotification(title, options);
+    return { via: 'push', title, options };
+  }
+
+  showViaPage(title, options, onClick) {
+    const notification = new Notification(title, options);
+
+    notification.onclick = (event) => {
+      event.preventDefault();
+      try {
+        window.focus();
+      } catch (error) {
+        // Some environments (tests / embedded webviews) do not implement focus.
+      }
+      notification.close();
+      onClick?.();
+    };
+
+    if (!options.requireInteraction) {
+      setTimeout(() => {
+        notification.close();
+      }, 5000);
+    }
+
+    return notification;
   }
 
   /**
-   * Show a notification
+   * Show a notification. Prefers the Push API (service worker) so Android/iOS
+   * treat it as a system notification instead of an in-page toast.
    */
   show(title, options = {}) {
     if (!options.force && !this.isEnabled()) {
@@ -103,28 +169,13 @@ class NotificationService {
     };
 
     try {
-      const notification = new Notification(title, defaultOptions);
-
-      // Handle notification click
-      notification.onclick = (event) => {
-        event.preventDefault();
-        try {
-          window.focus();
-        } catch (error) {
-          // Some environments (tests / embedded webviews) do not implement focus.
-        }
-        notification.close();
-        onClick?.();
-      };
-
-      // Auto-close after 5 seconds if not requireInteraction
-      if (!defaultOptions.requireInteraction) {
-        setTimeout(() => {
-          notification.close();
-        }, 5000);
+      if (this.canUseServiceWorkerNotifications()) {
+        return this.showViaPush(title, defaultOptions).catch((error) => {
+          console.error('Error showing push notification:', error);
+          return this.showViaPage(title, defaultOptions, onClick);
+        });
       }
-
-      return notification;
+      return this.showViaPage(title, defaultOptions, onClick);
     } catch (error) {
       console.error('Error showing notification:', error);
       return null;
@@ -142,7 +193,7 @@ class NotificationService {
     const memberName = member.name || 'A family member';
     const status = member.status || '😊';
     const statusText = member.statusText || '';
-    
+
     let title = `${memberName} updated their status`;
     let body = statusText || `New status: ${status}`;
 
@@ -156,8 +207,8 @@ class NotificationService {
         tag: `status-${member.id}`,
         requireInteraction: true,
         badge: '/favicon-32x32.png',
+        data: { type: 'status', url: '/', tag: `status-${member.id}` },
         onClick: () => {
-          // Focus the app window
           window.focus();
         }
       });
@@ -173,7 +224,8 @@ class NotificationService {
       icon: member.photoURL || '/favicon.svg',
       tag: `status-${member.id}`,
       requireInteraction: false,
-      badge: '/favicon-32x32.png'
+      badge: '/favicon-32x32.png',
+      data: { type: 'status', url: '/', tag: `status-${member.id}` },
     });
   }
 
@@ -191,7 +243,8 @@ class NotificationService {
       icon: member.photoURL || '/favicon.svg',
       tag: `member-${member.id}`,
       requireInteraction: false,
-      badge: '/favicon-32x32.png'
+      badge: '/favicon-32x32.png',
+      data: { type: 'member', url: '/', tag: `member-${member.id}` },
     });
   }
 
@@ -208,19 +261,27 @@ class NotificationService {
     }
 
     const memberName = member?.name || 'A family member';
+    const sosId = sos?.sosId;
+    const bubbleId = sos?.bubbleId;
+    const url = sosId && bubbleId
+      ? `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`
+      : '/';
 
     return this.show('🚨 SOS ALERT', {
       body: `${memberName} has activated an SOS alert.\n\nTap to view their location.`,
       icon: member?.photoUrl || member?.photoURL || '/favicon.svg',
-      tag: `sos-${sos?.sosId || member?.id || 'alert'}`,
+      tag: `sos-${sosId || member?.id || 'alert'}`,
       requireInteraction: true,
       force: true,
       silent: false,
       vibrate: [400, 150, 400, 150, 400],
       badge: '/favicon-32x32.png',
       data: {
-        sosId: sos?.sosId,
-        bubbleId: sos?.bubbleId,
+        type: 'sos',
+        sosId,
+        bubbleId,
+        url,
+        tag: `sos-${sosId || member?.id || 'alert'}`,
       },
       onClick: () => {
         try {
@@ -228,8 +289,7 @@ class NotificationService {
         } catch (error) {
           // Some environments (tests / embedded webviews) do not implement focus.
         }
-        if (sos?.sosId && sos?.bubbleId) {
-          const url = `/?sos=${encodeURIComponent(sos.sosId)}&bubble=${encodeURIComponent(sos.bubbleId)}`;
+        if (sosId && bubbleId) {
           window.history.replaceState({}, document.title, url);
         }
         onOpen?.();
@@ -250,7 +310,8 @@ class NotificationService {
       icon: member.photoURL || '/favicon.svg',
       tag: `location-${member.id}`,
       requireInteraction: false,
-      badge: '/favicon-32x32.png'
+      badge: '/favicon-32x32.png',
+      data: { type: 'location', url: '/', tag: `location-${member.id}` },
     });
   }
 
@@ -272,6 +333,85 @@ class NotificationService {
    */
   clearTrackedStates() {
     this.previousMemberStates.clear();
+  }
+
+  /**
+   * Register the messaging SW, subscribe to FCM, and save the token.
+   */
+  async enablePush(userId) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      return null;
+    }
+    if (!this.canUseServiceWorkerNotifications()) return null;
+
+    const registration = await this.getPushRegistration();
+    if (!registration) return null;
+
+    try {
+      const { getMessaging, getToken, isSupported, onMessage } = await import('firebase/messaging');
+      const { app } = await import('../firebase');
+      const supported = await isSupported();
+      if (!supported) return null;
+
+      const messaging = getMessaging(app);
+      const vapidKey = process.env.REACT_APP_FIREBASE_VAPID_KEY;
+      const token = await getToken(messaging, {
+        serviceWorkerRegistration: registration,
+        ...(vapidKey ? { vapidKey } : {}),
+      });
+      this.fcmToken = token || null;
+
+      if (token) {
+        await this.persistFcmToken(userId, token);
+      }
+
+      if (!this.foregroundUnsub) {
+        this.foregroundUnsub = onMessage(messaging, (payload) => {
+          if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+            return;
+          }
+          const data = payload?.data || {};
+          const title = data.title || payload?.notification?.title || 'FamilyBubble';
+          this.show(title, {
+            body: data.body || payload?.notification?.body || '',
+            tag: data.tag || 'familybubble',
+            requireInteraction: data.type === 'sos',
+            force: data.type === 'sos',
+            data,
+          });
+        });
+      }
+
+      return token;
+    } catch (error) {
+      console.warn('FCM token registration failed:', error);
+      return null;
+    }
+  }
+
+  async persistFcmToken(userId, token) {
+    const uid = userId || (await this.currentUserId());
+    if (!uid || !token) return;
+    try {
+      const { doc, getDoc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      const userRef = doc(db, 'users', uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+      const next = mergeFcmTokens(snap.data()?.fcmTokens, token);
+      await updateDoc(userRef, { fcmTokens: next });
+    } catch (error) {
+      console.warn('Could not save FCM token:', error);
+    }
+  }
+
+  async currentUserId() {
+    try {
+      const { auth } = await import('../firebase');
+      return auth.currentUser?.uid || null;
+    } catch (error) {
+      return null;
+    }
   }
 
   /**
@@ -325,7 +465,8 @@ class NotificationService {
     if (!('Notification' in window)) {
       return 'unsupported';
     }
-    return Notification.permission;
+    this.permission = Notification.permission;
+    return this.permission;
   }
 }
 

@@ -155,6 +155,14 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   }, []);
 
   useEffect(() => {
+    if (!userId) return undefined;
+    notificationService.enablePush(userId).catch((error) => {
+      console.warn('Push registration skipped:', error?.message || error);
+    });
+    return undefined;
+  }, [userId]);
+
+  useEffect(() => {
     // If bubbleCreationData exists, it means the user just completed the create bubble flow
     if (bubbleCreationData && userId) {
       setLoading(true);

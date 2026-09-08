@@ -88,7 +88,7 @@ const NotificationSettings = () => {
               <Bell size={20} className="text-yellow-400" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-white">Enable notifications</p>
-                <p className="text-xs text-gray-400">Get notified about status updates and important events</p>
+                <p className="text-xs text-gray-400">Get lock-screen alerts for status updates and SOS, even when the app is closed</p>
               </div>
             </div>
             <button
@@ -115,8 +115,8 @@ const NotificationSettings = () => {
           <div className="flex items-center gap-3 text-emerald-400">
             <Check size={20} />
             <div className="flex-1">
-              <p className="text-sm font-medium">Notifications enabled</p>
-              <p className="text-xs text-gray-400">You'll receive notifications for important events</p>
+              <p className="text-sm font-medium">Push notifications enabled</p>
+              <p className="text-xs text-gray-400">You'll get system alerts even when FamilyBubble is closed</p>
             </div>
           </div>
         )}

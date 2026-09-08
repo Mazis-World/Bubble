@@ -78,6 +78,20 @@ export default function FamilyBubbleApp() {
     if (fromUrl || sosId) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
+
+    if (!('serviceWorker' in navigator)) return undefined;
+    const onPushClick = (event) => {
+      if (event.data?.type !== 'NOTIFICATION_CLICK') return;
+      const clickUrl = event.data.url || '';
+      const params = new URLSearchParams(clickUrl.split('?')[1] || '');
+      const clickSos = params.get('sos');
+      const clickBubble = params.get('bubble');
+      if (clickSos && clickBubble) {
+        persistPendingSos({ sosId: clickSos, bubbleId: clickBubble });
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', onPushClick);
+    return () => navigator.serviceWorker.removeEventListener('message', onPushClick);
   }, [persistPendingJoin, persistPendingSos]);
   
   // Logged-out users go through the join wizard. Logged-in users with an
