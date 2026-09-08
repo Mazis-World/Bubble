@@ -13,6 +13,7 @@ import FamilyMemo from '../models/FamilyMemo';
 export const MEMO_TYPE = {
   STATUS: 'status',
   SOS: 'sos',
+  CHECKIN: 'checkin',
 };
 
 const MEMO_LIMIT = 50;
@@ -30,7 +31,7 @@ export const canViewMemos = ({ isBubbleMember }) => isBubbleMember === true;
 export const canCreateMemo = ({ authUid, userId, isBubbleMember, type }) => {
   if (!authUid || authUid !== userId) return false;
   if (!isBubbleMember) return false;
-  return type === MEMO_TYPE.STATUS || type === MEMO_TYPE.SOS;
+  return type === MEMO_TYPE.STATUS || type === MEMO_TYPE.SOS || type === MEMO_TYPE.CHECKIN;
 };
 
 export const formatMemberLocation = (location) => {

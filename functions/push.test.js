@@ -31,6 +31,17 @@ describe('push helpers', () => {
     );
   });
 
+  it('builds a check-in payload without an SOS deep link', () => {
+    const payload = buildMemoPush(
+      { type: 'checkin', userId: 'user-2', message: 'Checked in' },
+      'bubble-1'
+    );
+    assert.equal(payload.data.type, 'checkin');
+    assert.equal(payload.body, 'Checked in');
+    assert.equal(payload.data.url, '/');
+    assert.equal(payload.data.tag, 'checkin-user-2');
+  });
+
   it('builds a data-only SOS payload with a deep link', () => {
     const payload = buildMemoPush(
       { type: 'sos', userId: 'user-2', sosId: 'sos-1', message: 'SOS – I need help' },

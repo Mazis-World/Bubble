@@ -185,6 +185,13 @@ class AnalyticsService {
     });
   }
 
+  trackCheckIn(bubbleId, hasLocation = true) {
+    this.logEvent('check_in', {
+      bubble_id: bubbleId,
+      has_location: hasLocation,
+    });
+  }
+
   /**
    * Track profile update
    */

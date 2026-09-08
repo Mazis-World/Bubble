@@ -36,6 +36,18 @@ describe('push payload helpers', () => {
     expect(payload.data.tag).toBe('status-user-2');
   });
 
+  test('check-in memos use a check-in tag without an SOS deep link', () => {
+    const payload = buildMemoPush({
+      type: 'checkin',
+      userId: 'user-2',
+      message: 'Checked in',
+    }, 'bubble-1');
+    expect(payload.data.type).toBe('checkin');
+    expect(payload.body).toBe('Checked in');
+    expect(payload.data.url).toBe('/');
+    expect(payload.data.tag).toBe('checkin-user-2');
+  });
+
   test('SOS memos deep-link to the alert', () => {
     const payload = buildMemoPush({
       type: 'sos',

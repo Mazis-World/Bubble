@@ -23,21 +23,26 @@ const tokensFromUserData = (data) => {
 
 const buildMemoPush = (memo, bubbleId) => {
   const isSos = memo && memo.type === 'sos';
+  const isCheckin = memo && memo.type === 'checkin';
   const title = isSos ? '🚨 SOS ALERT' : 'FamilyBubble';
   const body = (memo && memo.message)
-    || (isSos ? 'A family member needs help' : 'A family member updated their status');
+    || (isSos ? 'A family member needs help' : isCheckin ? 'A family member checked in' : 'A family member updated their status');
   const sosId = (memo && memo.sosId) || '';
   const url = isSos && sosId
     ? `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`
     : '/';
-  const tag = isSos ? `sos-${sosId || 'alert'}` : `status-${(memo && memo.userId) || 'update'}`;
+  const tag = isSos
+    ? `sos-${sosId || 'alert'}`
+    : isCheckin
+      ? `checkin-${(memo && memo.userId) || 'update'}`
+      : `status-${(memo && memo.userId) || 'update'}`;
   return {
     title,
     body,
     data: {
       title,
       body,
-      type: isSos ? 'sos' : 'status',
+      type: isSos ? 'sos' : isCheckin ? 'checkin' : 'status',
       bubbleId: String(bubbleId || ''),
       sosId: String(sosId),
       url,

@@ -21,6 +21,7 @@ import BubbleNode from '../models/BubbleNode';
 import BubbleEdge from '../models/BubbleEdge';
 import User from '../models/User';
 import { MEMO_TYPE, createFamilyMemo } from './memos';
+import { buildCheckInMemo } from './checkin';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -1068,6 +1069,33 @@ export const API = {
 
     console.log("Location updated successfully");
     return { success: true };
+  },
+
+  /**
+   * Check in: drop the member's live GPS on the map and post a family memo.
+   * Does not change their status emoji.
+   */
+  checkIn: async (bubbleId, nodeId, location) => {
+    if (!location || location.latitude == null || location.longitude == null) {
+      throw new Error('Location is required to check in.');
+    }
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      throw new Error('You must be signed in to check in.');
+    }
+
+    await API.updateLocation(bubbleId, nodeId, location);
+    const memo = buildCheckInMemo({ location });
+    await createFamilyMemo({
+      bubbleId,
+      userId: uid,
+      nodeId,
+      type: memo.type,
+      status: memo.status,
+      message: memo.message,
+      location,
+    });
+    return { success: true, location };
   },
   
   leaveBubble: async (bubbleId, nodeId, userId) => {

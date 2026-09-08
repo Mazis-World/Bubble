@@ -3,6 +3,7 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
+import MapViewBadges from './MapViewBadges';
 
 // Create amazing glass-like bubbles that pop off the globe
 const createFloatingHead = (member, size) => {
@@ -325,7 +326,16 @@ const animateFloatingHeads = (globe) => {
   });
 };
 
-const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, onMemosClick, memoCount = 0, focusTarget = null }) => {
+const GlobeView = ({
+  bubbleData,
+  onMemberClick,
+  onMemberCountClick,
+  onMemosClick,
+  onCheckIn,
+  checkInState = 'idle',
+  memoCount = 0,
+  focusTarget = null,
+}) => {
   const globeEl = useRef();
   const containerRef = useRef();
   const [points, setPoints] = useState([]);
@@ -504,39 +514,15 @@ const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, onMemosClick
     );
   }
 
-  const memberCount = bubbleData.allMembers.length;
-  const memberCountLabel = `${memberCount} ${memberCount === 1 ? 'Member' : 'Members'}`;
-  const memoCountLabel = `${memoCount} ${memoCount === 1 ? 'Memo' : 'Memos'}`;
-  const mapBadgeClass =
-    'bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 shadow-xl tap-target';
-
-  const membersBadge = onMemberCountClick && (
-    <button
-      type="button"
-      onClick={onMemberCountClick}
-      className={`absolute top-4 left-4 z-10 ${mapBadgeClass}`}
-      aria-label={`${memberCountLabel}. Open members`}
-    >
-      <p className="text-white text-sm font-semibold">🌍 {memberCountLabel}</p>
-    </button>
-  );
-
-  const memosBadge = onMemosClick && (
-    <button
-      type="button"
-      onClick={onMemosClick}
-      className={`absolute top-4 right-4 z-10 ${mapBadgeClass}`}
-      aria-label={`${memoCountLabel}. Open family memos`}
-    >
-      <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
-    </button>
-  );
-
   const mapBadges = (
-    <>
-      {membersBadge}
-      {memosBadge}
-    </>
+    <MapViewBadges
+      memberCount={bubbleData.allMembers.length}
+      memoCount={memoCount}
+      onMemberCountClick={onMemberCountClick}
+      onMemosClick={onMemosClick}
+      onCheckIn={onCheckIn}
+      checkInState={checkInState}
+    />
   );
 
   // If no members have locations yet, show a message

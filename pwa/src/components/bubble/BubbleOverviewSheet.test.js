@@ -37,4 +37,20 @@ describe('Bubble overview sheets', () => {
     expect(screen.getByText('At school')).toBeTruthy();
     expect(screen.queryByText('1 Member')).toBeNull();
   });
+
+  test('check-in memos use the location pin instead of a status emoji', () => {
+    render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={[
+          { memoId: 'm2', userId: 'u1', nodeId: 'n1', type: 'checkin', status: '📍', message: 'Checked in' },
+        ]}
+        bubbleName="Home"
+        onMemoClick={() => {}}
+      />
+    );
+    expect(screen.getByText(/📍 Checked in/)).toBeTruthy();
+    expect(screen.getByText('Checked in')).toBeTruthy();
+  });
 });

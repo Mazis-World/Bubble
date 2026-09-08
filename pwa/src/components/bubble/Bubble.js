@@ -18,8 +18,11 @@ import BubbleOverviewSheet from './BubbleOverviewSheet';
 import { Circle, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
+import { auth } from '../../firebase';
+import { API } from '../../services/bubble';
 import useFamilyMemos from '../../hooks/useFamilyMemos';
 import { MEMO_TYPE } from '../../services/memos';
+import { canCheckIn, readCurrentPosition } from '../../services/checkin';
 
 const Bubble = ({
   bubbleData,
@@ -51,6 +54,7 @@ const Bubble = ({
   const [showOverview, setShowOverview] = useState(false);
   const [showMemos, setShowMemos] = useState(false);
   const [mapFocus, setMapFocus] = useState(null);
+  const [checkInState, setCheckInState] = useState('idle');
   const openSosIds = useMemo(
     () => (sos?.openEvents || []).map((event) => event.sosId),
     [sos?.openEvents]
@@ -97,6 +101,42 @@ const Bubble = ({
     } catch (error) {
       console.error('Error copying to clipboard:', error);
       alert('Failed to share. Please copy the code manually.');
+    }
+  };
+
+  const handleCheckIn = async () => {
+    const bubbleId = bubbleData?.bubble?.id;
+    const nodeId = bubbleData?.currentMember?.id;
+    const uid = auth.currentUser?.uid;
+    if (
+      checkInState === 'busy'
+      || !bubbleId
+      || !nodeId
+      || !canCheckIn({ authUid: uid, userId: uid, isBubbleMember: true })
+    ) {
+      return;
+    }
+
+    setCheckInState('busy');
+    try {
+      const location = await readCurrentPosition();
+      await API.checkIn(bubbleId, nodeId, location);
+      analyticsService.trackCheckIn(bubbleId, true);
+      setMapFocus({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+      setCheckInState('done');
+      window.setTimeout(() => {
+        setCheckInState((current) => (current === 'done' ? 'idle' : current));
+      }, 2500);
+    } catch (error) {
+      console.error('Check-in failed:', error);
+      analyticsService.trackCheckIn(bubbleId, false);
+      setCheckInState('error');
+      window.setTimeout(() => {
+        setCheckInState((current) => (current === 'error' ? 'idle' : current));
+      }, 3000);
     }
   };
 
@@ -195,6 +235,8 @@ const Bubble = ({
             focusTarget={mapFocus}
             onMemberCountClick={() => setShowOverview(true)}
             onMemosClick={() => setShowMemos(true)}
+            onCheckIn={handleCheckIn}
+            checkInState={checkInState}
             memoCount={familyMemos.length}
             onMemberClick={(member) => {
               setSelectedMember(member);

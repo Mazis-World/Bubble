@@ -47,6 +47,12 @@ describe('Family Memos', () => {
       isBubbleMember: false,
       type: MEMO_TYPE.STATUS,
     })).toBe(false);
+    expect(canCreateMemo({
+      authUid: 'user-1',
+      userId: 'user-1',
+      isBubbleMember: true,
+      type: MEMO_TYPE.CHECKIN,
+    })).toBe(true);
   });
 
   test('sorts newest first and pins active SOS memos', () => {
@@ -72,6 +78,11 @@ describe('SOS sound gating', () => {
       viewerUid: 'user-2',
       sosUserId: 'user-1',
       memoType: MEMO_TYPE.STATUS,
+    })).toBe(false);
+    expect(shouldPlaySosSound({
+      viewerUid: 'user-2',
+      sosUserId: 'user-1',
+      memoType: MEMO_TYPE.CHECKIN,
     })).toBe(false);
   });
 

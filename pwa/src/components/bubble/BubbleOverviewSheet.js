@@ -43,6 +43,13 @@ const MemberRow = ({ member, onClick }) => (
 
 const MemoRow = ({ memo, member, onClick }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
+  const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
+  const title = isSos
+    ? '🚨 SOS ALERT'
+    : isCheckin
+      ? '📍 Checked in'
+      : getStatusEmoji(memo.status);
+  const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : 'Updated status';
   return (
     <button
       type="button"
@@ -55,11 +62,11 @@ const MemoRow = ({ memo, member, onClick }) => {
         <MemberAvatar member={member} size={40} />
         <div className="min-w-0 flex-1">
           <p className={`font-bold ${isSos ? 'text-red-200' : 'text-white'}`}>
-            {isSos ? '🚨 SOS ALERT' : getStatusEmoji(memo.status)}{' '}
+            {title}{' '}
             {member?.name || 'Family member'}
           </p>
           <p className={`text-sm ${isSos ? 'text-red-100' : 'text-gray-300'}`}>
-            {memo.message || (isSos ? 'Needs assistance' : 'Updated status')}
+            {memo.message || fallbackMessage}
           </p>
           <p className="text-xs text-gray-400 mt-1">{formatLastSeen(memo.createdAt)}</p>
         </div>

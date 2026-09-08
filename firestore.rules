@@ -205,7 +205,7 @@ service cloud.firestore {
 
       // ============================================================================
       // FAMILY MEMOS Subcollection
-      // Status and SOS board for this bubble only. Membership is server-checked.
+      // Status, SOS, and check-in board for this bubble only. Membership is server-checked.
       // ============================================================================
       match /memos/{memoId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
@@ -213,7 +213,7 @@ service cloud.firestore {
         allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.bubbleId == bubbleId &&
-                       request.resource.data.type in ['status', 'sos'] &&
+                       request.resource.data.type in ['status', 'sos', 'checkin'] &&
                        request.resource.data.userId is string;
 
         allow update, delete: if false;
