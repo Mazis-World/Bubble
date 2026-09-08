@@ -24,6 +24,7 @@ const ProfileEditForm = ({ member, bubbleId, onSave }) => {
   const [role, setRole] = useState('');
   const [customRole, setCustomRole] = useState('');
   const [quote, setQuote] = useState('');
+  const [phone, setPhone] = useState('');
 
   useEffect(() => {
     if (member) {
@@ -39,6 +40,7 @@ const ProfileEditForm = ({ member, bubbleId, onSave }) => {
         setCustomRole('');
       }
       setQuote(member.quote || '');
+      setPhone(member.phone || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [member]); // relationshipOptions is a constant defined outside component, no need to include
@@ -53,6 +55,7 @@ const ProfileEditForm = ({ member, bubbleId, onSave }) => {
       name: name.trim(),
       role: (role === 'Custom' ? customRole : role).trim() || 'Family Member',
       quote: quote.trim() || null,
+      phone: phone.trim() || null,
     });
   };
 
@@ -92,6 +95,19 @@ const ProfileEditForm = ({ member, bubbleId, onSave }) => {
             className="w-full mt-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
         )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide">
+          Phone (optional)
+        </label>
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="For family SOS call button"
+          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+        />
       </div>
 
       <div>

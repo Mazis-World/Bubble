@@ -85,17 +85,21 @@ class NotificationService {
    * Show a notification
    */
   show(title, options = {}) {
-    if (!this.isEnabled()) {
+    if (!options.force && !this.isEnabled()) {
+      return null;
+    }
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
       return null;
     }
 
+    const { onClick, force, ...rest } = options;
     const defaultOptions = {
       icon: '/favicon.svg',
       badge: '/favicon-32x32.png',
       tag: 'default',
       requireInteraction: false,
       silent: false,
-      ...options
+      ...rest
     };
 
     try {
@@ -106,11 +110,7 @@ class NotificationService {
         event.preventDefault();
         window.focus();
         notification.close();
-
-        // Handle custom click action
-        if (options.onClick) {
-          options.onClick();
-        }
+        onClick?.();
       };
 
       // Auto-close after 5 seconds if not requireInteraction
@@ -192,6 +192,41 @@ class NotificationService {
   }
 
   /**
+   * Show notification for an SOS from another bubble member.
+   * SOS alerts are not gated behind status-update preferences.
+   */
+  notifySosAlert(member, sos, onOpen) {
+    if (this.preferences.sosAlerts === false) {
+      return null;
+    }
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      return null;
+    }
+
+    const memberName = member?.name || 'A family member';
+
+    return this.show('🚨 SOS ALERT', {
+      body: `${memberName} has activated an SOS alert.\n\nTap to view their location.`,
+      icon: member?.photoUrl || member?.photoURL || '/favicon.svg',
+      tag: `sos-${sos?.sosId || member?.id || 'alert'}`,
+      requireInteraction: true,
+      force: true,
+      badge: '/favicon-32x32.png',
+      data: {
+        sosId: sos?.sosId,
+        bubbleId: sos?.bubbleId,
+      },
+      onClick: () => {
+        window.focus();
+        if (sos?.sosId && sos?.bubbleId) {
+          const url = `/?sos=${encodeURIComponent(sos.sosId)}&bubble=${encodeURIComponent(sos.bubbleId)}`;
+          window.history.replaceState({}, document.title, url);
+        }
+        onOpen?.();
+      },
+    });
+  }
+  /**
    * Show notification for location update
    */
   notifyLocationUpdate(member) {
@@ -247,7 +282,8 @@ class NotificationService {
       enabled: true,
       statusUpdates: true,
       newMembers: true,
-      locationUpdates: false, // Off by default to avoid spam
+      locationUpdates: false,
+      sosAlerts: true,
     };
   }
 

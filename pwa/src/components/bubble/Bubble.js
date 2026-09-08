@@ -8,6 +8,12 @@ import ProfileEditForm from '../ui/ProfileEditForm';
 import EmojiPicker from '../ui/EmojiPicker';
 import LocationStep from '../ui/LocationStep';
 import NotificationSettings from '../ui/NotificationSettings';
+import SosButton from '../sos/SosButton';
+import SosConfirmOverlay from '../sos/SosConfirmOverlay';
+import SosActiveScreen from '../sos/SosActiveScreen';
+import SosAlertScreen from '../sos/SosAlertScreen';
+import SosPermissionSheet from '../sos/SosPermissionSheet';
+import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
 import { Circle, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
@@ -27,6 +33,7 @@ const Bubble = ({
   handleProfileUpdate,
   onLogout,
   isGeneratingInvite = false,
+  sos = null,
 }) => {
   const [shareSuccess, setShareSuccess] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -197,7 +204,13 @@ const Bubble = ({
       <div className="p-4 sm:p-6 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 
         paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
       }}>
-        <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl">
+        <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl space-y-3">
+          {sos && (
+            <SosButton
+              onHoldComplete={sos.handleHoldComplete}
+              disabled={sos.busy || sos.sosActive}
+            />
+          )}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
               onClick={() => setShowStatus(true)}
@@ -447,6 +460,9 @@ const Bubble = ({
         {/* Notification Settings */}
         <NotificationSettings />
         
+        <div className="my-6 border-t border-gray-800" />
+        <EmergencyNumberSettings />
+        
         <div className="border-t border-gray-800 mt-6" />
         <div className="space-y-3 mt-6">
           <button
@@ -497,6 +513,43 @@ const Bubble = ({
           }}
         />
       </SlideUpCard>
+
+      {sos && (
+        <>
+          <SosConfirmOverlay
+            open={sos.showConfirm}
+            onConfirm={sos.activateAfterConfirm}
+            onCancel={sos.cancelConfirm}
+          />
+          <SosPermissionSheet
+            reason={sos.permissionReason}
+            enabling={sos.enablingLocation}
+            onEnable={sos.handleEnableLocation}
+            onContinueWithout={sos.continueWithoutLocation}
+            onClose={sos.closePermission}
+          />
+          {sos.showActiveScreen && (
+            <SosActiveScreen
+              sos={sos.ownOpenSos}
+              deliveryState={sos.deliveryState}
+              locationError={sos.locationError}
+              onResolve={sos.handleResolve}
+              onCancel={sos.handleCancel}
+              resolving={sos.busy}
+            />
+          )}
+          {sos.incomingSos && (
+            <SosAlertScreen
+              sos={sos.incomingSos}
+              member={sos.memberForSos(sos.incomingSos)}
+              acknowledgedByName={sos.acknowledgedByName}
+              onAcknowledge={sos.handleAcknowledge}
+              acknowledging={sos.busy}
+              onClose={sos.closeIncoming}
+            />
+          )}
+        </>
+      )}
 
     </div>
   );

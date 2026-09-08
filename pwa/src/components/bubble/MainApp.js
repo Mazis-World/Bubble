@@ -5,8 +5,9 @@ import { db } from '../../firebase';
 import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
+import useSos from '../../hooks/useSos';
 
-const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onInitiateJoin, onJoinProcessed }) => {
+const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
   const [bubbleData, setBubbleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
@@ -20,6 +21,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const currentBubbleIdRef = useRef(null);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
   const joinAttemptedRef = useRef(null);
+  const sos = useSos({ userId, bubbleData, initialSosLink: sosLink });
 
   const setupRealtimeListener = React.useCallback((bubbleId, memberId) => {
     // Clean up previous listener
@@ -416,25 +418,27 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }
   };
 
-  // Location tracking: Update location when bubble loads and periodically
+  // Location tracking: Update location when bubble loads and periodically.
+  // Live GPS watch for SOS is owned by useSos and only runs while SOS is open.
   useEffect(() => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.currentMember) {
       return;
     }
+    if (sos.sosActive) {
+      return;
+    }
 
-    // Update location immediately when bubble loads
     updateLocation();
 
-    // Update location every 15 minutes
     const locationInterval = setInterval(() => {
       updateLocation();
-    }, 15 * 60 * 1000); // 15 minutes
+    }, 15 * 60 * 1000);
 
     return () => {
       clearInterval(locationInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id]); // updateLocation intentionally excluded to prevent re-creation
+  }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id, sos.sosActive]);
 
   const joinWithInviteCode = async (rawCode) => {
     const inviteCode = (rawCode || '').trim().toUpperCase();
@@ -665,6 +669,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       handlePhotoUpdate={handlePhotoUpdate}
       handleProfileUpdate={handleProfileUpdate}
       onLogout={onLogout}
+      sos={sos}
     />
   );
 };

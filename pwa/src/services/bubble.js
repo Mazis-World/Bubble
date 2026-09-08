@@ -1011,6 +1011,7 @@ export const API = {
       name: profileData.name,
       role: profileData.role || node.role,
       quote: profileData.quote || null,
+      phone: profileData.phone || null,
       lastUpdated: serverTimestamp(),
     });
 

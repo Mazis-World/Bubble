@@ -23,6 +23,7 @@ export default function FamilyBubbleApp() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLapsedSubscriber, setIsLapsedSubscriber] = useState(false);
   const [pendingJoinToken, setPendingJoinToken] = useState(null);
+  const [pendingSosLink, setPendingSosLink] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [pendingPurchaseSuccess, setPendingPurchaseSuccess] = useState(null);
@@ -38,13 +39,19 @@ export default function FamilyBubbleApp() {
     setPendingJoinToken(token);
   }, []);
 
+  const persistPendingSos = React.useCallback((link) => {
+    if (!link) return;
+    localStorage.setItem('familyBubble_pendingSosLink', JSON.stringify(link));
+    setPendingSosLink(link);
+  }, []);
+
   const clearPendingJoin = React.useCallback(() => {
     localStorage.removeItem(PENDING_JOIN_KEY);
     setPendingJoinToken(null);
     setJoinToken(null);
   }, []);
 
-  // Handle URL parameters for join links - check on mount
+  // Handle URL parameters for join links and SOS deep links
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const fromUrl = urlParams.get('join');
@@ -53,11 +60,25 @@ export default function FamilyBubbleApp() {
 
     if (token) {
       persistPendingJoin(token);
-      if (fromUrl) {
-        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    const sosId = urlParams.get('sos');
+    const sosBubble = urlParams.get('bubble');
+    if (sosId && sosBubble) {
+      persistPendingSos({ sosId, bubbleId: sosBubble });
+    } else {
+      try {
+        const storedSos = localStorage.getItem('familyBubble_pendingSosLink');
+        if (storedSos) setPendingSosLink(JSON.parse(storedSos));
+      } catch (error) {
+        // Ignore malformed stored SOS links.
       }
     }
-  }, [persistPendingJoin]);
+
+    if (fromUrl || sosId) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [persistPendingJoin, persistPendingSos]);
   
   // Logged-out users go through the join wizard. Logged-in users with an
   // invite code skip the wizard so join still runs in MainApp.
@@ -524,6 +545,7 @@ export default function FamilyBubbleApp() {
         onInitiateCreate={onInitiateCreateCallback}
         onInitiateJoin={onInitiateJoinCallback}
         onJoinProcessed={clearPendingJoin}
+        sosLink={pendingSosLink}
       />
     </div>
   );

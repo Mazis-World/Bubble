@@ -22,6 +22,8 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: true,
+    // Native shells should request ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION.
+    // Background location is only needed if a future native SOS watch runs off-screen.
     buildOptions: {
       keystorePath: undefined,
       keystoreAlias: undefined
@@ -30,6 +32,8 @@ const config: CapacitorConfig = {
   ios: {
     scheme: 'FamilyBubble',
     contentInset: 'automatic'
+    // Native shells should include NSLocationWhenInUseUsageDescription.
+    // NSLocationAlwaysAndWhenInUseUsageDescription is only needed for background SOS GPS.
   }
 };
 
