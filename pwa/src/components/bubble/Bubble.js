@@ -49,6 +49,7 @@ const Bubble = ({
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
   const [showOverview, setShowOverview] = useState(false);
+  const [showMemos, setShowMemos] = useState(false);
   const [mapFocus, setMapFocus] = useState(null);
   const openSosIds = useMemo(
     () => (sos?.openEvents || []).map((event) => event.sosId),
@@ -193,6 +194,8 @@ const Bubble = ({
             bubbleData={bubbleData}
             focusTarget={mapFocus}
             onMemberCountClick={() => setShowOverview(true)}
+            onMemosClick={() => setShowMemos(true)}
+            memoCount={familyMemos.length}
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
@@ -531,20 +534,32 @@ const Bubble = ({
       <SlideUpCard
         isOpen={showOverview}
         onClose={() => setShowOverview(false)}
-        title={bubbleData?.bubble?.name || 'Bubble Overview'}
+        title={bubbleData?.bubble?.name || 'Members'}
       >
         <BubbleOverviewSheet
+          section="members"
           members={bubbleData.allMembers}
-          memos={familyMemos}
-          bubbleName={bubbleData?.bubble?.name}
           onMemberClick={(member) => {
             setShowOverview(false);
             setSelectedMember(member);
             setShowProfile(true);
             analyticsService.trackMemberProfileView(member.id);
           }}
+        />
+      </SlideUpCard>
+
+      <SlideUpCard
+        isOpen={showMemos}
+        onClose={() => setShowMemos(false)}
+        title="Family Memos"
+      >
+        <BubbleOverviewSheet
+          section="memos"
+          members={bubbleData.allMembers}
+          memos={familyMemos}
+          bubbleName={bubbleData?.bubble?.name}
           onMemoClick={(memo) => {
-            setShowOverview(false);
+            setShowMemos(false);
             const member = bubbleData.allMembers.find(
               (item) => item.userId === memo.userId || item.id === memo.nodeId
             );

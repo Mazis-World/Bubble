@@ -72,35 +72,20 @@ const BubbleOverviewSheet = ({
   members = [],
   memos = [],
   bubbleName,
+  section = 'members',
   onMemberClick,
   onMemoClick,
 }) => {
   const count = members.length;
 
-  return (
-    <div className="space-y-6">
-      <p className="text-gray-400 text-sm font-medium">
-        {count} {count === 1 ? 'Member' : 'Members'}
-      </p>
-
-      <div className="space-y-2">
-        {members.map((member) => (
-          <MemberRow
-            key={member.id}
-            member={member}
-            onClick={() => onMemberClick?.(member)}
-          />
-        ))}
-      </div>
-
-      <div>
-        <h4 className="text-sm font-bold text-gray-200 uppercase tracking-wide mb-3">
-          Family Memos
-        </h4>
+  if (section === 'memos') {
+    return (
+      <div className="space-y-3">
+        <p className="text-gray-400 text-sm font-medium">
+          Status updates from {bubbleName || 'your bubble'}
+        </p>
         {memos.length === 0 ? (
-          <p className="text-gray-400 text-sm">
-            Status updates from {bubbleName || 'your bubble'} will appear here.
-          </p>
+          <p className="text-gray-400 text-sm">No memos yet.</p>
         ) : (
           <div className="space-y-2">
             {memos.map((memo) => (
@@ -113,6 +98,23 @@ const BubbleOverviewSheet = ({
             ))}
           </div>
         )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-gray-400 text-sm font-medium">
+        {count} {count === 1 ? 'Member' : 'Members'}
+      </p>
+      <div className="space-y-2">
+        {members.map((member) => (
+          <MemberRow
+            key={member.id}
+            member={member}
+            onClick={() => onMemberClick?.(member)}
+          />
+        ))}
       </div>
     </div>
   );

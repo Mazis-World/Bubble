@@ -325,7 +325,7 @@ const animateFloatingHeads = (globe) => {
   });
 };
 
-const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, focusTarget = null }) => {
+const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, onMemosClick, memoCount = 0, focusTarget = null }) => {
   const globeEl = useRef();
   const containerRef = useRef();
   const [points, setPoints] = useState([]);
@@ -506,16 +506,33 @@ const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, focusTarget 
 
   const memberCount = bubbleData.allMembers.length;
   const memberCountLabel = `${memberCount} ${memberCount === 1 ? 'Member' : 'Members'}`;
+  const memoCountLabel = `${memoCount} ${memoCount === 1 ? 'Memo' : 'Memos'}`;
+  const mapBadgeClass =
+    'bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 shadow-xl tap-target';
 
-  const memberCountBadge = onMemberCountClick && (
-    <button
-      type="button"
-      onClick={onMemberCountClick}
-      className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 z-10 shadow-xl tap-target"
-      aria-label={`${memberCountLabel}. Open bubble overview`}
-    >
-      <p className="text-white text-sm font-semibold">🌍 {memberCountLabel}</p>
-    </button>
+  const mapBadges = (onMemberCountClick || onMemosClick) && (
+    <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+      {onMemberCountClick && (
+        <button
+          type="button"
+          onClick={onMemberCountClick}
+          className={mapBadgeClass}
+          aria-label={`${memberCountLabel}. Open members`}
+        >
+          <p className="text-white text-sm font-semibold">🌍 {memberCountLabel}</p>
+        </button>
+      )}
+      {onMemosClick && (
+        <button
+          type="button"
+          onClick={onMemosClick}
+          className={mapBadgeClass}
+          aria-label={`${memoCountLabel}. Open family memos`}
+        >
+          <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
+        </button>
+      )}
+    </div>
   );
 
   // If no members have locations yet, show a message
@@ -539,7 +556,7 @@ const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, focusTarget 
             </p>
           </div>
         </div>
-        {memberCountBadge}
+        {mapBadges}
       </div>
     );
   }
@@ -610,8 +627,8 @@ const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, focusTarget 
         enablePointerInteraction={true}
       />
       
-      {/* Overlay info — tappable member count opens Bubble Overview */}
-      {memberCountBadge}
+      {/* Overlay info — members and memos are separate sheets */}
+      {mapBadges}
       
       {/* Hovered member info */}
       {hoveredPoint && (
