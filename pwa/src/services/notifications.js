@@ -108,7 +108,11 @@ class NotificationService {
       // Handle notification click
       notification.onclick = (event) => {
         event.preventDefault();
-        window.focus();
+        try {
+          window.focus();
+        } catch (error) {
+          // Some environments (tests / embedded webviews) do not implement focus.
+        }
         notification.close();
         onClick?.();
       };
@@ -217,7 +221,11 @@ class NotificationService {
         bubbleId: sos?.bubbleId,
       },
       onClick: () => {
-        window.focus();
+        try {
+          window.focus();
+        } catch (error) {
+          // Some environments (tests / embedded webviews) do not implement focus.
+        }
         if (sos?.sosId && sos?.bubbleId) {
           const url = `/?sos=${encodeURIComponent(sos.sosId)}&bubble=${encodeURIComponent(sos.bubbleId)}`;
           window.history.replaceState({}, document.title, url);

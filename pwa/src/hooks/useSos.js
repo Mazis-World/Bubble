@@ -58,7 +58,7 @@ export default function useSos({ userId, bubbleData, initialSosLink = null }) {
       return openEvents.find((event) => event.sosId === focusedSosId) || ownOpenSos;
     }
     return ownOpenSos;
-  }, [openEvents, focusedSosId, userId, ownOpenSos]);
+  }, [openEvents, focusedSosId, ownOpenSos]);
 
   const memberForSos = (sos) =>
     members.find((member) => member.userId === sos?.userId || member.id === sos?.nodeId);

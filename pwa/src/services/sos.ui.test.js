@@ -32,6 +32,7 @@ describe('SOS notification delivery', () => {
     global.Notification = MockNotification;
     notificationService.permission = 'granted';
     notificationService.preferences = { enabled: true, sosAlerts: true };
+    window.focus = jest.fn();
   });
 
   afterEach(() => {

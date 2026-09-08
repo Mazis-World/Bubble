@@ -42,49 +42,58 @@ jest.mock('./bubble', () => ({
   },
 }));
 
-const mockUserSnap = { exists: () => true, data: () => ({ bubbles: ['bubble-1'] }) };
-const mockEmptySnap = { empty: true, docs: [] };
-let existingSosSnap = mockEmptySnap;
-let createdDoc = null;
-
-jest.mock('firebase/firestore', () => {
-  const actual = {};
-  return {
-    collection: jest.fn(() => 'sos-collection'),
-    doc: jest.fn((...segments) => ({ path: segments.filter(Boolean).join('/'), id: segments[segments.length - 1] })),
-    getDoc: jest.fn(async (ref) => {
-      const path = String(ref.path || ref.id || '');
-      if (path.includes('users/')) {
-        if (path.includes('users/outsider')) {
-          return { exists: () => true, data: () => ({ bubbles: ['other-bubble'] }) };
-        }
-        return mockUserSnap;
-      }
-      if (createdDoc) return createdDoc;
-      return { exists: () => false, data: () => ({}) };
-    }),
-    getDocs: jest.fn(async () => existingSosSnap),
-    addDoc: jest.fn(async (_col, data) => {
-      createdDoc = {
-        id: 'sos-new',
-        exists: () => true,
-        data: () => ({ ...data, delivered: true }),
-        ref: { id: 'sos-new' },
-      };
-      return { id: 'sos-new' };
-    }),
-    updateDoc: jest.fn(async () => undefined),
-    query: jest.fn(() => 'query'),
-    where: jest.fn(() => 'where'),
-    serverTimestamp: jest.fn(() => 'SERVER_TS'),
-    onSnapshot: jest.fn(),
-    ...actual,
-  };
-});
+jest.mock('firebase/firestore', () => ({
+  collection: jest.fn(() => 'sos-collection'),
+  doc: jest.fn((...segments) => ({ path: segments.filter(Boolean).join('/'), id: segments[segments.length - 1] })),
+  getDoc: jest.fn(),
+  getDocs: jest.fn(),
+  addDoc: jest.fn(),
+  updateDoc: jest.fn(),
+  query: jest.fn(() => 'query'),
+  where: jest.fn(() => 'where'),
+  serverTimestamp: jest.fn(() => 'SERVER_TS'),
+  onSnapshot: jest.fn(),
+}));
 
 const { auth } = require('../firebase');
 const { addDoc, getDoc, getDocs, updateDoc } = require('firebase/firestore');
 const { API } = require('./bubble');
+
+const mockFirestoreState = {
+  createdDoc: null,
+  existingSosSnap: { empty: true, docs: [] },
+};
+
+const memberSnap = { exists: () => true, data: () => ({ bubbles: ['bubble-1'] }) };
+
+beforeEach(() => {
+  mockFirestoreState.createdDoc = null;
+  mockFirestoreState.existingSosSnap = { empty: true, docs: [] };
+  auth.currentUser = { uid: 'user-1' };
+  getDoc.mockImplementation(async (ref) => {
+    const path = String(ref?.path || ref?.id || '');
+    if (auth.currentUser?.uid === 'outsider') {
+      return { exists: () => true, data: () => ({ bubbles: ['other-bubble'] }) };
+    }
+    if (path.includes('sosEvents') || path.includes('sos-')) {
+      return mockFirestoreState.createdDoc || { exists: () => false, data: () => ({}) };
+    }
+    return memberSnap;
+  });
+  getDocs.mockImplementation(async () => mockFirestoreState.existingSosSnap);
+  addDoc.mockImplementation(async (_col, data) => {
+    mockFirestoreState.createdDoc = {
+      id: 'sos-new',
+      exists: () => true,
+      data: () => ({ ...data, delivered: true }),
+      ref: { id: 'sos-new' },
+    };
+    return { id: 'sos-new' };
+  });
+  updateDoc.mockResolvedValue(undefined);
+  API.updateStatus.mockImplementation(() => Promise.resolve());
+  API.updateLocation.mockImplementation(() => Promise.resolve());
+});
 
 const activeSos = (overrides = {}) =>
   new SosEvent({
@@ -231,8 +240,8 @@ describe('SOS location freshness and GPS', () => {
 describe('offline SOS queue', () => {
   beforeEach(() => {
     localStorage.clear();
-    createdDoc = null;
-    existingSosSnap = mockEmptySnap;
+    mockFirestoreState.createdDoc = null;
+    mockFirestoreState.existingSosSnap = { empty: true, docs: [] };
     auth.currentUser = { uid: 'user-1' };
   });
 
@@ -263,8 +272,8 @@ describe('offline SOS queue', () => {
 
 describe('SOS activation against backend', () => {
   beforeEach(() => {
-    createdDoc = null;
-    existingSosSnap = mockEmptySnap;
+    mockFirestoreState.createdDoc = null;
+    mockFirestoreState.existingSosSnap = { empty: true, docs: [] };
     auth.currentUser = { uid: 'user-1' };
     addDoc.mockClear();
     updateDoc.mockClear();
@@ -285,7 +294,7 @@ describe('SOS activation against backend', () => {
   });
 
   test('reuses an existing open SOS instead of creating a second one', async () => {
-    existingSosSnap = {
+    mockFirestoreState.existingSosSnap = {
       docs: [
         {
           id: 'sos-open',
@@ -310,10 +319,6 @@ describe('SOS activation against backend', () => {
 
   test('rejects SOS when the user is not a member of the bubble', async () => {
     auth.currentUser = { uid: 'outsider' };
-    getDoc.mockImplementationOnce(async () => ({
-      exists: () => true,
-      data: () => ({ bubbles: ['other-bubble'] }),
-    }));
     await expect(
       activateSos({ bubbleId: 'bubble-1', userId: 'outsider', nodeId: 'node-x' })
     ).rejects.toThrow('You are not a member of this bubble.');
@@ -357,7 +362,7 @@ describe('SOS cancellation and resolution', () => {
 
   test('acknowledge is refused for the activator', async () => {
     getDoc
-      .mockResolvedValueOnce(mockUserSnap)
+      .mockResolvedValueOnce(memberSnap)
       .mockResolvedValueOnce({
         exists: () => true,
         ref: {},
