@@ -18,8 +18,9 @@ class BubbleNode {
      * @param {string} photoUrl - URL to the person's photo.
      * @param {string} name - The person's name.
      * @param {object} lastKnownLocation - Last known location {latitude, longitude, timestamp, accuracy}.
+     * @param {string} statusText - Optional status message shown on the member profile card.
      */
-    constructor(nodeId, userId, bubbleId, role, status, quote, tier, type, createdAt, lastUpdated, photoUrl, name, lastKnownLocation) {
+    constructor(nodeId, userId, bubbleId, role, status, quote, tier, type, createdAt, lastUpdated, photoUrl, name, lastKnownLocation, statusText = null) {
         this.nodeId = nodeId;
         this.userId = userId;
         this.bubbleId = bubbleId;
@@ -33,6 +34,7 @@ class BubbleNode {
         this.photoUrl = photoUrl;
         this.name = name;
         this.lastKnownLocation = lastKnownLocation || null;
+        this.statusText = statusText || null;
     }
 
     /**
@@ -55,6 +57,7 @@ class BubbleNode {
             // Older security rules required `fullName` on nodes.
             fullName: this.name,
             lastKnownLocation: this.lastKnownLocation || null,
+            statusText: this.statusText || null,
         };
     }
 
@@ -78,7 +81,8 @@ class BubbleNode {
             data.lastUpdated,
             data.photoUrl,
             data.name,
-            data.lastKnownLocation || null
+            data.lastKnownLocation || null,
+            data.statusText || null
         );
     }
 }

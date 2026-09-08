@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Crown, Users, Clock, MapPin } from 'lucide-react';
-import { formatLastSeen, getStatusDisplay } from '../../utils/timeUtils';
+import { formatLastSeen, getStatusDisplay, getMemberStatusText } from '../../utils/timeUtils';
 
 // Calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -20,27 +20,8 @@ const ProfileView = ({ member, isCurrentUser, onClose, onEdit, currentUserLocati
 
   const memberTier = member?.tier || (member?.type === 'owner' ? 1 : 2);
   const isOwner = memberTier === 1 || member?.type === 'owner';
-
-  const StatusIcon = ({ status }) => {
-    // Default styling for emoji statuses
-    const defaultStyle = { bg: 'bg-gray-500/10', border: 'border-gray-500/20' };
-    
-    // Check if it's a legacy text status
-    const legacyStatuses = {
-      Safe: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-      Busy: { bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-      Offline: { bg: 'bg-gray-500/10', border: 'border-gray-500/20' },
-      Help: { bg: 'bg-rose-500/10', border: 'border-rose-500/20' }
-    };
-
-    const { bg, border } = legacyStatuses[status] || defaultStyle;
-
-    return (
-      <div className={`flex items-center justify-center gap-3 px-4 py-4 rounded-xl border ${bg} ${border}`}>
-        <span className="text-4xl">{getStatusDisplay(status)}</span>
-      </div>
-    );
-  };
+  const statusEmoji = getStatusDisplay(member.status || '⚪');
+  const statusText = getMemberStatusText(member);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -78,20 +59,27 @@ const ProfileView = ({ member, isCurrentUser, onClose, onEdit, currentUserLocati
                   </div>
                 )}
               </div>
+              <div
+                className="absolute -bottom-1 -right-1 rounded-full bg-gray-950 border-2 border-white/80 shadow-xl flex items-center justify-center"
+                style={{ width: 40, height: 40 }}
+                aria-hidden="true"
+              >
+                <span className="text-xl leading-none">{statusEmoji}</span>
+              </div>
               {isOwner && (
                 <div className="absolute -top-2 -right-2 bg-purple-600 rounded-full p-1.5 shadow-lg">
                   <Crown size={16} className="text-white" />
-                </div>
-              )}
-              {isCurrentUser && (
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-blue-600 rounded-full px-3 py-1 shadow-lg">
-                  <span className="text-white text-xs font-bold">YOU</span>
                 </div>
               )}
             </div>
             
             <h3 className="text-3xl font-bold gradient-text mt-6">{member.name || 'Unknown'}</h3>
             <p className="text-gray-300 capitalize mt-1 font-medium">{member.role || 'Family Member'}</p>
+            {isCurrentUser && (
+              <div className="mt-2 bg-blue-600 rounded-full px-3 py-1 shadow-lg">
+                <span className="text-white text-xs font-bold">YOU</span>
+              </div>
+            )}
             
             {isOwner && (
               <div className="mt-2 flex items-center gap-2 text-purple-300 font-bold">
@@ -101,14 +89,20 @@ const ProfileView = ({ member, isCurrentUser, onClose, onEdit, currentUserLocati
             )}
           </div>
 
-          {/* Status */}
-          <div>
+          {/* Status is part of the profile, not a separate feed item */}
+          <div data-testid="profile-status">
             <h4 className="text-sm font-bold text-gray-200 mb-3 uppercase tracking-wide">Status</h4>
-            <div className="glass-light rounded-2xl p-4">
-              <StatusIcon status={member.status || '⚪'} />
+            <div className="glass-light rounded-2xl p-4 border border-white/10">
+              <div className="flex items-start gap-3">
+                <span className="text-4xl leading-none" aria-hidden="true">{statusEmoji}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-white font-semibold text-lg">
+                    {statusText || statusEmoji}
+                  </p>
+                </div>
+              </div>
             </div>
             
-            {/* Last Update */}
             {member.lastUpdated && (
               <div className="mt-3 flex items-center gap-2 text-gray-400 text-sm font-medium">
                 <Clock size={14} />
@@ -194,4 +188,3 @@ const ProfileView = ({ member, isCurrentUser, onClose, onEdit, currentUserLocati
 };
 
 export default ProfileView;
-

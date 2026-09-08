@@ -489,7 +489,10 @@ const Bubble = ({
       {/* Profile View Modal */}
       {showProfile && selectedMember && (
         <ProfileView
-          member={selectedMember}
+          member={
+            bubbleData?.allMembers?.find((item) => item.id === selectedMember.id)
+            || selectedMember
+          }
           isCurrentUser={selectedMember.id === bubbleData?.currentMember?.id}
           currentUserLocation={bubbleData?.currentMember?.lastKnownLocation}
           onClose={() => {
