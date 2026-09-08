@@ -510,29 +510,33 @@ const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, onMemosClick
   const mapBadgeClass =
     'bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 shadow-xl tap-target';
 
-  const mapBadges = (onMemberCountClick || onMemosClick) && (
-    <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-      {onMemberCountClick && (
-        <button
-          type="button"
-          onClick={onMemberCountClick}
-          className={mapBadgeClass}
-          aria-label={`${memberCountLabel}. Open members`}
-        >
-          <p className="text-white text-sm font-semibold">🌍 {memberCountLabel}</p>
-        </button>
-      )}
-      {onMemosClick && (
-        <button
-          type="button"
-          onClick={onMemosClick}
-          className={mapBadgeClass}
-          aria-label={`${memoCountLabel}. Open family memos`}
-        >
-          <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
-        </button>
-      )}
-    </div>
+  const membersBadge = onMemberCountClick && (
+    <button
+      type="button"
+      onClick={onMemberCountClick}
+      className={`absolute top-4 left-4 z-10 ${mapBadgeClass}`}
+      aria-label={`${memberCountLabel}. Open members`}
+    >
+      <p className="text-white text-sm font-semibold">🌍 {memberCountLabel}</p>
+    </button>
+  );
+
+  const memosBadge = onMemosClick && (
+    <button
+      type="button"
+      onClick={onMemosClick}
+      className={`absolute top-4 right-4 z-10 ${mapBadgeClass}`}
+      aria-label={`${memoCountLabel}. Open family memos`}
+    >
+      <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
+    </button>
+  );
+
+  const mapBadges = (
+    <>
+      {membersBadge}
+      {memosBadge}
+    </>
   );
 
   // If no members have locations yet, show a message
@@ -632,7 +636,7 @@ const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, onMemosClick
       
       {/* Hovered member info */}
       {hoveredPoint && (
-        <div className="absolute top-4 right-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-3 border border-gray-800/50 z-10 shadow-xl max-w-xs">
+        <div className="absolute top-20 right-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-3 border border-gray-800/50 z-10 shadow-xl max-w-xs">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">{getStatusEmoji(hoveredPoint.member.status || '⚪')}</span>
             <div>
