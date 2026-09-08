@@ -24,10 +24,10 @@ export const buildCheckInMemo = ({ location } = {}) => {
 };
 
 export const checkInButtonLabel = (state) => {
-  if (state === 'busy') return `${CHECKIN_EMOJI} Checking in…`;
-  if (state === 'done') return `✅ Checked in`;
-  if (state === 'error') return `${CHECKIN_EMOJI} Location needed`;
-  return `${CHECKIN_EMOJI} Check in`;
+  if (state === 'busy') return 'Checking in…';
+  if (state === 'done') return 'Checked in';
+  if (state === 'error') return 'Location needed';
+  return 'Check in';
 };
 
 export const readCurrentPosition = () =>

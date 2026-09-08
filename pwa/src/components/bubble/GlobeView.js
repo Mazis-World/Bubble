@@ -539,7 +539,7 @@ const GlobeView = ({
           atmosphereAltitude={0.15}
         />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-gray-900/90 backdrop-blur-sm rounded-2xl px-6 py-4 border border-gray-800 text-center max-w-md mx-4">
+          <div className="glass-strong rounded-2xl px-6 py-4 border border-white/10 text-center max-w-md mx-4">
             <p className="text-white text-lg font-semibold mb-2">🌍 Waiting for Locations</p>
             <p className="text-gray-400 text-sm">
               Family members will appear here once they update their status or enable location sharing.
@@ -622,7 +622,7 @@ const GlobeView = ({
       
       {/* Hovered member info */}
       {hoveredPoint && (
-        <div className="absolute top-20 right-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-3 border border-gray-800/50 z-10 shadow-xl max-w-xs">
+        <div className="absolute top-20 right-4 glass-strong rounded-xl px-4 py-3 border border-white/10 z-10 shadow-xl max-w-xs">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">{getStatusEmoji(hoveredPoint.member.status || '⚪')}</span>
             <div>
@@ -650,10 +650,10 @@ const GlobeView = ({
       
       {/* Controls panel */}
       {showControls && (
-        <div className="absolute bottom-4 right-4 bg-gray-900/95 backdrop-blur-xl rounded-xl p-2 border border-gray-800/50 z-10 shadow-xl flex flex-col gap-2">
+        <div className="absolute bottom-4 right-4 glass-strong rounded-xl p-2 border border-white/10 z-10 shadow-xl flex flex-col gap-2">
           <button
             onClick={() => setAutoRotate(!autoRotate)}
-            className="p-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg transition-all duration-200 text-white"
+            className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 text-white"
             title={autoRotate ? 'Pause rotation' : 'Resume rotation'}
           >
             {autoRotate ? <Pause size={18} /> : <Play size={18} />}
@@ -665,7 +665,7 @@ const GlobeView = ({
                 globeEl.current.pointOfView({ lat: latitude, lng: longitude, altitude: 2 }, 1000);
               }
             }}
-            className="p-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg transition-all duration-200 text-white"
+            className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 text-white"
             title="Reset to your location"
           >
             <RotateCcw size={18} />
@@ -676,14 +676,14 @@ const GlobeView = ({
       {/* Toggle controls button */}
       <button
         onClick={() => setShowControls(!showControls)}
-        className="absolute bottom-4 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl p-2 border border-gray-800/50 z-10 shadow-xl text-white hover:bg-gray-800/50 transition-all duration-200"
+        className="absolute bottom-4 left-4 glass-strong rounded-xl p-2 border border-white/10 z-10 shadow-xl text-white hover:bg-white/10 transition-all duration-200"
         title={showControls ? 'Hide controls' : 'Show controls'}
       >
         {showControls ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
       </button>
       
       {/* Instructions overlay */}
-      <div className="absolute bottom-20 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-3 py-2 border border-gray-800/50 z-10 shadow-xl max-w-[200px] hidden sm:block">
+      <div className="absolute bottom-20 left-4 glass-strong rounded-xl px-3 py-2 border border-white/10 z-10 shadow-xl max-w-[200px] hidden sm:block">
         <p className="text-gray-300 text-xs">
           Click a point to view profile • Drag to rotate • Scroll to zoom
         </p>

@@ -31,10 +31,10 @@ describe('check in', () => {
     }).message).toBe('Checked in · Home');
   });
 
-  test('uses the location pin on the map button', () => {
-    expect(checkInButtonLabel('idle')).toBe('📍 Check in');
-    expect(checkInButtonLabel('busy')).toBe('📍 Checking in…');
-    expect(checkInButtonLabel('done')).toBe('✅ Checked in');
-    expect(checkInButtonLabel('error')).toBe('📍 Location needed');
+  test('uses the site location pin colors on the map button label', () => {
+    expect(checkInButtonLabel('idle')).toBe('Check in');
+    expect(checkInButtonLabel('busy')).toBe('Checking in…');
+    expect(checkInButtonLabel('done')).toBe('Checked in');
+    expect(checkInButtonLabel('error')).toBe('Location needed');
   });
 });

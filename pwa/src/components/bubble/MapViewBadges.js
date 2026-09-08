@@ -1,8 +1,24 @@
 import React from 'react';
+import { Check, Loader2, MapPin } from 'lucide-react';
 import { checkInButtonLabel } from '../../services/checkin';
 
 export const MAP_BADGE_CLASS =
-  'bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 shadow-xl tap-target';
+  'glass-strong rounded-xl px-4 py-2.5 border border-white/10 shadow-xl tap-target';
+
+const CheckInIcon = ({ state }) => {
+  if (state === 'busy') {
+    return <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" aria-hidden="true" />;
+  }
+  if (state === 'done') {
+    return <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" aria-hidden="true" />;
+  }
+  return (
+    <MapPin
+      className={`w-4 h-4 flex-shrink-0 ${state === 'error' ? 'text-amber-400' : 'text-blue-400'}`}
+      aria-hidden="true"
+    />
+  );
+};
 
 const MapViewBadges = ({
   memberCount = 0,
@@ -34,9 +50,10 @@ const MapViewBadges = ({
             type="button"
             onClick={onCheckIn}
             disabled={checkInState === 'busy'}
-            className={`${MAP_BADGE_CLASS} disabled:opacity-70`}
+            className={`${MAP_BADGE_CLASS} flex items-center gap-2 disabled:opacity-70`}
             aria-label={checkInLabel}
           >
+            <CheckInIcon state={checkInState} />
             <p className="text-white text-sm font-semibold">{checkInLabel}</p>
           </button>
         )}

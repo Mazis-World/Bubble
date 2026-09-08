@@ -15,9 +15,12 @@ describe('Map view badges', () => {
       </div>
     );
 
-    const checkIn = screen.getByRole('button', { name: '📍 Check in' });
+    const checkIn = screen.getByRole('button', { name: 'Check in' });
     const members = screen.getByRole('button', { name: /3 Members/ });
-    expect(checkIn.textContent).toBe('📍 Check in');
+    expect(checkIn.textContent).toContain('Check in');
+    expect(checkIn.querySelector('svg')).toBeTruthy();
+    expect(checkIn.querySelector('svg').getAttribute('class')).toContain('text-blue-400');
+    expect(checkIn.querySelector('svg').getAttribute('class')).toContain('text-blue-400');
     expect(members.compareDocumentPosition(checkIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole('button', { name: /2 Memos/ })).toBeTruthy();
   });
@@ -30,6 +33,6 @@ describe('Map view badges', () => {
         checkInState="busy"
       />
     );
-    expect(screen.getByRole('button', { name: '📍 Checking in…' }).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Checking in…' }).disabled).toBe(true);
   });
 });
