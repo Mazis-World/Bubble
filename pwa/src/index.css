@@ -435,7 +435,7 @@ select:focus-visible {
 
 /* Radar container performance hints */
 .member-bubble-wrapper {
-  contain: layout style paint;
+  contain: layout style;
   will-change: transform;
 }
 

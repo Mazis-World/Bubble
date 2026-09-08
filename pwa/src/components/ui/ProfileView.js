@@ -61,14 +61,14 @@ const ProfileView = ({ member, isCurrentUser, onClose, onEdit, currentUserLocati
           {/* Photo and Basic Info */}
           <div className="flex flex-col items-center">
             <div className="relative">
-              <div className={`w-32 h-32 rounded-full overflow-hidden shadow-2xl ${
+              <div className={`relative w-32 h-32 rounded-full overflow-hidden shadow-2xl flex-shrink-0 ${
                 isOwner ? 'ring-4 ring-purple-500/50' : 'ring-2 ring-blue-500/30'
               }`}>
-                {member.photoUrl ? (
+                {member.photoUrl || member.photoURL ? (
                   <img 
-                    src={member.photoUrl} 
+                    src={member.photoUrl || member.photoURL} 
                     alt={member.name} 
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center">

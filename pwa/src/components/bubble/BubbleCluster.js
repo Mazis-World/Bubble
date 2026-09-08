@@ -519,14 +519,16 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
               style={{
                 left: `${leftPercent}%`,
                 top: `${topPercent}%`,
-                transform: `translate(-50%, -50%)`,
+                transform: 'translate(-50%, -50%)',
                 transition: 'left 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 zIndex: isCurrentUser ? 12 : 11,
-                minWidth: '48px',
-                minHeight: '48px',
+                width: '72px',
+                height: '72px',
+                overflow: 'visible',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                flexShrink: 0,
               }}
             >
               <MemberBubble
