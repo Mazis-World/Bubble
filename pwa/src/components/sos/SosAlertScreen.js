@@ -22,6 +22,7 @@ const SosAlertScreen = ({
   onAcknowledge,
   acknowledging = false,
   onClose,
+  onMuteSound,
 }) => {
   const location = sos?.latestLocation;
   const freshness = classifyLocationFreshness(location?.timestamp);
@@ -104,6 +105,15 @@ const SosAlertScreen = ({
             className="w-full bg-amber-400 text-gray-950 py-4 rounded-2xl font-black tap-target disabled:opacity-60"
           >
             {acknowledging ? 'Acknowledging…' : 'Mark as acknowledged'}
+          </button>
+        )}
+        {onMuteSound && (
+          <button
+            type="button"
+            onClick={onMuteSound}
+            className="w-full bg-white/10 text-white py-4 rounded-2xl font-bold tap-target"
+          >
+            Stop alert sound
           </button>
         )}
         <button

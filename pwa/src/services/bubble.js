@@ -20,6 +20,7 @@ import Bubble from '../models/Bubble';
 import BubbleNode from '../models/BubbleNode';
 import BubbleEdge from '../models/BubbleEdge';
 import User from '../models/User';
+import { MEMO_TYPE, createFamilyMemo } from './memos';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -940,13 +941,30 @@ export const API = {
     }
   },
 
-  updateStatus: async (bubbleId, nodeId, status, statusText = null) => {
+  updateStatus: async (bubbleId, nodeId, status, statusText = null, options = {}) => {
     const nodeRef = doc(db, 'bubbles', bubbleId, 'nodes', nodeId);
     const updateData = { status, lastUpdated: serverTimestamp() };
     if (statusText !== null) {
       updateData.statusText = statusText;
     }
     await updateDoc(nodeRef, updateData);
+
+    // Family Memos board: every status update is posted to this bubble only.
+    if (!options.skipMemo) {
+      const nodeSnap = await getDoc(nodeRef);
+      const node = nodeSnap.exists() ? nodeSnap.data() : {};
+      await createFamilyMemo({
+        bubbleId,
+        userId: node.userId || auth.currentUser?.uid,
+        nodeId,
+        type: MEMO_TYPE.STATUS,
+        status,
+        message: statusText,
+        location: node.lastKnownLocation || null,
+      }).catch((error) => {
+        console.warn('Family memo write skipped:', error.message);
+      });
+    }
     return { success: true };
   },
 

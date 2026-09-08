@@ -13,6 +13,7 @@ import {
 import { auth, db } from '../firebase';
 import SosEvent from '../models/SosEvent';
 import { API } from './bubble';
+import { MEMO_TYPE, createFamilyMemo } from './memos';
 
 export const SOS_STATUS = {
   ACTIVE: 'ACTIVE',
@@ -297,9 +298,24 @@ export const activateSos = async ({ bubbleId, userId, nodeId, location = null })
   try {
     const ref = await addDoc(sosCollection(bubbleId), payload);
     await updateDoc(ref, { delivered: true });
-    await API.updateStatus(bubbleId, nodeId, '🆘', 'SOS – I need help').catch(() => {});
+    await API.updateStatus(bubbleId, nodeId, '🆘', 'SOS – I need help', { skipMemo: true }).catch(() => {});
     if (location) {
       await API.updateLocation(bubbleId, nodeId, location).catch(() => {});
+    }
+    const memoWrite = createFamilyMemo({
+      bubbleId,
+      userId: uid,
+      nodeId,
+      type: MEMO_TYPE.SOS,
+      status: '🆘',
+      message: 'SOS – I need help',
+      location,
+      sosId: ref.id,
+    });
+    if (memoWrite && typeof memoWrite.catch === 'function') {
+      await memoWrite.catch((error) => {
+        console.warn('SOS family memo write skipped:', error.message);
+      });
     }
     const created = SosEvent.fromFirestore(await getDoc(ref));
     return { sos: created, duplicate: false, delivered: true };

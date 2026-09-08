@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
@@ -14,9 +14,12 @@ import SosActiveScreen from '../sos/SosActiveScreen';
 import SosAlertScreen from '../sos/SosAlertScreen';
 import SosPermissionSheet from '../sos/SosPermissionSheet';
 import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
+import BubbleOverviewSheet from './BubbleOverviewSheet';
 import { Circle, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
+import useFamilyMemos from '../../hooks/useFamilyMemos';
+import { MEMO_TYPE } from '../../services/memos';
 
 const Bubble = ({
   bubbleData,
@@ -45,6 +48,13 @@ const Bubble = ({
   const [statusText, setStatusText] = useState('');
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
+  const [showOverview, setShowOverview] = useState(false);
+  const [mapFocus, setMapFocus] = useState(null);
+  const openSosIds = useMemo(
+    () => (sos?.openEvents || []).map((event) => event.sosId),
+    [sos?.openEvents]
+  );
+  const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
 
   const handleShare = async () => {
     if (!inviteToken || inviteToken === 'Generating...') return;
@@ -182,6 +192,8 @@ const Bubble = ({
         {viewMode === 'globe' ? (
           <GlobeView
             bubbleData={bubbleData}
+            focusTarget={mapFocus}
+            onMemberCountClick={() => setShowOverview(true)}
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
@@ -514,6 +526,41 @@ const Bubble = ({
         />
       </SlideUpCard>
 
+      <SlideUpCard
+        isOpen={showOverview}
+        onClose={() => setShowOverview(false)}
+        title={bubbleData?.bubble?.name || 'Bubble Overview'}
+      >
+        <BubbleOverviewSheet
+          members={bubbleData.allMembers}
+          memos={familyMemos}
+          bubbleName={bubbleData?.bubble?.name}
+          onMemberClick={(member) => {
+            setShowOverview(false);
+            setSelectedMember(member);
+            setShowProfile(true);
+            analyticsService.trackMemberProfileView(member.id);
+          }}
+          onMemoClick={(memo) => {
+            setShowOverview(false);
+            const member = bubbleData.allMembers.find(
+              (item) => item.userId === memo.userId || item.id === memo.nodeId
+            );
+            const location = memo.location || member?.lastKnownLocation;
+            setViewMode('globe');
+            if (location?.latitude != null && location?.longitude != null) {
+              setMapFocus({
+                latitude: location.latitude,
+                longitude: location.longitude,
+              });
+            }
+            if (memo.type === MEMO_TYPE.SOS && memo.sosId && sos?.focusSos) {
+              sos.focusSos(memo.sosId);
+            }
+          }}
+        />
+      </SlideUpCard>
+
       {sos && (
         <>
           <SosConfirmOverlay
@@ -546,6 +593,7 @@ const Bubble = ({
               onAcknowledge={sos.handleAcknowledge}
               acknowledging={sos.busy}
               onClose={sos.closeIncoming}
+              onMuteSound={sos.muteAlertSound}
             />
           )}
         </>

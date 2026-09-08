@@ -16,6 +16,7 @@ import {
 } from '../services/sos';
 import { notificationService } from '../services/notifications';
 import { analyticsService } from '../services/analytics';
+import { startSosAlertSound, stopSosAlertSound, shouldPlaySosSound } from '../services/sosSound';
 
 const locationErrorCopy = {
   permission_denied: 'Location permission is required to send your location with an SOS.',
@@ -38,6 +39,7 @@ export default function useSos({ userId, bubbleData, initialSosLink = null }) {
   const [locationError, setLocationError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [queuedLocalSos, setQueuedLocalSos] = useState(false);
+  const [soundMuted, setSoundMuted] = useState(false);
   const notifiedIdsRef = useRef(new Set());
   const watchCleanupRef = useRef(null);
   const pendingActivateRef = useRef(null);
@@ -226,6 +228,7 @@ export default function useSos({ userId, bubbleData, initialSosLink = null }) {
     setBusy(true);
     try {
       await acknowledgeSos({ bubbleId, sosId: focusedSos.sosId });
+      stopSosAlertSound();
       analyticsService.trackSosAcknowledge(bubbleId);
     } catch (error) {
       alert(error.message);
@@ -264,6 +267,22 @@ export default function useSos({ userId, bubbleData, initialSosLink = null }) {
     }
   }, [bubbleId, ownOpenSos, nodeId]);
 
+  const incomingActiveAlert = Boolean(
+    openEvents.some((event) =>
+      shouldPlaySosSound({ viewerUid: userId, sosUserId: event.userId, sosStatus: event.status })
+    )
+  );
+
+  useEffect(() => {
+    if (!incomingActiveAlert) setSoundMuted(false);
+  }, [incomingActiveAlert]);
+
+  useEffect(() => {
+    if (incomingActiveAlert && !soundMuted) startSosAlertSound();
+    else stopSosAlertSound();
+    return () => stopSosAlertSound();
+  }, [incomingActiveAlert, soundMuted]);
+
   const showActiveScreen = Boolean(ownOpenSos || queuedLocalSos || deliveryState === 'sending' || deliveryState === 'queued');
   const incomingSos = focusedSos && focusedSos.userId !== userId ? focusedSos : null;
 
@@ -292,6 +311,8 @@ export default function useSos({ userId, bubbleData, initialSosLink = null }) {
     handleResolve,
     handleCancel,
     closeIncoming: () => setFocusedSosId(null),
+    focusSos: (sosId) => setFocusedSosId(sosId),
+    muteAlertSound: () => setSoundMuted(true),
     memberForSos,
     acknowledgedByName: incomingSos
       ? members.find((member) => member.userId === incomingSos.acknowledgedBy)?.name

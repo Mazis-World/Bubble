@@ -325,7 +325,7 @@ const animateFloatingHeads = (globe) => {
   });
 };
 
-const GlobeView = ({ bubbleData, onMemberClick }) => {
+const GlobeView = ({ bubbleData, onMemberClick, onMemberCountClick, focusTarget = null }) => {
   const globeEl = useRef();
   const containerRef = useRef();
   const [points, setPoints] = useState([]);
@@ -439,6 +439,15 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
     }
   }, [bubbleData?.currentMember?.lastKnownLocation]);
 
+  // Center on an SOS / memo target without requiring a page refresh.
+  useEffect(() => {
+    if (!globeEl.current || focusTarget?.latitude == null || focusTarget?.longitude == null) return;
+    globeEl.current.pointOfView(
+      { lat: focusTarget.latitude, lng: focusTarget.longitude, altitude: 1.5 },
+      1000
+    );
+  }, [focusTarget]);
+
   // Handle window resize and container size changes
   useEffect(() => {
     if (!globeEl.current || !containerRef.current) return;
@@ -495,6 +504,20 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
     );
   }
 
+  const memberCount = bubbleData.allMembers.length;
+  const memberCountLabel = `${memberCount} ${memberCount === 1 ? 'Member' : 'Members'}`;
+
+  const memberCountBadge = onMemberCountClick && (
+    <button
+      type="button"
+      onClick={onMemberCountClick}
+      className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 z-10 shadow-xl tap-target"
+      aria-label={`${memberCountLabel}. Open bubble overview`}
+    >
+      <p className="text-white text-sm font-semibold">🌍 {memberCountLabel}</p>
+    </button>
+  );
+
   // If no members have locations yet, show a message
   if (points.length === 0) {
     return (
@@ -516,6 +539,7 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
             </p>
           </div>
         </div>
+        {memberCountBadge}
       </div>
     );
   }
@@ -586,12 +610,8 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
         enablePointerInteraction={true}
       />
       
-      {/* Overlay info */}
-      <div className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 z-10 shadow-xl">
-        <p className="text-white text-sm font-semibold">
-          🌍 {points.length} {points.length === 1 ? 'member' : 'members'} visible
-        </p>
-      </div>
+      {/* Overlay info — tappable member count opens Bubble Overview */}
+      {memberCountBadge}
       
       {/* Hovered member info */}
       {hoveredPoint && (

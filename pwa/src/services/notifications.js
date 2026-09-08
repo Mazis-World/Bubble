@@ -215,6 +215,8 @@ class NotificationService {
       tag: `sos-${sos?.sosId || member?.id || 'alert'}`,
       requireInteraction: true,
       force: true,
+      silent: false,
+      vibrate: [400, 150, 400, 150, 400],
       badge: '/favicon-32x32.png',
       data: {
         sosId: sos?.sosId,

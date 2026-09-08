@@ -42,6 +42,11 @@ jest.mock('./bubble', () => ({
   },
 }));
 
+jest.mock('./memos', () => ({
+  MEMO_TYPE: { STATUS: 'status', SOS: 'sos' },
+  createFamilyMemo: jest.fn(() => Promise.resolve('memo-1')),
+}));
+
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(() => 'sos-collection'),
   doc: jest.fn((...segments) => ({ path: segments.filter(Boolean).join('/'), id: segments[segments.length - 1] })),
@@ -290,7 +295,7 @@ describe('SOS activation against backend', () => {
     expect(result.delivered).toBe(true);
     expect(result.duplicate).toBe(false);
     expect(addDoc).toHaveBeenCalled();
-    expect(API.updateStatus).toHaveBeenCalledWith('bubble-1', 'node-1', '🆘', 'SOS – I need help');
+    expect(API.updateStatus).toHaveBeenCalledWith('bubble-1', 'node-1', '🆘', 'SOS – I need help', { skipMemo: true });
   });
 
   test('reuses an existing open SOS instead of creating a second one', async () => {
