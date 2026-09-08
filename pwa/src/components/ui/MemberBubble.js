@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getStatusEmoji, formatLastSeen } from '../../utils/timeUtils';
+import { RADAR_BUBBLE_SIZE } from '../../services/radarLayout';
 
-const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position = null }) => {
+const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, size = RADAR_BUBBLE_SIZE }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -10,10 +11,7 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
     return () => clearTimeout(timer);
   }, [delay]);
 
-  const memberTier = member?.tier || (member?.type === 'owner' ? 1 : 2);
-  const isOwner = memberTier === 1 || member?.type === 'owner';
-  const sizePx = isOwner ? 72 : memberTier === 2 ? 64 : 56;
-  const statusIconSize = isOwner ? 'w-7 h-7 sm:w-6 sm:h-6' : memberTier === 2 ? 'w-6 h-6 sm:w-5 sm:h-5' : 'w-5 h-5 sm:w-4 sm:h-4';
+  const sizePx = size;
   const photoSrc = member.photoUrl || member.photoURL;
 
   const StatusIcon = ({ status }) => {
@@ -28,8 +26,8 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
     const emoji = getStatusEmoji(status);
 
     return (
-      <div className={`absolute -bottom-0.5 -right-0.5 ${statusIconSize} ${color} rounded-full flex items-center justify-center border-2 border-gray-950 shadow-xl ${ring} ring-1 transition-all duration-300`}>
-        <span className="text-xs sm:text-sm">{emoji}</span>
+      <div className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 ${color} rounded-full flex items-center justify-center border-2 border-gray-950 shadow-xl ${ring} ring-1 transition-all duration-300`}>
+        <span className="text-[11px] leading-none">{emoji}</span>
       </div>
     );
   };
@@ -51,8 +49,9 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
         minHeight: sizePx,
         maxWidth: sizePx,
         maxHeight: sizePx,
+        aspectRatio: '1 / 1',
         transitionDelay: `${delay}ms`,
-        transform: isVisible ? (isHovered ? 'scale(1.1)' : 'scale(1)') : 'scale(0)',
+        transform: isVisible ? (isHovered ? 'scale(1.06)' : 'scale(1)') : 'scale(0)',
         transformOrigin: 'center center',
       }}
     >
@@ -65,7 +64,11 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
           height: sizePx,
           minWidth: sizePx,
           minHeight: sizePx,
+          maxWidth: sizePx,
+          maxHeight: sizePx,
+          aspectRatio: '1 / 1',
           borderRadius: '50%',
+          overflow: 'hidden',
         }}
       >
         {photoSrc ? (
@@ -78,11 +81,12 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
               height: '100%',
               objectFit: 'cover',
               objectPosition: 'center',
+              borderRadius: '50%',
             }}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center">
-            <span className="text-lg sm:text-xl text-white font-bold opacity-80">
+            <span className="text-lg text-white font-bold opacity-80">
               {member.name ? member.name.charAt(0).toUpperCase() : '?'}
             </span>
           </div>
@@ -94,28 +98,26 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, position =
         <div className={`absolute inset-0 rounded-full border-2 ${
           isCenter ? 'border-white/60' : 'border-white/40'
         } transition-all duration-300 ${isHovered ? 'border-white/80' : ''} pointer-events-none`}></div>
-
-        <div className="absolute inset-2 rounded-full border border-white/20 pointer-events-none"></div>
-
-        {!isCenter && isHovered && (
-          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-30">
-            <div className="bg-gray-900/95 text-white text-xs font-semibold px-2 py-1 rounded-full border border-white/20 shadow-xl backdrop-blur-sm">
-              <div className="font-bold text-[10px]">{member.name}</div>
-              {member.lastUpdated && (
-                <div className="text-[8px] text-gray-400 mt-0.5">
-                  {formatLastSeen(member.lastUpdated)}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       <StatusIcon status={member.status || '⚪'} />
 
       {isCenter && (
-        <div className="absolute -top-0.5 sm:-top-1 left-1/2 transform -translate-x-1/2 w-6 h-6 sm:w-5 sm:h-5 bg-blue-500 rounded-full flex items-center justify-center border border-white shadow-lg z-20">
-          <span className="text-white text-[9px] sm:text-[8px] font-bold leading-none">YOU</span>
+        <div className="absolute -top-0.5 left-1/2 transform -translate-x-1/2 w-6 h-5 bg-blue-500 rounded-full flex items-center justify-center border border-white shadow-lg z-20">
+          <span className="text-white text-[8px] font-bold leading-none">YOU</span>
+        </div>
+      )}
+
+      {!isCenter && isHovered && (
+        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-30">
+          <div className="bg-gray-900/95 text-white text-xs font-semibold px-2 py-1 rounded-full border border-white/20 shadow-xl backdrop-blur-sm">
+            <div className="font-bold text-[10px]">{member.name}</div>
+            {member.lastUpdated && (
+              <div className="text-[8px] text-gray-400 mt-0.5">
+                {formatLastSeen(member.lastUpdated)}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

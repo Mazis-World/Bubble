@@ -443,8 +443,7 @@ select:focus-visible {
 
 /* Radar container performance hints */
 .member-bubble-wrapper {
-  contain: layout style;
-  will-change: transform;
+  contain: style;
 }
 
 /* Optimize radar rendering */
