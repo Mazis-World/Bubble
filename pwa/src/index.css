@@ -435,8 +435,37 @@ select:focus-visible {
 
 /* Radar container performance hints */
 .member-bubble-wrapper {
-  contain: layout style paint;
+  contain: layout style;
   will-change: transform;
+}
+
+/* Keep radar avatars circular even when the photo is portrait-oriented.
+   Invalid Tailwind sizes (e.g. w-18) previously left owner bubbles unsized,
+   so the <img> expanded to its intrinsic height. */
+.member-bubble {
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.member-bubble-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.member-bubble-face img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 /* Optimize radar rendering */
