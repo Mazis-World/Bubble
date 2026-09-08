@@ -30,6 +30,6 @@ describe('Map view badges', () => {
         checkInState="busy"
       />
     );
-    expect(screen.getByRole('button', { name: '📍 Checking in…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '📍 Checking in…' }).disabled).toBe(true);
   });
 });
