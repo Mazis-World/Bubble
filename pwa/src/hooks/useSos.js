@@ -97,15 +97,19 @@ export default function useSos({ userId, bubbleData, initialSosLink = null }) {
     });
   }, [bubbleId, userId]);
 
+  const ownSosId = ownOpenSos?.sosId || null;
+  const ownSosIsWatchable = shouldWatchLocationForSos({ authUid: userId, sos: ownOpenSos });
+
   useEffect(() => {
     watchCleanupRef.current?.();
     watchCleanupRef.current = null;
-    if (!ownOpenSos || !shouldWatchLocationForSos({ authUid: userId, sos: ownOpenSos })) {
+    // Watch GPS only while this user's SOS is open. Cleanup on status change or unmount.
+    if (!ownSosIsWatchable || !ownSosId) {
       return undefined;
     }
     watchCleanupRef.current = startSosLocationWatch({
       bubbleId,
-      sosId: ownOpenSos.sosId,
+      sosId: ownSosId,
       nodeId,
       onError: (error) => {
         if (error?.code === 'permission_denied' || error?.code === 1) {
@@ -117,7 +121,7 @@ export default function useSos({ userId, bubbleData, initialSosLink = null }) {
       watchCleanupRef.current?.();
       watchCleanupRef.current = null;
     };
-  }, [ownOpenSos?.sosId, ownOpenSos?.status, bubbleId, nodeId, userId]);
+  }, [ownSosIsWatchable, ownSosId, bubbleId, nodeId]);
 
   useEffect(() => {
     const flush = () => {
