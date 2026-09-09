@@ -7,7 +7,7 @@ const WelcomeWalkthrough = ({ onComplete }) => {
   const steps = [
     {
       icon: CheckCircle2,
-      title: "Welcome to FamilyBubble!",
+      title: "Welcome to FamilyBubble Premium!",
       description: "You're all set! Let's take a quick tour of your new family space.",
       color: "from-emerald-500 to-teal-500",
     },
