@@ -31,8 +31,7 @@ const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) 
       relationshipRole,
       location,
     };
-    // Only show paywall once, after profile details are collected.
-    // Skip if this session already has an active subscription.
+    // Payments are off: creating a bubble is free.
     if (!isSubscribed && handlePurchase) {
       handlePurchase(() => onComplete(bubbleData));
     } else {

@@ -10,6 +10,7 @@ import CustomPaywall from './components/paywall/CustomPaywall';
 import { Purchases, LogLevel } from '@revenuecat/purchases-js';
 import { analyticsService } from './services/analytics';
 import { sessionBubble } from './services/bubble';
+import { PAYMENTS_ENABLED } from './services/billing';
 
 const PENDING_JOIN_KEY = 'familyBubble_pendingJoin';
 
@@ -208,10 +209,12 @@ export default function FamilyBubbleApp() {
           });
         }
         
-        try {
-        await initializePurchases(user);
-        } catch (error) {
-          console.error("Error initializing Purchases:", error);
+        if (PAYMENTS_ENABLED) {
+          try {
+            await initializePurchases(user);
+          } catch (error) {
+            console.error("Error initializing Purchases:", error);
+          }
         }
         // If we have a join token, we're in the join flow - stay on main to process it
         // Otherwise, go to main view
@@ -259,6 +262,11 @@ export default function FamilyBubbleApp() {
   };
   
   const handlePurchase = async (onSuccess) => {
+    if (!PAYMENTS_ENABLED) {
+      if (onSuccess) onSuccess();
+      return;
+    }
+
     if (isSubscribed && onSuccess) {
       onSuccess();
       return;
@@ -341,7 +349,7 @@ export default function FamilyBubbleApp() {
   }
 
   // Show custom paywall (check before user auth check so it works on welcome screen)
-  if (showCustomPaywall) {
+  if (PAYMENTS_ENABLED && showCustomPaywall) {
     console.log("Rendering CustomPaywall component");
     return (
       <CustomPaywall
@@ -412,7 +420,7 @@ export default function FamilyBubbleApp() {
                 />;
       case 'create':
         return <CreateBubbleFlow 
-                  isSubscribed={isSubscribed}
+                  isSubscribed={!PAYMENTS_ENABLED || isSubscribed}
                   onComplete={async (data) => {
                     setBubbleCreationData(data);
                     try {
@@ -524,7 +532,7 @@ export default function FamilyBubbleApp() {
     );
   }
 
-  if (view === 'main' && isLapsedSubscriber && !isSubscribed) {
+  if (PAYMENTS_ENABLED && view === 'main' && isLapsedSubscriber && !isSubscribed) {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center" style={{ minHeight: '100dvh' }}>
           <h1 className="text-3xl font-bold text-white mb-4">Your Subscription has Expired</h1>
@@ -553,7 +561,7 @@ export default function FamilyBubbleApp() {
         joinToken={joinToken} 
         bubbleCreationData={bubbleCreationData}
         onBubbleCreated={onBubbleCreatedCallback}
-        isSubscribed={isSubscribed}
+        isSubscribed={!PAYMENTS_ENABLED || isSubscribed}
         onUpgrade={handlePurchase}
         onRestorePurchases={handleRestorePurchases}
         onInitiateCreate={onInitiateCreateCallback}
