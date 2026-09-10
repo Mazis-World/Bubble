@@ -30,6 +30,51 @@ export const checkInButtonLabel = (state) => {
   return 'Check in';
 };
 
+export const checkInHint = (state) => {
+  if (state === 'busy') return 'Finding your location…';
+  if (state === 'done') return 'You’re on the family globe.';
+  if (state === 'error') return 'Location is needed to drop your pin.';
+  return 'Drop your live pin on the family globe — without changing your status.';
+};
+
+export const shortPlaceLabel = (address) => {
+  if (!address) return null;
+  if (typeof address === 'string') {
+    const trimmed = address.trim();
+    return trimmed ? trimmed.split(',')[0].trim() : null;
+  }
+  return (
+    address.neighbourhood
+    || address.suburb
+    || address.village
+    || address.town
+    || address.city
+    || address.hamlet
+    || null
+  );
+};
+
+export const lookupPlaceLabel = async (lat, lng, fetchImpl = fetch) => {
+  if (lat == null || lng == null || typeof fetchImpl !== 'function') return null;
+  try {
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 2500) : null;
+    const response = await fetchImpl(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+      {
+        headers: { 'User-Agent': 'FamilyBubble/1.0' },
+        signal: controller?.signal,
+      }
+    );
+    if (timer) clearTimeout(timer);
+    if (!response?.ok) return null;
+    const data = await response.json();
+    return shortPlaceLabel(data?.address) || shortPlaceLabel(data?.display_name);
+  } catch (error) {
+    return null;
+  }
+};
+
 export const readCurrentPosition = () =>
   new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {

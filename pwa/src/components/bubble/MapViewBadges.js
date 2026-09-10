@@ -50,7 +50,9 @@ const MapViewBadges = ({
             type="button"
             onClick={onCheckIn}
             disabled={checkInState === 'busy'}
-            className={`${MAP_BADGE_CLASS} flex items-center gap-2 disabled:opacity-70`}
+            className={`${MAP_BADGE_CLASS} flex items-center gap-2 disabled:opacity-70 ${
+              checkInState === 'idle' ? 'shadow-[0_0_0_3px_rgba(96,165,250,0.5)]' : ''
+            }`}
             aria-label={checkInLabel}
           >
             <CheckInIcon state={checkInState} />

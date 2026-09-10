@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import MapViewBadges from './MapViewBadges';
+import CheckInPopup from './CheckInPopup';
 
 // Create amazing glass-like bubbles that pop off the globe
 const createFloatingHead = (member, size) => {
@@ -333,6 +334,10 @@ const GlobeView = ({
   onMemosClick,
   onCheckIn,
   checkInState = 'idle',
+  checkInOpen = false,
+  checkInMember = null,
+  checkInMemo = null,
+  onCloseCheckIn,
   memoCount = 0,
   focusTarget = null,
 }) => {
@@ -449,12 +454,13 @@ const GlobeView = ({
     }
   }, [bubbleData?.currentMember?.lastKnownLocation]);
 
-  // Center on an SOS / memo target without requiring a page refresh.
+  // Center on an SOS / memo / check-in target without requiring a page refresh.
   useEffect(() => {
     if (!globeEl.current || focusTarget?.latitude == null || focusTarget?.longitude == null) return;
+    setAutoRotate(false);
     globeEl.current.pointOfView(
-      { lat: focusTarget.latitude, lng: focusTarget.longitude, altitude: 1.5 },
-      1000
+      { lat: focusTarget.latitude, lng: focusTarget.longitude, altitude: 1.2 },
+      1200
     );
   }, [focusTarget]);
 
@@ -525,6 +531,21 @@ const GlobeView = ({
     />
   );
 
+  const checkInOverlay = (
+    <CheckInPopup
+      open={checkInOpen}
+      state={checkInState}
+      member={checkInMember}
+      memo={checkInMemo}
+      onConfirm={onCheckIn}
+      onClose={onCloseCheckIn}
+    />
+  );
+
+  const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
+    ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
+    : [];
+
   // If no members have locations yet, show a message
   if (points.length === 0) {
     return (
@@ -538,15 +559,18 @@ const GlobeView = ({
           atmosphereColor="#3b82f6"
           atmosphereAltitude={0.15}
         />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="glass-strong rounded-2xl px-6 py-4 border border-white/10 text-center max-w-md mx-4">
-            <p className="text-white text-lg font-semibold mb-2">🌍 Waiting for Locations</p>
-            <p className="text-gray-400 text-sm">
-              Family members will appear here once they update their status or enable location sharing.
-            </p>
+        {!checkInOpen && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="glass-strong rounded-2xl px-6 py-4 border border-white/10 text-center max-w-md mx-4">
+              <p className="text-white text-lg font-semibold mb-2">🌍 Waiting for Locations</p>
+              <p className="text-gray-400 text-sm">
+                Family members will appear here once they update their status or enable location sharing.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
         {mapBadges}
+        {checkInOverlay}
       </div>
     );
   }
@@ -610,6 +634,11 @@ const GlobeView = ({
         arcDashGap={0.1}
         arcDashAnimateTime={1500}
         arcStroke={0.8}
+        ringsData={checkInRing}
+        ringColor={() => (t) => `rgba(96,165,250,${1 - t})`}
+        ringMaxRadius={2.2}
+        ringPropagationSpeed={2.2}
+        ringRepeatPeriod={700}
         showAtmosphere={true}
         atmosphereColor="#3b82f6"
         atmosphereAltitude={0.2}
@@ -619,6 +648,7 @@ const GlobeView = ({
       
       {/* Overlay info — members and memos are separate sheets */}
       {mapBadges}
+      {checkInOverlay}
       
       {/* Hovered member info */}
       {hoveredPoint && (
@@ -649,7 +679,7 @@ const GlobeView = ({
       )}
       
       {/* Controls panel */}
-      {showControls && (
+      {showControls && !checkInOpen && (
         <div className="absolute bottom-4 right-4 glass-strong rounded-xl p-2 border border-white/10 z-10 shadow-xl flex flex-col gap-2">
           <button
             onClick={() => setAutoRotate(!autoRotate)}
@@ -674,20 +704,24 @@ const GlobeView = ({
       )}
       
       {/* Toggle controls button */}
-      <button
-        onClick={() => setShowControls(!showControls)}
-        className="absolute bottom-4 left-4 glass-strong rounded-xl p-2 border border-white/10 z-10 shadow-xl text-white hover:bg-white/10 transition-all duration-200"
-        title={showControls ? 'Hide controls' : 'Show controls'}
-      >
-        {showControls ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-      </button>
+      {!checkInOpen && (
+        <button
+          onClick={() => setShowControls(!showControls)}
+          className="absolute bottom-4 left-4 glass-strong rounded-xl p-2 border border-white/10 z-10 shadow-xl text-white hover:bg-white/10 transition-all duration-200"
+          title={showControls ? 'Hide controls' : 'Show controls'}
+        >
+          {showControls ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+        </button>
+      )}
       
       {/* Instructions overlay */}
-      <div className="absolute bottom-20 left-4 glass-strong rounded-xl px-3 py-2 border border-white/10 z-10 shadow-xl max-w-[200px] hidden sm:block">
-        <p className="text-gray-300 text-xs">
-          Click a point to view profile • Drag to rotate • Scroll to zoom
-        </p>
-      </div>
+      {!checkInOpen && (
+        <div className="absolute bottom-20 left-4 glass-strong rounded-xl px-3 py-2 border border-white/10 z-10 shadow-xl max-w-[200px] hidden sm:block">
+          <p className="text-gray-300 text-xs">
+            Click a point to view profile • Drag to rotate • Scroll to zoom
+          </p>
+        </div>
+      )}
     </div>
   );
 };
