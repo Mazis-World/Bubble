@@ -2,156 +2,385 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>FamilyBubble Check in app plates</title>
+  <title>FamilyBubble Check in — globe map</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 1920px; height: 1080px; overflow: hidden; background: #020617; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
-    body {
-      background:
-        radial-gradient(900px 500px at 18% 18%, rgba(59, 130, 246, 0.28), transparent 55%),
-        radial-gradient(800px 500px at 90% 80%, rgba(16, 185, 129, 0.16), transparent 50%),
-        #020617;
+    html, body {
+      width: 1920px; height: 1080px; overflow: hidden;
+      background: #020617;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #fff;
     }
-    .stage { width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; gap: 80px; padding: 60px 100px; }
-    .copy { flex: 1; }
-    .kicker { color: #93c5fd; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; font-size: 22px; margin-bottom: 16px; }
-    h1 { font-size: 62px; font-weight: 900; line-height: 1.08; margin-bottom: 18px; }
-    .sub { font-size: 28px; color: rgba(255,255,255,0.78); max-width: 720px; }
-    .phone {
-      width: 390px; height: 800px; background: #0b1220; border-radius: 52px; padding: 14px;
-      box-shadow: 0 40px 80px rgba(0,0,0,0.55), 0 0 0 4px #1f2937; position: relative; flex-shrink: 0;
-    }
-    .notch { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); width: 128px; height: 22px; background: #020617; border-radius: 0 0 16px 16px; z-index: 5; }
-    .screen { height: 100%; border-radius: 40px; overflow: hidden; position: relative; background: #0b1b33; }
-    .map {
+    #globe {
       position: absolute; inset: 0;
       background:
-        radial-gradient(circle at 32% 42%, #1d4ed8 0 8px, transparent 9px),
-        radial-gradient(circle at 68% 58%, #2563eb 0 6px, transparent 7px),
-        radial-gradient(ellipse at 40% 48%, #1e3a8a 0 90px, transparent 140px),
-        radial-gradient(ellipse at 62% 62%, #163a6b 0 70px, transparent 120px),
-        linear-gradient(180deg, #0b2a4a, #07111f);
+        radial-gradient(circle at 50% 50%, #0b1b3a 0%, #020617 68%);
     }
-    .grid {
-      position: absolute; inset: 0; opacity: 0.28;
-      background-image:
-        linear-gradient(rgba(147,197,253,0.18) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(147,197,253,0.18) 1px, transparent 1px);
-      background-size: 36px 36px;
+    header {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 8;
+      height: 72px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px;
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    .pin {
-      position: absolute; left: 46%; top: 44%; width: 22px; height: 22px; margin-left: -11px;
-      background: #60a5fa; border: 3px solid #fff; border-radius: 50%;
-      box-shadow: 0 0 0 10px rgba(96,165,250,0.28);
-      opacity: 0; transform: scale(0.4);
-      transition: opacity 0.4s ease, transform 0.4s ease;
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 36px; height: 36px; border-radius: 12px;
+      background: linear-gradient(135deg, #a855f7, #3b82f6, #ec4899);
+      display: grid; place-items: center;
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.35);
     }
-    .pin.on { opacity: 1; transform: scale(1); animation: pulse 1.4s ease-in-out infinite; }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 8px rgba(96,165,250,0.25); }
-      50% { box-shadow: 0 0 0 16px rgba(96,165,250,0.12); }
+    .logo span {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 3px solid #fff;
+    }
+    .brand-name {
+      font-weight: 800; font-size: 22px;
+      background: linear-gradient(135deg, #c4b5fd, #93c5fd, #f9a8d4);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .tabs {
+      display: flex; gap: 6px; padding: 6px; border-radius: 18px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    }
+    .tab {
+      padding: 8px 16px; border-radius: 12px; font-weight: 700; font-size: 15px; color: #cbd5e1;
+    }
+    .tab.on {
+      background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899);
+      color: #fff; box-shadow: 0 8px 20px rgba(59,130,246,0.35);
     }
     .chip {
-      position: absolute; z-index: 4;
-      background: rgba(15,23,42,0.72); border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 14px; padding: 10px 14px; font-size: 14px; font-weight: 700;
-      backdrop-filter: blur(12px); display: flex; align-items: center; gap: 8px;
+      position: absolute; z-index: 8;
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px; padding: 12px 16px;
+      font-size: 16px; font-weight: 700;
+      backdrop-filter: blur(20px);
+      display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
     }
-    .members { top: 48px; left: 16px; }
-    .checkin { top: 98px; left: 16px; min-width: 132px; }
-    .checkin.glow { box-shadow: 0 0 0 3px rgba(96,165,250,0.45); }
-    .memos { top: 48px; right: 16px; }
-    .icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .members { top: 92px; left: 24px; }
+    .checkin { top: 150px; left: 24px; min-width: 148px; }
+    .checkin.glow { box-shadow: 0 0 0 3px rgba(96,165,250,0.55), 0 18px 40px rgba(0,0,0,0.35); }
+    .checkin.press { transform: scale(0.96); }
+    .memos { top: 92px; right: 24px; }
+    .icon { width: 18px; height: 18px; flex-shrink: 0; }
     .spin { animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .toast {
-      position: absolute; left: 16px; right: 16px; bottom: 28px; z-index: 4;
-      background: rgba(15,23,42,0.88); border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 16px; padding: 12px 14px; opacity: 0; transform: translateY(10px);
-      transition: opacity 0.35s ease, transform 0.35s ease;
+    .member-pin {
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      text-align: center;
     }
-    .toast.on { opacity: 1; transform: translateY(0); }
-    .toast b { display: block; font-size: 15px; }
-    .toast span { color: #93c5fd; font-size: 13px; font-weight: 700; }
+    .bubble-head {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-weight: 900; font-size: 18px; color: #fff;
+      border: 3px solid rgba(255,255,255,0.85);
+      box-shadow: 0 0 0 6px rgba(59,130,246,0.28), 0 10px 20px rgba(0,0,0,0.45);
+    }
+    .bubble-head.ada { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .bubble-head.maya { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+    .bubble-head.jordan { background: linear-gradient(135deg, #6366f1, #4338ca); }
+    .bubble-head.kai { background: linear-gradient(135deg, #22d3ee, #0284c7); }
+    .pin-name {
+      margin-top: 4px; font-size: 12px; font-weight: 800;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      white-space: nowrap;
+    }
+    .scrim {
+      position: absolute; inset: 0; z-index: 12;
+      background: rgba(2, 6, 23, 0.28); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
+    }
+    .scrim.on { opacity: 1; }
+    .sheet {
+      position: absolute; left: 50%; bottom: 0; z-index: 14;
+      width: 640px; margin-left: -320px;
+      background: rgba(17, 24, 39, 0.94);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-bottom: 0;
+      border-radius: 28px 28px 0 0;
+      box-shadow: 0 -24px 80px rgba(0,0,0,0.5);
+      transform: translateY(110%);
+      transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      padding: 0 0 28px;
+    }
+    .sheet.on { transform: translateY(0); }
+    .handle {
+      width: 48px; height: 4px; border-radius: 999px;
+      background: linear-gradient(90deg, #6b7280, #9ca3af);
+      margin: 14px auto 16px;
+    }
+    .sheet-title {
+      padding: 0 28px 16px; border-bottom: 1px solid rgba(255,255,255,0.1);
+      font-size: 26px; font-weight: 800;
+      background: linear-gradient(135deg, #c4b5fd, #93c5fd, #f9a8d4);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .sheet-body { padding: 22px 28px 8px; }
+    .hint { color: #cbd5e1; font-size: 18px; line-height: 1.45; margin-bottom: 20px; }
+    .cta {
+      width: 100%; border: 0; border-radius: 18px; padding: 16px 18px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      font-size: 20px; font-weight: 800; color: #fff; cursor: default;
+      background: linear-gradient(90deg, #3b82f6, #2563eb);
+      box-shadow: 0 12px 30px rgba(37, 99, 235, 0.35);
+    }
+    .cta.busy { opacity: 0.85; }
+    .cta.done {
+      background: linear-gradient(90deg, #10b981, #059669);
+      box-shadow: 0 12px 30px rgba(16, 185, 129, 0.35);
+    }
+    .memo {
+      display: none; align-items: flex-start; gap: 14px;
+      padding: 16px; border-radius: 18px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .memo.on { display: flex; }
+    .avatar {
+      width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+      display: grid; place-items: center; font-weight: 900; font-size: 20px;
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      border: 2px solid rgba(255,255,255,0.4);
+    }
+    .memo b { display: block; font-size: 18px; }
+    .memo p { color: #cbd5e1; font-size: 16px; margin-top: 2px; }
+    .memo .when { color: #93c5fd; font-size: 13px; font-weight: 700; margin-top: 6px; }
+    .tap {
+      position: absolute; z-index: 10; left: 92px; top: 168px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(255,255,255,0.92);
+      border: 3px solid rgba(96,165,250,0.9);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+      opacity: 0; transform: scale(0.4);
+    }
+    .tap.flash {
+      animation: tap 0.7s ease-out forwards;
+    }
+    @keyframes tap {
+      0% { opacity: 0; transform: scale(0.4); }
+      30% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.6); }
+    }
+    .fallback {
+      display: flex; position: absolute; inset: 0;
+      align-items: center; justify-content: center; z-index: 1;
+    }
+    .fallback.off { display: none; }
+    .earth {
+      width: 620px; height: 620px; border-radius: 50%;
+      background: url("ad-assets/earth-blue-marble.jpg") 18% 50% / 200% 100%;
+      box-shadow:
+        inset -48px -24px 70px rgba(0,0,0,0.55),
+        0 0 80px rgba(59,130,246,0.35);
+      animation: earth 28s linear infinite;
+    }
+    @keyframes earth { to { background-position: 218% 50%; } }
   </style>
 </head>
 <body>
-  <div class="stage">
-    <div class="copy">
-      <p class="kicker" id="kicker">Check in</p>
-      <h1 id="title">One tap when you arrive.</h1>
-      <p class="sub" id="sub">Your pin drops on the family map — and a memo goes to the bubble.</p>
+  <div id="globe"></div>
+  <div class="fallback" id="fallback"><div class="earth"></div></div>
+
+  <header>
+    <div class="brand">
+      <div class="logo"><span></span></div>
+      <span class="brand-name">FamilyBubble</span>
     </div>
-    <div class="phone">
-      <div class="notch"></div>
-      <div class="screen">
-        <div class="map"></div>
-        <div class="grid"></div>
-        <div class="pin" id="pin"></div>
-        <div class="chip members">🌍 4 Members</div>
-        <div class="chip checkin glow" id="checkin">
-          <svg class="icon" id="icon" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-          <span id="label">Check in</span>
-        </div>
-        <div class="chip memos">📝 2 Memos</div>
-        <div class="toast" id="toast">
-          <b>Ada checked in</b>
-          <span>Home · just now</span>
+    <div class="tabs">
+      <div class="tab">👥 Bubbles</div>
+      <div class="tab on">🌍 Map</div>
+    </div>
+  </header>
+
+  <div class="chip members">🌍 4 Members</div>
+  <div class="chip checkin glow" id="checkin">
+    <svg class="icon" id="icon" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+    <span id="chipLabel">Check in</span>
+  </div>
+  <div class="chip memos" id="memos">📝 2 Memos</div>
+  <div class="tap" id="tap"></div>
+
+  <div class="scrim" id="scrim"></div>
+  <section class="sheet" id="sheet" aria-label="Check in">
+    <div class="handle"></div>
+    <h2 class="sheet-title">Check in</h2>
+    <div class="sheet-body">
+      <p class="hint" id="hint">Drop your live pin on the family globe — without changing your status.</p>
+      <button class="cta" id="cta">
+        <svg class="icon" id="ctaIcon" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <span id="ctaLabel">Check in</span>
+      </button>
+      <div class="memo" id="memo" style="margin-top:18px">
+        <div class="avatar">A</div>
+        <div>
+          <b>📍 Ada checked in</b>
+          <p>Checked in · Home</p>
+          <p class="when">just now · family memo sent</p>
         </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <script src="ad-assets/globe.gl.min.js"></script>
   <script>
-    const kicker = document.getElementById('kicker');
-    const title = document.getElementById('title');
-    const sub = document.getElementById('sub');
-    const checkin = document.getElementById('checkin');
-    const label = document.getElementById('label');
-    const icon = document.getElementById('icon');
-    const pin = document.getElementById('pin');
-    const toast = document.getElementById('toast');
-    const pinSvg = icon.innerHTML;
+    const HOME = { lat: 40.735, lng: -73.99 };
+    const members = [
+      { lat: 51.51, lng: -0.13, name: 'Jordan', cls: 'jordan', initial: 'J' },
+      { lat: 34.05, lng: -118.24, name: 'Maya', cls: 'maya', initial: 'M' },
+      { lat: 25.76, lng: -80.19, name: 'Kai', cls: 'kai', initial: 'K' },
+    ];
+    const pinSvg = document.getElementById('icon').innerHTML;
     const spinSvg = '<circle cx="12" cy="12" r="9" stroke="#60a5fa" stroke-width="2.4" stroke-dasharray="16 10"/>';
     const checkSvg = '<path d="M20 6 9 17l-5-5" stroke="#34d399" stroke-width="2.6"/>';
-    const animDelayMs = 2600;
-    const start = performance.now() + animDelayMs;
-    const tick = (now) => {
-      if (now < start) { requestAnimationFrame(tick); return; }
-      const t = now - start;
-      if (t < 3200) {
-        kicker.textContent = 'Check in';
-        title.innerHTML = 'One tap when you arrive.';
-        sub.textContent = 'Your pin drops on the family map — and a memo goes to the bubble.';
-        checkin.classList.add('glow');
-        label.textContent = 'Check in';
-        icon.setAttribute('viewBox', '0 0 24 24');
-        icon.innerHTML = pinSvg;
-        icon.classList.remove('spin');
-        requestAnimationFrame(tick);
-        return;
+    const whiteSpin = '<circle cx="12" cy="12" r="9" stroke="#fff" stroke-width="2.4" stroke-dasharray="16 10"/>';
+    const whiteCheck = '<path d="M20 6 9 17l-5-5" stroke="#fff" stroke-width="2.6"/>';
+
+    const checkin = document.getElementById('checkin');
+    const chipLabel = document.getElementById('chipLabel');
+    const icon = document.getElementById('icon');
+    const memos = document.getElementById('memos');
+    const tap = document.getElementById('tap');
+    const scrim = document.getElementById('scrim');
+    const sheet = document.getElementById('sheet');
+    const hint = document.getElementById('hint');
+    const cta = document.getElementById('cta');
+    const ctaLabel = document.getElementById('ctaLabel');
+    const ctaIcon = document.getElementById('ctaIcon');
+    const memo = document.getElementById('memo');
+
+    const pinEl = (d) => {
+      const el = document.createElement('div');
+      el.className = 'member-pin';
+      el.innerHTML = `<div class="bubble-head ${d.cls}">${d.initial}</div><div class="pin-name">${d.name}</div>`;
+      return el;
+    };
+
+    let globe = null;
+    const canWebGL = () => {
+      try {
+        const c = document.createElement('canvas');
+        return !!(c.getContext('webgl') || c.getContext('experimental-webgl'));
+      } catch (e) {
+        return false;
       }
-      if (t < 5500) {
-        kicker.textContent = 'Checking in';
-        title.innerHTML = 'Finding you.';
-        sub.textContent = 'Live GPS, then your family sees it.';
-        checkin.classList.remove('glow');
-        label.textContent = 'Checking in…';
-        icon.innerHTML = spinSvg;
-        icon.classList.add('spin');
-        requestAnimationFrame(tick);
-        return;
+    };
+
+    const startGlobe = () => {
+      const fallback = document.getElementById('fallback');
+      if (typeof Globe !== 'function' || !canWebGL()) {
+        fallback.classList.remove('off');
+        return null;
       }
-      kicker.textContent = 'Checked in';
-      title.innerHTML = 'You’re on the map.';
-      sub.textContent = 'Location plus a family memo — in one tap.';
-      label.textContent = 'Checked in';
+      const g = Globe()
+        .globeImageUrl('ad-assets/earth-blue-marble.jpg')
+        .backgroundImageUrl('ad-assets/night-sky.png')
+        .showAtmosphere(true)
+        .atmosphereColor('#3b82f6')
+        .atmosphereAltitude(0.18)
+        .backgroundColor('rgba(2,6,23,1)')
+        .htmlElementsData(members)
+        .htmlElement((d) => {
+          const el = pinEl(d);
+          el.style.pointerEvents = 'none';
+          return el;
+        })
+        .htmlAltitude(0.04)
+        .ringsData([])
+        .ringColor(() => (t) => `rgba(96,165,250,${1 - t})`)
+        .ringMaxRadius(2.4)
+        .ringPropagationSpeed(2.2)
+        .ringRepeatPeriod(700)
+        .width(1920)
+        .height(1080)(document.getElementById('globe'));
+
+      g.pointOfView({ lat: 32, lng: -55, altitude: 2.2 }, 0);
+      const controls = g.controls();
+      if (controls) {
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.55;
+        controls.enableZoom = false;
+      }
+      if (typeof g.onGlobeReady === 'function') {
+        g.onGlobeReady(() => fallback.classList.add('off'));
+      } else {
+        setTimeout(() => fallback.classList.add('off'), 1800);
+      }
+      return g;
+    };
+
+    const dropAda = () => {
+      if (!globe) return;
+      const withAda = members.concat([{ lat: HOME.lat, lng: HOME.lng, name: 'Ada', cls: 'ada', initial: 'A' }]);
+      globe.htmlElementsData(withAda);
+      globe.ringsData([{ lat: HOME.lat, lng: HOME.lng }]);
+      const controls = globe.controls();
+      if (controls) controls.autoRotate = false;
+      globe.pointOfView({ lat: HOME.lat, lng: HOME.lng, altitude: 1.15 }, 1400);
+    };
+
+    const setBusy = () => {
+      checkin.classList.remove('glow', 'press');
+      chipLabel.textContent = 'Checking in…';
+      icon.innerHTML = spinSvg;
+      icon.classList.add('spin');
+      hint.textContent = 'Finding your location…';
+      cta.className = 'cta busy';
+      ctaLabel.textContent = 'Checking in…';
+      ctaIcon.innerHTML = whiteSpin;
+      ctaIcon.classList.add('spin');
+      memo.classList.remove('on');
+    };
+
+    const setDone = () => {
+      chipLabel.textContent = 'Checked in';
       icon.classList.remove('spin');
       icon.innerHTML = checkSvg;
-      pin.classList.add('on');
-      toast.classList.add('on');
+      memos.textContent = '📝 3 Memos';
+      hint.textContent = 'You’re on the family globe.';
+      cta.className = 'cta done';
+      ctaLabel.textContent = 'Checked in';
+      ctaIcon.classList.remove('spin');
+      ctaIcon.innerHTML = whiteCheck;
+      memo.classList.add('on');
+      dropAda();
+    };
+
+    globe = startGlobe();
+
+    const start = performance.now();
+    const tick = (now) => {
+      const t = now - start;
+      if (t < 5500) {
+        checkin.classList.add('glow');
+        requestAnimationFrame(tick);
+        return;
+      }
+      if (t < 6200) {
+        checkin.classList.add('press');
+        tap.classList.add('flash');
+        requestAnimationFrame(tick);
+        return;
+      }
+      if (t < 9000) {
+        scrim.classList.add('on');
+        sheet.classList.add('on');
+        setBusy();
+        requestAnimationFrame(tick);
+        return;
+      }
+      scrim.classList.add('on');
+      sheet.classList.add('on');
+      setDone();
     };
     requestAnimationFrame(tick);
   </script>
