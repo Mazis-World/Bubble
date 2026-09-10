@@ -4,7 +4,7 @@ import CustomSelect from '../ui/CustomSelect';
 import LocationStep from '../ui/LocationStep';
 import imageCompression from 'browser-image-compression';
 
-const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) => {
+const CreateBubbleFlow = ({ onComplete, onBack }) => {
   const [step, setStep] = useState(1);
   const [bubbleName, setBubbleName] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -31,13 +31,7 @@ const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) 
       relationshipRole,
       location,
     };
-    // Only show paywall once, after profile details are collected.
-    // Skip if this session already has an active subscription.
-    if (!isSubscribed && handlePurchase) {
-      handlePurchase(() => onComplete(bubbleData));
-    } else {
-      onComplete(bubbleData);
-    }
+    onComplete(bubbleData);
   };
 
 
@@ -261,7 +255,7 @@ const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) 
               <h2 className="text-3xl font-bold">{bubbleName}</h2>
               <p className="text-gray-300">Welcome, {firstName} {lastName} ({relationshipRole})!</p>
               <p className="text-sm text-gray-500">
-                You're almost there! One final step to launch your personalized family bubble.
+                Creating a bubble is free. You can upgrade later for SOS and extra family members.
               </p>
             </div>
           </Step>

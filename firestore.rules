@@ -45,6 +45,11 @@ service cloud.firestore {
              isBubbleMemberAfter(bubbleId) || isBubbleOwnerAfter(bubbleId);
     }
 
+    function membersWithinCap() {
+      return !('members' in request.resource.data) ||
+             request.resource.data.members.size() <= request.resource.data.get('maxMembers', resource.data.get('maxMembers', 50));
+    }
+
     function isValidNodeCreate() {
       return request.resource.data.userId == request.auth.uid &&
              request.resource.data.userId is string &&
@@ -93,7 +98,8 @@ service cloud.firestore {
                      request.resource.data.name is string;
       
       // Owner can update any bubble fields. Joiners may only add themselves to members.
-      allow update: if isBubbleOwner(bubbleId) ||
+      allow update: if membersWithinCap() && (
+                     isBubbleOwner(bubbleId) ||
                      (
                        isAuthenticated() &&
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
@@ -102,7 +108,8 @@ service cloud.firestore {
                          request.resource.data.members.hasAll(resource.data.members)
                        ) &&
                        request.resource.data.members.hasAny([request.auth.uid])
-                     );
+                     )
+                   );
       
       // Only bubble owner can delete bubbles
       allow delete: if isBubbleOwner(bubbleId);

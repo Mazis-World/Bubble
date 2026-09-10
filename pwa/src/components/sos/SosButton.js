@@ -5,7 +5,7 @@ import { SOS_HOLD_MS, hapticPulse } from '../../services/sos';
  * Large emergency SOS control. Requires a 3-second press-and-hold
  * so a casual tap cannot send an alert.
  */
-const SosButton = ({ onHoldComplete, disabled = false }) => {
+const SosButton = ({ onHoldComplete, disabled = false, locked = false, onLockedPress }) => {
   const [holding, setHolding] = useState(false);
   const [progress, setProgress] = useState(0);
   const holdStartedAt = useRef(null);
@@ -43,6 +43,10 @@ const SosButton = ({ onHoldComplete, disabled = false }) => {
   const startHold = (event) => {
     if (disabled) return;
     event.preventDefault();
+    if (locked) {
+      onLockedPress?.();
+      return;
+    }
     completedRef.current = false;
     holdStartedAt.current = Date.now();
     setHolding(true);
@@ -62,7 +66,9 @@ const SosButton = ({ onHoldComplete, disabled = false }) => {
       onPointerLeave={() => stopHold()}
       onPointerCancel={() => stopHold()}
       onContextMenu={(event) => event.preventDefault()}
-      aria-label="SOS. Hold for 3 seconds to start an emergency alert"
+      aria-label={locked
+        ? 'SOS is a Premium feature. Opens upgrade'
+        : 'SOS. Hold for 3 seconds to start an emergency alert'}
       aria-pressed={holding}
       className={`w-full rounded-2xl font-black text-white tap-target relative overflow-hidden select-none ${
         holding ? 'scale-[0.98]' : 'sos-pulse'
@@ -87,7 +93,7 @@ const SosButton = ({ onHoldComplete, disabled = false }) => {
         <span className="text-2xl" aria-hidden="true">🚨</span>
         <span className="text-xl tracking-wide">SOS</span>
         <span className="text-xs font-semibold text-red-100">
-          {holding ? 'Keep holding…' : 'Hold for 3 seconds'}
+          {locked ? 'Premium' : holding ? 'Keep holding…' : 'Hold for 3 seconds'}
         </span>
       </span>
     </button>

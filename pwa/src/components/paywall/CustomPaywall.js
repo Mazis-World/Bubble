@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Check, Sparkles, Users, MapPin, MessageCircle, Shield, Zap, Gift } from 'lucide-react';
+import { X, Check, Sparkles, Users, MapPin, Shield, Zap, Gift } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
 import { analyticsService } from '../../services/analytics';
 
@@ -544,40 +544,34 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
   const features = [
     { 
+      icon: Shield, 
+      text: "SOS emergency alerts",
+      visual: "security",
+      description: "Hold for 3 seconds to alert everyone in your bubble with live location"
+    },
+    { 
       icon: Users, 
       text: "Unlimited family members",
       visual: "radar",
-      description: "See your entire family at a glance on the interactive radar"
+      description: "Free includes 6 people. Premium is for the whole extended family"
+    },
+    { 
+      icon: Zap, 
+      text: "Instant SOS notifications",
+      visual: "notifications",
+      description: "Family gets an immediate alert with a deep link to your pin"
     },
     { 
       icon: MapPin, 
-      text: "Real-time location sharing",
+      text: "Everything in Free stays free",
       visual: "globe",
-      description: "Track family locations on a beautiful 3D globe"
-    },
-    { 
-      icon: MessageCircle, 
-      text: "Status updates & emojis",
-      visual: "status",
-      description: "Share moments with custom status updates"
+      description: "Radar, map, check-in, status, memos, and invites stay free"
     },
     { 
       icon: Sparkles, 
       text: "Shareable invite links",
       visual: "invite",
-      description: "Invite family members instantly with secure links"
-    },
-    { 
-      icon: Shield, 
-      text: "Private & secure",
-      visual: "security",
-      description: "End-to-end encrypted, family-only access"
-    },
-    { 
-      icon: Zap, 
-      text: "Instant notifications",
-      visual: "notifications",
-      description: "Stay connected with real-time alerts"
+      description: "Invite family members instantly with secure links — included on Free"
     },
   ];
 
@@ -659,14 +653,14 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               </div>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent leading-tight px-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.3s' }}>
-              Where Family Meets Technology
+              Unlock FamilyBubble Premium
             </h1>
             <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              The most intuitive way to keep your family close. See them on a beautiful globe. Share moments instantly. Know they're safe, always. This is the future of how families connect.
+              The family bubble is free. Premium adds SOS emergency alerts and room for your whole family.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Private by design • Built for families</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Free to use • Premium for SOS & unlimited family</span>
             </div>
           </div>
 
@@ -675,7 +669,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
             {/* Left side - Features with Visuals */}
             <div className="order-2 lg:order-1 animate-slide-in-left" style={{ opacity: 0, animationDelay: '0.6s' }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 text-center lg:text-left">
-                Everything Your Family Needs
+                Premium safety for your bubble
               </h2>
               <div className="space-y-6 sm:space-y-8">
                 {features.map((feature, index) => {

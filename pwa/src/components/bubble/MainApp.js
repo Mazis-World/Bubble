@@ -6,8 +6,9 @@ import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'fi
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
 import useSos from '../../hooks/useSos';
+import { canInviteMoreMembers, inviteLimitMessage } from '../../services/billing';
 
-const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
+const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, isLapsedSubscriber = false, onUpgrade, onRestorePurchases, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
   const [bubbleData, setBubbleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
@@ -21,6 +22,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const currentBubbleIdRef = useRef(null);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
   const joinAttemptedRef = useRef(null);
+  const isSubscribedRef = useRef(isSubscribed);
+  isSubscribedRef.current = isSubscribed;
   const sos = useSos({ userId, bubbleData, initialSosLink: sosLink });
 
   const setupRealtimeListener = React.useCallback((bubbleId, memberId) => {
@@ -169,7 +172,9 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       const { bubbleName, firstName, lastName, imageFile, relationshipRole, location } = bubbleCreationData;
       console.log("Creating bubble for user:", userId, "with data:", { bubbleName, firstName, lastName, location });
       
-      API.createBubble(userId, firstName, lastName, bubbleName, imageFile, relationshipRole, location)
+      API.createBubble(userId, firstName, lastName, bubbleName, imageFile, relationshipRole, location, {
+        isPremium: Boolean(isSubscribedRef.current),
+      })
         .then(async (result) => {
           console.log("Bubble created successfully:", result);
           onBubbleCreated(); // Clear the creation data from App.js
@@ -585,6 +590,18 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       console.error("Cannot generate invite: currentMember or nodeId is missing.", { bubbleData });
       return;
     }
+
+    const memberCount = Array.isArray(bubbleData.allMembers)
+      ? bubbleData.allMembers.length
+      : (bubbleData.bubble.members || []).length;
+    if (!canInviteMoreMembers({ isPremium: Boolean(isSubscribed), memberCount })) {
+      if (onUpgrade) {
+        onUpgrade();
+      } else {
+        alert(inviteLimitMessage());
+      }
+      return;
+    }
     
     // Prevent multiple clicks
     if (isGeneratingInvite) return;
@@ -678,6 +695,10 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       handleProfileUpdate={handleProfileUpdate}
       onLogout={onLogout}
       sos={sos}
+      isSubscribed={Boolean(isSubscribed)}
+      isLapsedSubscriber={Boolean(isLapsedSubscriber)}
+      onUpgrade={onUpgrade}
+      onRestorePurchases={onRestorePurchases}
     />
   );
 };

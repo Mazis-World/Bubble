@@ -22,6 +22,7 @@ import BubbleEdge from '../models/BubbleEdge';
 import User from '../models/User';
 import { MEMO_TYPE, createFamilyMemo } from './memos';
 import { buildCheckInMemo } from './checkin';
+import { canJoinAtMemberCap, joinLimitMessage, memberLimitForPlan } from './billing';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -274,7 +275,8 @@ export const API = {
     bubbleName,
     imageFile,
     relationshipRole,
-    location = null
+    location = null,
+    { isPremium = false } = {}
   ) => {
     console.log("Creating bubble for user:", userId);
     
@@ -332,7 +334,7 @@ export const API = {
       userId,
       bubbleName || `${firstName}'s Bubble`,
       serverTimestamp(),
-      50, // maxMembers - default
+      memberLimitForPlan(isPremium), // maxMembers — free vs premium
       null, // inviteCode - will be generated later if needed
       'private', // visibility
       [userId] // members - Add owner to members list
@@ -582,6 +584,16 @@ export const API = {
       throw new Error('You must be signed in to generate an invite.');
     }
 
+    const bubbleRef = doc(db, 'bubbles', bubbleId);
+    const bubbleSnap = await getDoc(bubbleRef);
+    if (bubbleSnap.exists()) {
+      const bubbleData = bubbleSnap.data() || {};
+      const memberCount = Array.isArray(bubbleData.members) ? bubbleData.members.length : 0;
+      if (!canJoinAtMemberCap({ memberCount, maxMembers: bubbleData.maxMembers })) {
+        throw new Error(joinLimitMessage());
+      }
+    }
+
     const edgePayload = {
       fromNode: fromNodeId,
       toNode: null,
@@ -764,6 +776,14 @@ export const API = {
     }
 
     console.log("Found bubble:", bubbleId, "for user:", userId);
+
+    const existingMembers = Array.isArray(bubbleDoc.data()?.members) ? bubbleDoc.data().members : [];
+    if (!existingMembers.includes(userId) && !canJoinAtMemberCap({
+      memberCount: existingMembers.length,
+      maxMembers: bubbleDoc.data()?.maxMembers,
+    })) {
+      throw new Error(joinLimitMessage());
+    }
 
     // Create a new node for the user in the bubble
     const nodeRef = doc(collection(db, 'bubbles', bubbleId, 'nodes'));
@@ -1118,6 +1138,32 @@ export const API = {
     });
     
     await batch.commit();
+    return { success: true };
+  },
+
+  applyPremiumToOwner: async (userId) => {
+    if (!userId) return { success: false };
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      return { success: false };
+    }
+
+    try {
+      await updateDoc(userRef, { premium: true });
+    } catch (error) {
+      console.error('Failed to mark user premium:', error);
+    }
+
+    const bubbleIds = userSnap.data()?.bubbles || [];
+    await Promise.all(bubbleIds.map(async (bubbleId) => {
+      const bubbleRef = doc(db, 'bubbles', bubbleId);
+      const bubbleSnap = await getDoc(bubbleRef);
+      if (!bubbleSnap.exists()) return;
+      if (bubbleSnap.data()?.ownerId !== userId) return;
+      await updateDoc(bubbleRef, { maxMembers: memberLimitForPlan(true) });
+    }));
+
     return { success: true };
   },
 

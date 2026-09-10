@@ -14,6 +14,7 @@ import SosActiveScreen from '../sos/SosActiveScreen';
 import SosAlertScreen from '../sos/SosAlertScreen';
 import SosPermissionSheet from '../sos/SosPermissionSheet';
 import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
+import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 import { Circle, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
@@ -40,6 +41,10 @@ const Bubble = ({
   onLogout,
   isGeneratingInvite = false,
   sos = null,
+  isSubscribed = false,
+  isLapsedSubscriber = false,
+  onUpgrade,
+  onRestorePurchases,
 }) => {
   const [shareSuccess, setShareSuccess] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -265,6 +270,8 @@ const Bubble = ({
             <SosButton
               onHoldComplete={sos.handleHoldComplete}
               disabled={sos.busy || sos.sosActive}
+              locked={!isSubscribed}
+              onLockedPress={onUpgrade}
             />
           )}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -515,6 +522,14 @@ const Bubble = ({
         
         {/* Notification Settings */}
         <NotificationSettings />
+        
+        <div className="my-6 border-t border-gray-800" />
+        <PremiumSettings
+          isSubscribed={isSubscribed}
+          isLapsedSubscriber={isLapsedSubscriber}
+          onUpgrade={onUpgrade}
+          onRestorePurchases={onRestorePurchases}
+        />
         
         <div className="my-6 border-t border-gray-800" />
         <EmergencyNumberSettings />
