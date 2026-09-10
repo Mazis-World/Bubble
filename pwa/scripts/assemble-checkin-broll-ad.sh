@@ -38,7 +38,7 @@ SCALE="fps=30,scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:108
 ffmpeg -y \
   -ss 1.2 -t 4.2 -i "$BROLL_DIR/arrive-home.mp4" \
   -ss 1.0 -t 3.6 -i "$BROLL_DIR/tap-phone.mp4" \
-  -ss 0.4 -t 12.5 -i "$BROLL_DIR/app-checkin.mp4" \
+  -ss 0.4 -t 13.2 -i "$BROLL_DIR/app-checkin.mp4" \
   -ss 5.2 -t 4.2 -i "$BROLL_DIR/come-home.mp4" \
   -f lavfi -t 5.0 -i "color=c=0x0B1220:s=1920x1080:r=30" \
   -filter_complex "
@@ -53,9 +53,9 @@ drawtext=fontfile=${FONT2}:textfile=/tmp/checkin/captions/cta3.txt:fontsize=32:f
 settb=1/30,setpts=PTS-STARTPTS [v4];
 [v0][v1] xfade=transition=fade:duration=0.28:offset=3.92 [c01];
 [c01][v2] xfade=transition=fade:duration=0.32:offset=7.20 [c02];
-[c02][v3] xfade=transition=fade:duration=0.28:offset=19.42 [c03];
-[c03][v4] xfade=transition=fade:duration=0.28:offset=23.34 [vcat];
-[vcat] fade=t=in:st=0:d=0.25,fade=t=out:st=26.8:d=0.5 [v]
+[c02][v3] xfade=transition=fade:duration=0.28:offset=20.08 [c03];
+[c03][v4] xfade=transition=fade:duration=0.28:offset=24.00 [vcat];
+[vcat] fade=t=in:st=0:d=0.25,fade=t=out:st=28.5:d=0.5 [v]
 " \
   -map "[v]" \
   -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -movflags +faststart \

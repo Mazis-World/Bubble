@@ -7,7 +7,7 @@ PUBLIC="$ROOT/pwa/public"
 HTML="$PUBLIC/checkin-ad-app.html"
 OUT="${1:-/tmp/checkin/app-checkin.mp4}"
 DISPLAY_NUM="${DISPLAY_NUM:-97}"
-DURATION="${DURATION:-14}"
+DURATION="${DURATION:-16}"
 PORT="${PORT:-8765}"
 
 if [[ ! -f "$HTML" ]]; then
@@ -65,9 +65,9 @@ ffmpeg -y \
   -c:v libx264 -pix_fmt yuv420p -preset medium -crf 18 -movflags +faststart \
   "$OUT"
 
-ffmpeg -y -ss 1.2 -i "$OUT" -update 1 -frames:v 1 /tmp/checkin/app-idle.png
-ffmpeg -y -ss 3.8 -i "$OUT" -update 1 -frames:v 1 /tmp/checkin/app-busy.png
-ffmpeg -y -ss 9.0 -i "$OUT" -update 1 -frames:v 1 /tmp/checkin/app-done.png
+ffmpeg -y -ss 1.0 -i "$OUT" -update 1 -frames:v 1 /tmp/checkin/app-idle.png
+ffmpeg -y -ss 4.4 -i "$OUT" -update 1 -frames:v 1 /tmp/checkin/app-busy.png
+ffmpeg -y -ss 8.6 -i "$OUT" -update 1 -frames:v 1 /tmp/checkin/app-done.png
 
 kill "$CHROME_PID" 2>/dev/null || true
 kill "$XVFB_PID" 2>/dev/null || true
