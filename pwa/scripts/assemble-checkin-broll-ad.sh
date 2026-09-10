@@ -17,7 +17,7 @@ need() {
 }
 
 need "$BROLL_DIR/arrive-home.mp4"
-need "$BROLL_DIR/walk-phone.mp4"
+need "$BROLL_DIR/tap-phone.mp4"
 need "$BROLL_DIR/app-checkin.mp4"
 need "$BROLL_DIR/come-home.mp4"
 need "$FONT"
@@ -51,7 +51,7 @@ SCALE="fps=30,scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:108
 
 ffmpeg -y \
   -ss 1.2 -t 4.4 -i "$BROLL_DIR/arrive-home.mp4" \
-  -ss 0.4 -t 4.0 -i "$BROLL_DIR/walk-phone.mp4" \
+  -ss 1.0 -t 4.0 -i "$BROLL_DIR/tap-phone.mp4" \
   -ss 0.3 -t 10 -i "$BROLL_DIR/app-checkin.mp4" \
   -ss 5.2 -t 4.5 -i "$BROLL_DIR/come-home.mp4" \
   -f lavfi -t 5.2 -i "color=c=0x0B1220:s=1920x1080:r=30" \
