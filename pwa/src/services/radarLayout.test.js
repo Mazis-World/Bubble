@@ -1,9 +1,12 @@
 import {
   RADAR_BUBBLE_GAP,
   RADAR_BUBBLE_SIZE,
+  RADAR_PLACE_SIZE,
   distanceBetween,
   hydrateRadarNodes,
   layoutRadarNodes,
+  layoutRadarPlaces,
+  radarMaxDistanceKm,
   separateOverlappingNodes,
 } from './radarLayout';
 
@@ -95,5 +98,61 @@ describe('radar layout', () => {
     expect(hydrated.photoUrl).toBe('https://example/me.jpg');
     expect(hydrated.x).toBe(200);
     expect(hydrated.y).toBe(200);
+  });
+
+  test('projects a place north of the user onto the radar', () => {
+    const origin = { latitude: -26.2, longitude: 28.04 };
+    const nodes = layoutRadarPlaces({
+      origin,
+      width: 400,
+      height: 400,
+      maxDistanceKm: 10,
+      places: [{
+        placeId: 'school',
+        name: 'School',
+        icon: '🏫',
+        latitude: -26.11,
+        longitude: 28.04,
+      }],
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].place.placeId).toBe('school');
+    expect(nodes[0].y).toBeLessThan(200);
+    expect(Math.abs(nodes[0].x - 200)).toBeLessThan(12);
+  });
+
+  test('nudge a place off the current-user bubble when they share GPS', () => {
+    const origin = { latitude: -26.2, longitude: 28.04 };
+    const memberNodes = [{ id: 'me', x: 200, y: 200 }];
+    const nodes = layoutRadarPlaces({
+      origin,
+      width: 400,
+      height: 400,
+      maxDistanceKm: 10,
+      memberNodes,
+      places: [{
+        placeId: 'home',
+        name: 'Home',
+        icon: '🏠',
+        latitude: origin.latitude,
+        longitude: origin.longitude,
+      }],
+    });
+    expect(distanceBetween(memberNodes[0], nodes[0]))
+      .toBeGreaterThanOrEqual((RADAR_BUBBLE_SIZE + RADAR_PLACE_SIZE) / 2 + RADAR_BUBBLE_GAP - 1);
+  });
+
+  test('includes places in the shared km scale', () => {
+    const origin = { latitude: 0, longitude: 0 };
+    const km = radarMaxDistanceKm({
+      origin,
+      currentMemberId: 'me',
+      members: [
+        { id: 'me', lastKnownLocation: origin },
+        { id: 'kid', lastKnownLocation: { latitude: 0.01, longitude: 0 } },
+      ],
+      places: [{ latitude: 0.2, longitude: 0 }],
+    });
+    expect(km).toBeGreaterThan(10);
   });
 });

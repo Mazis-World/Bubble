@@ -94,4 +94,34 @@ describe('BubbleCluster radar avatars', () => {
     expect(screen.getByText('🏠')).toBeTruthy();
     expect(screen.queryByText('✅')).toBeNull();
   });
+
+  test('shows place icons on the radar and opens a place on tap', () => {
+    const house = { latitude: -26.2, longitude: 28.04 };
+    const bubbleData = {
+      currentMember: { id: 'me', name: 'Me', lastKnownLocation: house },
+      allMembers: [{ id: 'me', name: 'Me', lastKnownLocation: house }],
+    };
+    const onPlaceClick = jest.fn();
+    render(
+      <BubbleCluster
+        bubbleData={bubbleData}
+        onStatusClick={() => {}}
+        onMemberClick={() => {}}
+        onPlaceClick={onPlaceClick}
+        places={[{
+          placeId: 'school',
+          name: 'School',
+          icon: '🏫',
+          color: '#34d399',
+          latitude: -26.21,
+          longitude: 28.05,
+        }]}
+      />
+    );
+    const marker = screen.getByRole('button', { name: 'School place' });
+    expect(marker.textContent).toContain('🏫');
+    expect(marker.textContent).toContain('School');
+    marker.click();
+    expect(onPlaceClick).toHaveBeenCalledWith(expect.objectContaining({ placeId: 'school' }));
+  });
 });

@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import CheckInPopup from './CheckInPopup';
+import { createPlaceHtmlMarker, globePlacePoints } from '../../services/places/markers';
 
 // Create amazing glass-like bubbles that pop off the globe
 const createFloatingHead = (member, size) => {
@@ -337,6 +338,8 @@ const GlobeView = ({
   onCloseCheckIn,
   focusTarget = null,
   overlay = null,
+  places = [],
+  onPlaceClick,
 }) => {
   const globeEl = useRef();
   const containerRef = useRef();
@@ -531,9 +534,10 @@ const GlobeView = ({
   const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
     ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
     : [];
+  const placePoints = globePlacePoints(places);
 
   // If no members have locations yet, show a message
-  if (points.length === 0) {
+  if (points.length === 0 && placePoints.length === 0) {
     return (
       <div ref={containerRef} className="w-full h-full relative flex items-center justify-center">
         <Globe
@@ -625,6 +629,22 @@ const GlobeView = ({
         ringMaxRadius={2.2}
         ringPropagationSpeed={2.2}
         ringRepeatPeriod={700}
+        htmlElementsData={placePoints}
+        htmlLat="lat"
+        htmlLng="lng"
+        htmlAltitude={0.02}
+        htmlTransition={0}
+        htmlElement={(point) => createPlaceHtmlMarker(point.place, {
+          onClick: (place) => {
+            if (globeEl.current) {
+              globeEl.current.pointOfView(
+                { lat: place.latitude, lng: place.longitude, altitude: 1.5 },
+                800
+              );
+            }
+            if (onPlaceClick) onPlaceClick(place);
+          },
+        })}
         showAtmosphere={true}
         atmosphereColor="#3b82f6"
         atmosphereAltitude={0.2}

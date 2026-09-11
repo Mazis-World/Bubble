@@ -2,6 +2,7 @@
 
 export const RADAR_BUBBLE_SIZE = 56;
 export const RADAR_BUBBLE_GAP = 10;
+export const RADAR_PLACE_SIZE = 36;
 
 export const calculateBearing = (lat1, lon1, lat2, lon2) => {
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -29,6 +30,64 @@ export const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
 const hasLocation = (member) => {
   const loc = member?.lastKnownLocation;
   return loc != null && Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude);
+};
+
+export const hasGeoPoint = (latitude, longitude) =>
+  Number.isFinite(latitude) && Number.isFinite(longitude);
+
+export const activePlacesWithLocation = (places = []) =>
+  (places || []).filter((place) => (
+    place
+    && place.isActive !== false
+    && hasGeoPoint(place.latitude, place.longitude)
+  ));
+
+/**
+ * Shared radar scale so members and places sit on the same km rings.
+ */
+export const radarMaxDistanceKm = ({ origin, members = [], places = [], currentMemberId = null }) => {
+  if (!origin || !hasGeoPoint(origin.latitude, origin.longitude)) return 10;
+  const distances = [];
+  members.forEach((member) => {
+    if (currentMemberId && member.id === currentMemberId) return;
+    if (!hasLocation(member)) return;
+    distances.push(calculateDistanceKm(
+      origin.latitude,
+      origin.longitude,
+      member.lastKnownLocation.latitude,
+      member.lastKnownLocation.longitude
+    ));
+  });
+  activePlacesWithLocation(places).forEach((place) => {
+    distances.push(calculateDistanceKm(
+      origin.latitude,
+      origin.longitude,
+      place.latitude,
+      place.longitude
+    ));
+  });
+  return Math.max(10, ...distances);
+};
+
+export const projectRadarPoint = ({
+  origin,
+  latitude,
+  longitude,
+  centerX,
+  centerY,
+  maxRadius,
+  maxDistanceKm,
+}) => {
+  const distance = calculateDistanceKm(origin.latitude, origin.longitude, latitude, longitude);
+  const bearing = calculateBearing(origin.latitude, origin.longitude, latitude, longitude);
+  const radius = Math.min(distance / Math.max(maxDistanceKm, 0.001), 1) * maxRadius;
+  const angleRad = ((bearing - 90) * Math.PI) / 180;
+  return {
+    x: centerX + Math.cos(angleRad) * radius,
+    y: centerY + Math.sin(angleRad) * radius,
+    distance,
+    bearing,
+  };
 };
 
 const clampToRadar = (node, centerX, centerY, maxRadius) => {
@@ -127,6 +186,7 @@ export const layoutRadarNodes = ({
   width,
   height,
   bubbleSize = RADAR_BUBBLE_SIZE,
+  maxDistanceKm = null,
 }) => {
   const centerX = width / 2;
   const centerY = height / 2;
@@ -174,7 +234,9 @@ export const layoutRadarNodes = ({
         member.lastKnownLocation.longitude
       )
     );
-    const maxDistance = Math.max(10, ...distances);
+    const maxDistance = Number.isFinite(maxDistanceKm)
+      ? Math.max(10, maxDistanceKm)
+      : Math.max(10, ...distances);
 
     placed = [
       {
@@ -247,6 +309,70 @@ export const hydrateRadarNodes = (nodes, members) => {
       distance: node.distance,
       bearing: node.bearing,
     };
+  });
+};
+
+/**
+ * Project saved Places onto the radar using the same km scale as members.
+ * Place icons are nudged off member avatars so they stay readable.
+ */
+export const layoutRadarPlaces = ({
+  places,
+  origin,
+  width,
+  height,
+  maxDistanceKm,
+  memberNodes = [],
+  placeSize = RADAR_PLACE_SIZE,
+}) => {
+  if (!origin || !hasGeoPoint(origin.latitude, origin.longitude)) return [];
+
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const maxRadius = Math.max(Math.min(width, height) / 2 - placeSize / 2 - 4, placeSize);
+  const scaleKm = Number.isFinite(maxDistanceKm) ? Math.max(10, maxDistanceKm) : 10;
+
+  let placed = activePlacesWithLocation(places).map((place) => ({
+    id: `place:${place.placeId}`,
+    place,
+    ...projectRadarPoint({
+      origin,
+      latitude: place.latitude,
+      longitude: place.longitude,
+      centerX,
+      centerY,
+      maxRadius,
+      maxDistanceKm: scaleKm,
+    }),
+  }));
+
+  const minMemberDist = (RADAR_BUBBLE_SIZE + placeSize) / 2 + RADAR_BUBBLE_GAP;
+  placed = placed.map((node, index) => {
+    let { x, y } = node;
+    memberNodes.forEach((member) => {
+      let dx = x - member.x;
+      let dy = y - member.y;
+      let dist = Math.hypot(dx, dy);
+      if (dist >= minMemberDist) return;
+      if (dist < 0.001) {
+        const angle = ((index + 1) / Math.max(placed.length, 1)) * Math.PI * 2;
+        dx = Math.cos(angle);
+        dy = Math.sin(angle);
+        dist = 0.001;
+      }
+      const scale = minMemberDist / dist;
+      x = member.x + dx * scale;
+      y = member.y + dy * scale;
+    });
+    return clampToRadar({ ...node, x, y }, centerX, centerY, maxRadius);
+  });
+
+  return separateOverlappingNodes(placed, {
+    centerX,
+    centerY,
+    maxRadius,
+    bubbleSize: placeSize,
+    gap: 6,
   });
 };
 

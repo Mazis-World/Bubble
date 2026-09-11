@@ -19,6 +19,7 @@ import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
 import MapViewBadges from './MapViewBadges';
 import { ensurePlaceLocationPermission } from '../../services/places/permissions';
+import usePlaces from '../../hooks/usePlaces';
 import { Circle, Navigation, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
@@ -72,6 +73,7 @@ const Bubble = ({
     [sos?.openEvents]
   );
   const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
+  const { places } = usePlaces(bubbleData?.bubble?.id);
 
   const openPlaces = useCallback((placeId = null) => {
     setPlacesFocusId(placeId);
@@ -295,6 +297,8 @@ const Bubble = ({
             ))}
             onCloseCheckIn={closeCheckIn}
             overlay={viewBadges}
+            places={places}
+            onPlaceClick={(place) => openPlaces(place?.placeId)}
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
@@ -305,6 +309,8 @@ const Bubble = ({
           <BubbleCluster
             bubbleData={bubbleData}
             overlay={viewBadges}
+            places={places}
+            onPlaceClick={(place) => openPlaces(place?.placeId)}
             onStatusClick={() => setShowStatus(true)}
             onMemberClick={(member) => {
               setSelectedMember(member);
