@@ -1,17 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Loader2, MapPin, Search } from 'lucide-react';
 import PlaceMapPreview from './PlaceMapPreview';
-
-const lon2tile = (lon, zoom) => ((lon + 180) / 360) * 2 ** zoom;
-const lat2tile = (lat, zoom) => {
-  const rad = (lat * Math.PI) / 180;
-  return (1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * 2 ** zoom;
-};
-const tile2lon = (x, zoom) => (x / 2 ** zoom) * 360 - 180;
-const tile2lat = (y, zoom) => {
-  const n = Math.PI - (2 * Math.PI * y) / 2 ** zoom;
-  return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-};
+import PlaceDetectionRadar from './PlaceDetectionRadar';
+import { lat2tile, lon2tile, tile2lat, tile2lon } from '../../services/places/radarMap';
+import { MIN_RADIUS_METERS, MAX_RADIUS_METERS } from '../../services/places/constants';
 
 const TilePicker = ({ latitude, longitude, onPick }) => {
   const zoom = 16;
@@ -179,17 +171,19 @@ const PlaceMapPicker = ({
           type="button"
           onClick={useCurrent}
           disabled={loadingGps}
-          className="flex-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl font-bold tap-target disabled:opacity-60"
+          className={`bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl font-bold tap-target disabled:opacity-60 ${typeof onRadiusChange === 'function' ? 'w-full' : 'flex-1'}`}
         >
           {loadingGps ? 'Finding you…' : 'Use current location'}
         </button>
-        <button
-          type="button"
-          onClick={() => setMapMode((value) => !value)}
-          className="flex-1 bg-white/10 text-white py-3 rounded-2xl font-bold tap-target"
-        >
-          {mapMode ? 'Hide map picker' : 'Select on map'}
-        </button>
+        {typeof onRadiusChange !== 'function' && (
+          <button
+            type="button"
+            onClick={() => setMapMode((value) => !value)}
+            className="flex-1 bg-white/10 text-white py-3 rounded-2xl font-bold tap-target"
+          >
+            {mapMode ? 'Hide map picker' : 'Select on map'}
+          </button>
+        )}
       </div>
 
       <div className="relative">
@@ -236,7 +230,14 @@ const PlaceMapPicker = ({
 
       {location?.latitude != null && (
         <>
-          {mapMode ? (
+          {typeof onRadiusChange === 'function' ? (
+            <PlaceDetectionRadar
+              latitude={location.latitude}
+              longitude={location.longitude}
+              radiusMeters={radiusMeters}
+              onPick={(next) => applyLocation(next)}
+            />
+          ) : mapMode ? (
             <div className="space-y-2">
               <p className="text-sm text-gray-300 text-center">Tap the map to move the pin</p>
               <TilePicker
@@ -265,15 +266,17 @@ const PlaceMapPicker = ({
           </div>
           <input
             type="range"
-            min={75}
-            max={500}
+            min={MIN_RADIUS_METERS}
+            max={MAX_RADIUS_METERS}
             step={25}
             value={radiusMeters}
             onChange={(event) => onRadiusChange(Number(event.target.value))}
-            className="w-full accent-purple-500"
+            className="w-full accent-cyan-400"
             aria-label="Geofence radius"
           />
-          <p className="text-xs text-gray-500">A smaller circle is more precise. A larger circle is more forgiving.</p>
+          <p className="text-xs text-gray-500">
+            The radar on the map is the arrival bubble. Drag to make it tighter or more forgiving.
+          </p>
         </div>
       )}
 

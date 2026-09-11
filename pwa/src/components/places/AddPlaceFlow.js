@@ -155,7 +155,7 @@ const AddPlaceFlow = ({
     return (
       <StepShell
         title="How close counts as arriving?"
-        subtitle="You can make the circle smaller or a little larger."
+        subtitle="The radar on the map is your arrival bubble. Drag to change how far it reaches."
         onBack={() => setStep(2)}
         onNext={() => setStep(4)}
         canGoNext={location?.latitude != null}
