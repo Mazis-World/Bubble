@@ -8,7 +8,15 @@ import { enqueuePendingPlaceEvent } from './offline';
 import { queryGeolocationPermission } from './permissions';
 import { flushPendingPlaceEvents, recordPlaceEvent } from './api';
 
-const readPersistedState = (storage = globalThis.localStorage) => {
+const browserStorage = () => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch (error) {
+    return null;
+  }
+};
+
+const readPersistedState = (storage = browserStorage()) => {
   try {
     const raw = storage?.getItem?.(PLACE_GEOFENCE_STATE_KEY);
     return raw ? JSON.parse(raw) : { states: {}, registeredPlaceIds: [] };
@@ -17,7 +25,7 @@ const readPersistedState = (storage = globalThis.localStorage) => {
   }
 };
 
-const writePersistedState = (value, storage = globalThis.localStorage) => {
+const writePersistedState = (value, storage = browserStorage()) => {
   try {
     storage?.setItem?.(PLACE_GEOFENCE_STATE_KEY, JSON.stringify(value));
   } catch (error) {
@@ -25,10 +33,10 @@ const writePersistedState = (value, storage = globalThis.localStorage) => {
   }
 };
 
-export const restoreRegisteredPlaceIds = (storage = globalThis.localStorage) =>
+export const restoreRegisteredPlaceIds = (storage = browserStorage()) =>
   readPersistedState(storage).registeredPlaceIds || [];
 
-const persistRuntime = (runtime, storage = globalThis.localStorage) => {
+const persistRuntime = (runtime, storage = browserStorage()) => {
   writePersistedState({
     states: runtime.states,
     registeredPlaceIds: (runtime.places || []).map((place) => place.placeId),

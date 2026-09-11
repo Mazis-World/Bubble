@@ -19,7 +19,15 @@ export const shouldPromptPlacePermission = ({
   return permission === 'prompt' || permission === 'default';
 };
 
-export const readPlacePermissionPrompted = (storage = globalThis.localStorage) => {
+const browserStorage = () => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const readPlacePermissionPrompted = (storage = browserStorage()) => {
   try {
     return storage?.getItem?.(PLACE_PERMISSION_PROMPTED_KEY) === '1';
   } catch (error) {
@@ -27,7 +35,7 @@ export const readPlacePermissionPrompted = (storage = globalThis.localStorage) =
   }
 };
 
-export const markPlacePermissionPrompted = (storage = globalThis.localStorage) => {
+export const markPlacePermissionPrompted = (storage = browserStorage()) => {
   try {
     storage?.setItem?.(PLACE_PERMISSION_PROMPTED_KEY, '1');
   } catch (error) {

@@ -1,6 +1,14 @@
 import { PENDING_PLACE_EVENTS_KEY } from './constants';
 
-const readQueue = (storage = globalThis.localStorage) => {
+const browserStorage = () => {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch (error) {
+    return null;
+  }
+};
+
+const readQueue = (storage = browserStorage()) => {
   try {
     const raw = storage?.getItem?.(PENDING_PLACE_EVENTS_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -9,7 +17,7 @@ const readQueue = (storage = globalThis.localStorage) => {
   }
 };
 
-const writeQueue = (queue, storage = globalThis.localStorage) => {
+const writeQueue = (queue, storage = browserStorage()) => {
   try {
     storage?.setItem?.(PENDING_PLACE_EVENTS_KEY, JSON.stringify(queue));
   } catch (error) {
@@ -17,7 +25,7 @@ const writeQueue = (queue, storage = globalThis.localStorage) => {
   }
 };
 
-export const enqueuePendingPlaceEvent = (event, storage = globalThis.localStorage) => {
+export const enqueuePendingPlaceEvent = (event, storage = browserStorage()) => {
   const queue = readQueue(storage);
   const key = event?.idempotencyKey;
   if (key && queue.some((item) => item.idempotencyKey === key)) {
@@ -28,14 +36,14 @@ export const enqueuePendingPlaceEvent = (event, storage = globalThis.localStorag
   return queue;
 };
 
-export const peekPendingPlaceEvents = (storage = globalThis.localStorage) => readQueue(storage);
+export const peekPendingPlaceEvents = (storage = browserStorage()) => readQueue(storage);
 
-export const removePendingPlaceEvent = (idempotencyKey, storage = globalThis.localStorage) => {
+export const removePendingPlaceEvent = (idempotencyKey, storage = browserStorage()) => {
   const next = readQueue(storage).filter((item) => item.idempotencyKey !== idempotencyKey);
   writeQueue(next, storage);
   return next;
 };
 
-export const clearPendingPlaceEvents = (storage = globalThis.localStorage) => {
+export const clearPendingPlaceEvents = (storage = browserStorage()) => {
   writeQueue([], storage);
 };
