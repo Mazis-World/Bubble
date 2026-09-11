@@ -11,8 +11,8 @@ File: `familybubble-family-checkin-spot.mp4`
 | 0:00–0:03 | Family walking toward the venue. Parent has a phone; home screen shows **Family Bubble Check-In**. | Checking in with the whole family? | “Checking in with the whole family?” |
 | 0:03–0:06 | Close-up: parent opens the app and taps Family Bubble Check-In. Phone ~40–50% of frame. | One check-in. Everyone included. | “Make it simple.” |
 | 0:06–0:10 | Full-screen: select family members, then cut back to the family. | Select your family → Check in | “Select your family and check everyone in together.” |
-| 0:10–0:13 | Kids run ahead through the entrance. Subtle logo badge. | Less time checking in. More time together. | “Less time checking in. More time together.” |
-| 0:13–0:15 | End card: family hero left, app UI right. | FAMILY BUBBLE CHECK-IN / One family. One simple check-in. | “Family Bubble Check-In.” |
+| 0:10–0:13 | Kids run ahead through the entrance. | Less time checking in. More time together. | “Less time checking in. More time together.” |
+| 0:13–0:15 | End card: family hero left, app UI on the device at right. | FAMILY BUBBLE CHECK-IN / One family. One simple check-in. | “Family Bubble Check-In.” |
 
 ## Title
 FamilyBubble — Family Bubble Check-In
@@ -42,7 +42,7 @@ Family Bubble Check-In.
 
 ## Rebuild
 
-App UI is recorded from `family-checkin-ad-app.html` (home card → select family → check in).
+App UI is recorded from `family-checkin-ad-app.html` (home card → select family → check in), then warped onto the stills’ device screens (`composite-family-checkin-screens.py`) so the mockup sits in the phone, not as a floating overlay.
 
 ```bash
 # Record the app plate (Xvfb + Chrome)
