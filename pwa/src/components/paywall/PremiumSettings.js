@@ -1,10 +1,12 @@
 import React from 'react';
 import { Crown, Sparkles } from 'lucide-react';
-import { FREE_MEMBER_LIMIT } from '../../services/billing';
+import { FREE_MEMBER_LIMIT, contactOwnerToUpgradeMessage } from '../../services/billing';
 
 const PremiumSettings = ({
   isSubscribed = false,
   isLapsedSubscriber = false,
+  isOwner = true,
+  ownerName = '',
   onUpgrade,
   onRestorePurchases,
 }) => {
@@ -28,8 +30,9 @@ const PremiumSettings = ({
             {isLapsedSubscriber ? 'Premium expired' : 'Free plan'}
           </div>
           <p className="text-sm text-gray-300">
-            The app is free: radar, map, check-in, status, memos, and up to {FREE_MEMBER_LIMIT} family members.
-            Premium unlocks SOS alerts and room for the whole family.
+            {isOwner
+              ? `The app is free: radar, map, check-in, status, memos, and up to ${FREE_MEMBER_LIMIT} family members. Premium unlocks SOS alerts and room for the whole family.`
+              : contactOwnerToUpgradeMessage(ownerName)}
           </p>
           {onUpgrade && (
             <button
@@ -37,10 +40,12 @@ const PremiumSettings = ({
               onClick={() => onUpgrade()}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-600/30 transition-all tap-target"
             >
-              {isLapsedSubscriber ? 'Renew Premium' : 'Upgrade to Premium'}
+              {isOwner
+                ? (isLapsedSubscriber ? 'Renew Premium' : 'Upgrade to Premium')
+                : 'Contact the owner'}
             </button>
           )}
-          {onRestorePurchases && (
+          {isOwner && onRestorePurchases && (
             <button
               type="button"
               onClick={onRestorePurchases}

@@ -43,6 +43,8 @@ const Bubble = ({
   sos = null,
   isSubscribed = false,
   isLapsedSubscriber = false,
+  isOwner = true,
+  ownerName = '',
   onUpgrade,
   onRestorePurchases,
 }) => {
@@ -546,6 +548,8 @@ const Bubble = ({
         <PremiumSettings
           isSubscribed={isSubscribed}
           isLapsedSubscriber={isLapsedSubscriber}
+          isOwner={isOwner}
+          ownerName={ownerName}
           onUpgrade={onUpgrade}
           onRestorePurchases={onRestorePurchases}
         />

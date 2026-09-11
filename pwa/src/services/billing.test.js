@@ -1,10 +1,13 @@
 import {
   FREE_MEMBER_LIMIT,
   PREMIUM_MEMBER_LIMIT,
+  bubbleOwnerDisplayName,
   canInviteMoreMembers,
   canJoinAtMemberCap,
+  contactOwnerToUpgradeMessage,
   hadPremiumEntitlement,
   hasPremiumEntitlement,
+  isBubbleOwner,
   memberLimitForPlan,
 } from './billing';
 
@@ -40,5 +43,23 @@ describe('billing', () => {
     expect(canJoinAtMemberCap({ memberCount: 6, maxMembers: 6 })).toBe(false);
     expect(canJoinAtMemberCap({ memberCount: 6, maxMembers: 50 })).toBe(true);
     expect(canJoinAtMemberCap({ memberCount: 0, maxMembers: undefined })).toBe(true);
+  });
+
+  test('only the FamilyBubble owner can purchase premium', () => {
+    expect(isBubbleOwner({
+      userId: 'mom',
+      member: { userId: 'mom', type: 'owner', tier: 1 },
+      bubble: { ownerId: 'mom' },
+    })).toBe(true);
+    expect(isBubbleOwner({
+      userId: 'dad',
+      member: { userId: 'dad', type: 'member', tier: 2 },
+      bubble: { ownerId: 'mom' },
+    })).toBe(false);
+    expect(bubbleOwnerDisplayName({
+      bubble: { ownerId: 'mom' },
+      members: [{ userId: 'mom', name: 'Mom Smith', type: 'owner' }],
+    })).toBe('Mom');
+    expect(contactOwnerToUpgradeMessage('Mom')).toMatch(/only mom can sign up/i);
   });
 });
