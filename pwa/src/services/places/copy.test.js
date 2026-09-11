@@ -5,6 +5,7 @@ import {
   formatPlaceStatus,
   formatPlacesUsed,
   notifyTypeForEvent,
+  PLACE_ARRIVAL_REASSURANCE,
 } from './copy';
 import { EVENT_TYPE, PLACE_NOTIFY_TYPE } from './constants';
 
@@ -17,7 +18,12 @@ describe('Places copy', () => {
       place: home,
       memberName: 'Sarah Bell',
       eventType: EVENT_TYPE.ARRIVED,
-    })).toBe('🏠 Sarah arrived Home');
+    })).toBe('🏠 Sarah arrived home');
+    expect(formatPlaceEventMessage({
+      place: { name: 'Band Practice', type: 'custom', icon: '🎺' },
+      memberName: 'Liam',
+      eventType: EVENT_TYPE.ARRIVED,
+    })).toBe('🎺 Liam arrived at Band Practice');
     expect(formatPlaceEventMessage({
       place: home,
       memberName: 'Mom',
@@ -42,8 +48,8 @@ describe('Places copy', () => {
   });
 
   test('activity lines distinguish check-ins from arrivals', () => {
-    expect(activityLine({ place: home, memberName: 'Dad', eventType: EVENT_TYPE.ARRIVED })).toBe('🏠 Dad arrived');
-    expect(activityLine({ place: school, memberName: 'Emma', eventType: EVENT_TYPE.CHECKED_IN })).toBe('📍 Emma checked in');
+    expect(activityLine({ place: home, memberName: 'Dad', eventType: EVENT_TYPE.ARRIVED })).toBe('🏠 Dad arrived home');
+    expect(activityLine({ place: school, memberName: 'Emma', eventType: EVENT_TYPE.CHECKED_IN })).toBe('📍 Emma checked in at School');
   });
 
   test('status never guesses a location', () => {
@@ -70,5 +76,7 @@ describe('Places copy', () => {
     expect(formatPlacesUsed(2)).toBe('2 of 3 Places used');
     expect(formatPlacesUsed(3)).toBe('3 of 3 Places used');
     expect(emptyPlacesBody).toMatch(/Home, School, or Work/);
+    expect(emptyPlacesBody).toMatch(/they're okay, you're okay/);
+    expect(PLACE_ARRIVAL_REASSURANCE).toBe("They're okay.");
   });
 });

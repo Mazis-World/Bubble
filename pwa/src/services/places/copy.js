@@ -15,11 +15,22 @@ export const placeLabel = (place) => {
 
 export const placeIcon = (place) => place?.icon || presetForType(place?.type).icon;
 
+export const isHomePlace = (place) => place?.type === PLACE_TYPE.HOME;
+
+export const PLACE_ARRIVAL_REASSURANCE = "They're okay.";
+
+export const arrivedPhrase = (place) => {
+  if (isHomePlace(place) || String(placeLabel(place)).toLowerCase() === 'home') {
+    return 'arrived home';
+  }
+  return `arrived at ${placeLabel(place)}`;
+};
+
 export const formatPlaceEventMessage = ({ place, memberName, eventType }) => {
   const who = firstName(memberName);
   const name = placeLabel(place);
   const icon = placeIcon(place);
-  if (eventType === EVENT_TYPE.ARRIVED) return `${icon} ${who} arrived ${name}`;
+  if (eventType === EVENT_TYPE.ARRIVED) return `${icon} ${who} ${arrivedPhrase(place)}`;
   if (eventType === EVENT_TYPE.LEFT) return `🚗 ${who} left ${name}`;
   if (eventType === EVENT_TYPE.CHECKED_IN) return `📍 ${who} checked in at ${name}`;
   if (eventType === EVENT_TYPE.UPDATED) {
@@ -40,9 +51,9 @@ export const activityLine = ({ place, memberName, eventType, source }) => {
   const who = firstName(memberName);
   const name = placeLabel(place);
   const icon = placeIcon(place);
-  if (eventType === EVENT_TYPE.ARRIVED) return `${icon} ${who} arrived`;
-  if (eventType === EVENT_TYPE.LEFT) return `🚗 ${who} left`;
-  if (eventType === EVENT_TYPE.CHECKED_IN) return `📍 ${who} checked in`;
+  if (eventType === EVENT_TYPE.ARRIVED) return `${icon} ${who} ${arrivedPhrase(place)}`;
+  if (eventType === EVENT_TYPE.LEFT) return `🚗 ${who} left ${name}`;
+  if (eventType === EVENT_TYPE.CHECKED_IN) return `📍 ${who} checked in at ${name}`;
   if (eventType === EVENT_TYPE.UPDATED) return `${icon} ${who} updated ${name}`;
   return `${who} updated ${name}${source === 'MANUAL' ? '' : ''}`;
 };
@@ -62,8 +73,6 @@ const joinNames = (names) => {
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 };
-
-export const isHomePlace = (place) => place?.type === PLACE_TYPE.HOME;
 
 export const formatPlaceStatus = ({
   place,
@@ -101,7 +110,7 @@ export const formatPlacesUsed = (count) => `${count} of 3 Places used`;
 
 export const emptyPlacesTitle = 'Your important places';
 export const emptyPlacesBody =
-  'Add places like Home, School, or Work and FamilyBubble can automatically let your family know when you arrive or leave.';
+  'Add places like Home, School, or Work. FamilyBubble can let you know when they arrive — so when they\'re okay, you\'re okay.';
 
 export const backgroundLocationWhy =
   'FamilyBubble uses your location to automatically let your family know when you arrive at important places like Home, School, or Work.';

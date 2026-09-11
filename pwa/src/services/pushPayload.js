@@ -49,15 +49,22 @@ export const buildMemoPush = (memo, bubbleId) => {
   const isSos = memo?.type === 'sos';
   const isCheckin = memo?.type === 'checkin';
   const isPlace = memo?.type === 'place';
-  const title = isSos ? '🚨 SOS ALERT' : 'FamilyBubble';
-  const body = memo?.message
-    || (isSos
-      ? 'A family member needs help'
-      : isCheckin
-        ? 'A family member checked in'
-        : isPlace
-          ? 'A family member updated a Place'
-          : 'A family member updated their status');
+  const isArrival = isPlace && memo?.placeEventType === 'ARRIVED';
+  const title = isSos
+    ? '🚨 SOS ALERT'
+    : isArrival && memo?.message
+      ? memo.message
+      : 'FamilyBubble';
+  const body = isArrival
+    ? "They're okay."
+    : memo?.message
+      || (isSos
+        ? 'A family member needs help'
+        : isCheckin
+          ? 'A family member checked in'
+          : isPlace
+            ? 'A family member updated a Place'
+            : 'A family member updated their status');
   const sosId = memo?.sosId || '';
   const placeId = memo?.placeId || '';
   const notifyType = isSos

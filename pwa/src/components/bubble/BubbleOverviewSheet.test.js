@@ -60,12 +60,12 @@ describe('Bubble overview sheets', () => {
         section="memos"
         members={members}
         memos={[
-          { memoId: 'm3', userId: 'u1', nodeId: 'n1', type: 'place', message: '🏠 Ada arrived Home' },
+          { memoId: 'm3', userId: 'u1', nodeId: 'n1', type: 'place', message: '🏠 Ada arrived home' },
         ]}
         bubbleName="Home"
         onMemoClick={() => {}}
       />
     );
-    expect(screen.getByText('🏠 Ada arrived Home')).toBeTruthy();
+    expect(screen.getByText('🏠 Ada arrived home')).toBeTruthy();
   });
 });

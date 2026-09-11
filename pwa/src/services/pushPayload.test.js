@@ -54,10 +54,11 @@ describe('push payload helpers', () => {
       userId: 'user-2',
       placeId: 'home',
       placeEventType: 'ARRIVED',
-      message: '🏠 Dad arrived Home',
+      message: '🏠 Dad arrived home',
     }, 'bubble-1');
     expect(payload.data.type).toBe('PLACE_ARRIVAL');
-    expect(payload.body).toBe('🏠 Dad arrived Home');
+    expect(payload.title).toBe('🏠 Dad arrived home');
+    expect(payload.body).toBe("They're okay.");
     expect(payload.data.url).toBe('/?place=home&bubble=bubble-1');
     expect(JSON.stringify(payload)).not.toMatch(/latitude|longitude/);
   });

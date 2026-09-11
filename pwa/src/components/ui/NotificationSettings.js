@@ -228,7 +228,7 @@ const NotificationSettings = () => {
           <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
             <div className="flex-1">
               <p className="text-sm font-medium text-white">Place arrivals and departures</p>
-              <p className="text-xs text-gray-400">When family arrive at or leave Home, School, or Work</p>
+              <p className="text-xs text-gray-400">Know they're okay when they get to Home, School, or Work</p>
             </div>
             <button
               onClick={() => handleTogglePreference('placeAlerts')}

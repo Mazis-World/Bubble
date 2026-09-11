@@ -59,12 +59,13 @@ describe('push helpers', () => {
         userId: 'user-2',
         placeId: 'home',
         placeEventType: 'ARRIVED',
-        message: '🏠 Dad arrived Home',
+        message: '🏠 Dad arrived home',
       },
       'bubble-1'
     );
     assert.equal(payload.data.type, 'PLACE_ARRIVAL');
-    assert.equal(payload.body, '🏠 Dad arrived Home');
+    assert.equal(payload.title, '🏠 Dad arrived home');
+    assert.equal(payload.body, "They're okay.");
     assert.equal(payload.data.url, '/?place=home&bubble=bubble-1');
     assert.equal(JSON.stringify(payload).includes('latitude'), false);
   });
