@@ -2,6 +2,7 @@ import {
   RADAR_BUBBLE_GAP,
   RADAR_BUBBLE_SIZE,
   distanceBetween,
+  hydrateRadarNodes,
   layoutRadarNodes,
   separateOverlappingNodes,
 } from './radarLayout';
@@ -81,5 +82,18 @@ describe('radar layout', () => {
     expect(separated[0].y).toBe(200);
     expect(distanceBetween(separated[0], separated[1]))
       .toBeGreaterThanOrEqual(RADAR_BUBBLE_SIZE + RADAR_BUBBLE_GAP - 1);
+  });
+
+  test('hydrates live status onto laid-out nodes without moving them', () => {
+    const laidOut = [
+      { id: 'me', x: 200, y: 200, distance: 0, bearing: 0, status: '✅', name: 'Me' },
+    ];
+    const live = [{ id: 'me', status: '🏠', statusText: 'Home', name: 'Me', photoUrl: 'https://example/me.jpg' }];
+    const [hydrated] = hydrateRadarNodes(laidOut, live);
+    expect(hydrated.status).toBe('🏠');
+    expect(hydrated.statusText).toBe('Home');
+    expect(hydrated.photoUrl).toBe('https://example/me.jpg');
+    expect(hydrated.x).toBe(200);
+    expect(hydrated.y).toBe(200);
   });
 });

@@ -68,4 +68,30 @@ describe('BubbleCluster radar avatars', () => {
     expect(screen.getByRole('button', { name: /2 Memos/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Open Places/ })).toBeTruthy();
   });
+
+  test('updates the status emoji on the radar when member status changes', () => {
+    const house = { latitude: -26.2, longitude: 28.04 };
+    const bubbleData = {
+      currentMember: { id: 'me', name: 'Me', status: '✅', lastKnownLocation: house },
+      allMembers: [{ id: 'me', name: 'Me', status: '✅', lastKnownLocation: house }],
+    };
+
+    const { rerender } = render(
+      <BubbleCluster bubbleData={bubbleData} onStatusClick={() => {}} onMemberClick={() => {}} />
+    );
+    expect(screen.getByText('✅')).toBeTruthy();
+
+    rerender(
+      <BubbleCluster
+        bubbleData={{
+          currentMember: { id: 'me', name: 'Me', status: '🏠', lastKnownLocation: house },
+          allMembers: [{ id: 'me', name: 'Me', status: '🏠', lastKnownLocation: house }],
+        }}
+        onStatusClick={() => {}}
+        onMemberClick={() => {}}
+      />
+    );
+    expect(screen.getByText('🏠')).toBeTruthy();
+    expect(screen.queryByText('✅')).toBeNull();
+  });
 });

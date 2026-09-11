@@ -228,4 +228,26 @@ export const layoutRadarNodes = ({
   });
 };
 
+/**
+ * Overlay live member fields (status, photo, name) onto laid-out radar nodes
+ * without changing positions. Layout is keyed only on ids + GPS so status
+ * updates must be merged at render time.
+ */
+export const hydrateRadarNodes = (nodes, members) => {
+  const byId = new Map((members || []).map((member) => [member.id, member]));
+  return (nodes || []).map((node) => {
+    const live = byId.get(node.id);
+    if (!live) return node;
+    return {
+      ...node,
+      ...live,
+      id: node.id,
+      x: node.x,
+      y: node.y,
+      distance: node.distance,
+      bearing: node.bearing,
+    };
+  });
+};
+
 export const distanceBetween = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);

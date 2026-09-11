@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import MemberBubble from '../ui/MemberBubble';
 import { Radio } from 'lucide-react';
-import { layoutRadarNodes, RADAR_BUBBLE_SIZE } from '../../services/radarLayout';
+import { hydrateRadarNodes, layoutRadarNodes, RADAR_BUBBLE_SIZE } from '../../services/radarLayout';
 
 // Theme system - ready for future additions like snowflakes
 // eslint-disable-next-line no-unused-vars
@@ -111,6 +111,8 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
       </div>
     );
   }
+
+  const displayNodes = hydrateRadarNodes(nodes, validMembers);
 
   return (
     <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4" style={{ width: '100%', height: '100%' }}>
@@ -370,7 +372,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
 
 
         {/* Member bubbles positioned by location - z-index 10+ (on top of everything) */}
-        {nodes.map((node, index) => {
+        {displayNodes.map((node, index) => {
           const pos = positions[node.id] || { x: node.x, y: node.y };
           const isCurrentUser = node.id === currentMember.id;
 

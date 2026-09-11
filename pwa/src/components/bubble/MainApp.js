@@ -511,6 +511,24 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       return;
     }
     
+    // Show the new status on radar immediately; the nodes listener confirms it.
+    const memberId = bubbleData.currentMember.id;
+    const previousBubbleData = bubbleData;
+    setBubbleData((prev) => {
+      if (!prev?.currentMember) return prev;
+      const patchMember = (member) => {
+        if (member.id !== memberId) return member;
+        const next = { ...member, status };
+        if (statusText !== null) next.statusText = statusText;
+        return next;
+      };
+      return {
+        ...prev,
+        allMembers: (prev.allMembers || []).map(patchMember),
+        currentMember: patchMember(prev.currentMember),
+      };
+    });
+
     // Update status immediately (don't wait for location)
     const statusPromise = API.updateStatus(bubbleData.bubble.id, bubbleData.currentMember.id, status, statusText);
     
@@ -521,8 +539,13 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         })
       : Promise.resolve();
     
-    // Wait for both, but don't block on location
-    await Promise.all([statusPromise, locationPromise]);
+    try {
+      await Promise.all([statusPromise, locationPromise]);
+    } catch (error) {
+      console.error('Status update failed:', error);
+      setBubbleData(previousBubbleData);
+      return;
+    }
     
     // Track status update
     analyticsService.trackStatusUpdate(
