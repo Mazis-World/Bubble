@@ -25,7 +25,9 @@ describe('Map view badges', () => {
     expect(members.compareDocumentPosition(checkIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const memos = screen.getByRole('button', { name: /2 Memos/ });
     const places = screen.getByRole('button', { name: /Open Places/ });
+    expect(places.querySelector('svg')).toBeTruthy();
     expect(places.textContent).toContain('Places');
+    expect(places.textContent).not.toContain('📍');
     expect(memos.compareDocumentPosition(places) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

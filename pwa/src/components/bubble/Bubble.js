@@ -18,7 +18,7 @@ import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
 import MapViewBadges from './MapViewBadges';
-import { Circle, MapPin, Plus, Share2, Settings } from 'lucide-react';
+import { Circle, Navigation, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
 import { auth } from '../../firebase';
@@ -567,7 +567,7 @@ const Bubble = ({
 
         <div className="space-y-3 mb-6">
           <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
-            <MapPin size={16} />
+            <Navigation size={16} />
             Places
           </h4>
           <p className="text-gray-400 text-sm">

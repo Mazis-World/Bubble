@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Loader2, MapPin } from 'lucide-react';
+import { Check, Loader2, MapPinned, Navigation } from 'lucide-react';
 import { checkInButtonLabel } from '../../services/checkin';
 
 export const MAP_BADGE_CLASS =
@@ -13,7 +13,7 @@ const CheckInIcon = ({ state }) => {
     return <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" aria-hidden="true" />;
   }
   return (
-    <MapPin
+    <MapPinned
       className={`w-4 h-4 flex-shrink-0 ${state === 'error' ? 'text-amber-400' : 'text-blue-400'}`}
       aria-hidden="true"
     />
@@ -76,10 +76,11 @@ const MapViewBadges = ({
           <button
             type="button"
             onClick={onPlacesClick}
-            className={MAP_BADGE_CLASS}
+            className={`${MAP_BADGE_CLASS} flex items-center gap-2`}
             aria-label="Open Places"
           >
-            <p className="text-white text-sm font-semibold">📍 Places</p>
+            <Navigation className="w-4 h-4 text-blue-400 flex-shrink-0" aria-hidden="true" />
+            <p className="text-white text-sm font-semibold">Places</p>
           </button>
         )}
       </div>
