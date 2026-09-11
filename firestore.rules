@@ -45,6 +45,18 @@ service cloud.firestore {
              isBubbleMemberAfter(bubbleId) || isBubbleOwnerAfter(bubbleId);
     }
 
+    function ownedPlaceIdsWithinCap() {
+      return !('ownedPlaceIds' in request.resource.data) ||
+             (
+               request.resource.data.ownedPlaceIds is list &&
+               request.resource.data.ownedPlaceIds.size() <= 3
+             );
+    }
+
+    function isNumber(value) {
+      return value is int || value is float;
+    }
+
     function membersWithinCap() {
       return !('members' in request.resource.data) ||
              request.resource.data.members.size() <= request.resource.data.get('maxMembers', resource.data.get('maxMembers', 50));
@@ -74,15 +86,15 @@ service cloud.firestore {
                      request.resource.data.fullName is string &&
                      request.resource.data.bubbles is list;
       
-      // Users can update their own profile. ownedPlaceIds caps Places at 3 per user.
+      // Users can update their own profile. Adding ownedPlaceIds (Places cap)
+      // must not require unrelated fields — some profiles omit fullName.
       allow update: if isOwner(userId) &&
-                     request.resource.data.fullName is string &&
-                     request.resource.data.bubbles is list &&
+                     ownedPlaceIdsWithinCap() &&
                      (
-                       !('ownedPlaceIds' in request.resource.data) ||
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownedPlaceIds']) ||
                        (
-                         request.resource.data.ownedPlaceIds is list &&
-                         request.resource.data.ownedPlaceIds.size() <= 3
+                         request.resource.data.fullName is string &&
+                         request.resource.data.bubbles is list
                        )
                      );
       
@@ -246,13 +258,14 @@ service cloud.firestore {
       match /places/{placeId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
 
-        allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
+        allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId) ||
+                          isBubbleMemberAfter(bubbleId) || isBubbleOwnerAfter(bubbleId)) &&
                        request.resource.data.ownerId == request.auth.uid &&
                        request.resource.data.familyBubbleId == bubbleId &&
                        request.resource.data.name is string &&
-                       request.resource.data.latitude is number &&
-                       request.resource.data.longitude is number &&
-                       request.resource.data.radiusMeters is number &&
+                       isNumber(request.resource.data.latitude) &&
+                       isNumber(request.resource.data.longitude) &&
+                       isNumber(request.resource.data.radiusMeters) &&
                        request.resource.data.recipientUserIds is list &&
                        getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
                          .data.get('ownedPlaceIds', []).hasAny([placeId]) &&
