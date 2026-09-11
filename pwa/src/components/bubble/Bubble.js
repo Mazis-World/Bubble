@@ -15,6 +15,7 @@ import SosAlertScreen from '../sos/SosAlertScreen';
 import SosPermissionSheet from '../sos/SosPermissionSheet';
 import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
 import PremiumSettings from '../paywall/PremiumSettings';
+import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
 import { Circle, MapPin, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
