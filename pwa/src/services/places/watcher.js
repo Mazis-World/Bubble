@@ -2,11 +2,12 @@ import { Capacitor } from '@capacitor/core';
 import {
   PLACE_GEOFENCE_STATE_KEY,
   PLACE_WATCH_OPTIONS,
+  EVENT_TYPE,
 } from './constants';
-import { evaluateAllPlaces } from './geofence';
+import { evaluateAllPlaces, evaluateConfirmedLocation } from './geofence';
 import { enqueuePendingPlaceEvent } from './offline';
 import { ensurePlaceLocationPermission } from './permissions';
-import { flushPendingPlaceEvents, recordPlaceEvent } from './api';
+import { flushPendingPlaceEvents, recordPlaceEvent, upsertPlacePresence } from './api';
 
 const browserStorage = () => {
   try {
@@ -86,6 +87,38 @@ export const ingestLocationSample = async (runtime, coords, now = Date.now()) =>
   persistRuntime(runtime);
   if (result.events.length) {
     await publishEvents(runtime, result.events);
+  }
+  return runtime;
+};
+
+export const ingestConfirmedLocation = async (runtime, coords, now = Date.now()) => {
+  if (!runtime?.userId || !coords) return runtime;
+  runtime.lastCoords = coords;
+  if (!runtime.places?.length) return runtime;
+  const result = evaluateConfirmedLocation({
+    places: runtime.places,
+    states: runtime.states,
+    coords,
+    now,
+    userId: runtime.userId,
+  });
+  runtime.states = result.states;
+  persistRuntime(runtime);
+  if (result.events.length) {
+    await publishEvents(runtime, result.events);
+  }
+  const eventPlaceIds = new Set((result.events || []).map((event) => event.placeId));
+  for (const item of result.presence || []) {
+    if (eventPlaceIds.has(item.placeId)) continue;
+    try {
+      await upsertPlacePresence(runtime.bubbleId, runtime.userId, item.placeId, {
+        inside: item.inside,
+        lastEventType: EVENT_TYPE.ARRIVED,
+        timestamp: now,
+      });
+    } catch (error) {
+      // Presence is best-effort; the next GPS sample can retry.
+    }
   }
   return runtime;
 };
@@ -220,6 +253,7 @@ export const createPlaceWatcher = () => {
       flushPendingPlaceEvents(placesById);
     },
     ingest: handleSample,
+    ingestConfirmed: (coords) => ingestConfirmedLocation(runtime, coords),
   };
 };
 

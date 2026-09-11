@@ -214,6 +214,121 @@ export const evaluateAllPlaces = ({ places, states, coords, now, userId }) => {
   return { states: nextStates, events };
 };
 
+/**
+ * Status / check-in GPS is an explicit "I am here" — skip dwell and mark
+ * presence as soon as the point is inside a Place radius.
+ */
+export const evaluateConfirmedSample = ({
+  place,
+  state,
+  coords,
+  now = Date.now(),
+  hysteresisMeters = HYSTERESIS_METERS,
+} = {}) => {
+  const current = state ? { ...emptyGeofenceState(), ...state } : emptyGeofenceState();
+  if (!place || place.isActive === false) {
+    return { action: 'ignore', reason: 'inactive', state: current, event: null };
+  }
+  if (!coords || coords.latitude == null || coords.longitude == null) {
+    return { action: 'ignore', reason: 'no_coords', state: current, event: null };
+  }
+
+  const distance = haversineMeters(coords, place);
+  if (distance == null) {
+    return { action: 'ignore', reason: 'distance', state: current, event: null };
+  }
+
+  const radius = clampRadiusMeters(place.radiusMeters);
+  const insideRing = distance <= radius;
+  const outsideRing = distance >= radius + hysteresisMeters;
+
+  if (insideRing) {
+    const alreadyThere = current.inside === true && current.lastEventType === EVENT_TYPE.ARRIVED;
+    current.inside = true;
+    current.pendingInsideSince = 0;
+    current.pendingOutsideSince = 0;
+    if (alreadyThere) {
+      return { action: 'stay', reason: 'inside', state: current, event: null, markInside: true };
+    }
+    current.lastEventType = EVENT_TYPE.ARRIVED;
+    current.lastTransitionAt = now;
+    return {
+      action: 'transition',
+      reason: 'confirmed_arrival',
+      state: current,
+      event: {
+        eventType: EVENT_TYPE.ARRIVED,
+        source: EVENT_SOURCE.MANUAL,
+        placeId: place.placeId,
+        timestamp: now,
+      },
+      markInside: true,
+    };
+  }
+
+  if (outsideRing && current.inside === true) {
+    current.inside = false;
+    current.lastEventType = EVENT_TYPE.LEFT;
+    current.lastTransitionAt = now;
+    current.pendingInsideSince = 0;
+    current.pendingOutsideSince = 0;
+    return {
+      action: 'transition',
+      reason: 'confirmed_departure',
+      state: current,
+      event: {
+        eventType: EVENT_TYPE.LEFT,
+        source: EVENT_SOURCE.MANUAL,
+        placeId: place.placeId,
+        timestamp: now,
+      },
+      markInside: false,
+    };
+  }
+
+  if (outsideRing) {
+    current.inside = false;
+    current.pendingInsideSince = 0;
+    current.pendingOutsideSince = 0;
+    return { action: 'stay', reason: 'outside', state: current, event: null, markInside: false };
+  }
+
+  return { action: 'ignore', reason: 'uncertain', state: current, event: null };
+};
+
+export const evaluateConfirmedLocation = ({ places, states, coords, now, userId }) => {
+  const nextStates = { ...(states || {}) };
+  const events = [];
+  const presence = [];
+  (places || []).forEach((place) => {
+    if (!place?.placeId || place.isActive === false) return;
+    const result = evaluateConfirmedSample({
+      place,
+      state: nextStates[place.placeId],
+      coords,
+      now,
+    });
+    nextStates[place.placeId] = result.state;
+    if (result.markInside === true) {
+      presence.push({ placeId: place.placeId, inside: true });
+    }
+    if (result.event) {
+      events.push({
+        ...result.event,
+        userId,
+        familyBubbleId: place.familyBubbleId,
+        idempotencyKey: buildIdempotencyKey({
+          userId,
+          placeId: place.placeId,
+          eventType: result.event.eventType,
+          timestamp: result.event.timestamp,
+        }),
+      });
+    }
+  });
+  return { states: nextStates, events, presence };
+};
+
 export const shouldWarnOverlapping = (candidate, existingPlaces) =>
   findNearbyPlaces(candidate, existingPlaces).length > 0;
 

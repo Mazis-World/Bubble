@@ -3,6 +3,8 @@ import {
   clampRadiusMeters,
   emptyGeofenceState,
   evaluateAllPlaces,
+  evaluateConfirmedLocation,
+  evaluateConfirmedSample,
   evaluateGeofenceSample,
   findNearbyPlaces,
   haversineMeters,
@@ -168,5 +170,65 @@ describe('geofence engine', () => {
   test('just-inside coordinates can still be inside the radius', () => {
     const distance = haversineMeters(home, justInside);
     expect(distance).toBeLessThan(200);
+  });
+
+  test('confirmed status/check-in inside a Place marks arrival immediately', () => {
+    const result = evaluateConfirmedSample({
+      place: home,
+      state: emptyGeofenceState(),
+      coords: inside,
+      now: 1_000,
+    });
+    expect(result.markInside).toBe(true);
+    expect(result.event.eventType).toBe(EVENT_TYPE.ARRIVED);
+    expect(result.state.inside).toBe(true);
+  });
+
+  test('confirmed location does not re-notify while already marked inside', () => {
+    const state = {
+      ...emptyGeofenceState(),
+      inside: true,
+      lastEventType: EVENT_TYPE.ARRIVED,
+      lastTransitionAt: 1_000,
+    };
+    const result = evaluateConfirmedSample({
+      place: home,
+      state,
+      coords: inside,
+      now: 5_000,
+    });
+    expect(result.event).toBeNull();
+    expect(result.markInside).toBe(true);
+    expect(result.state.inside).toBe(true);
+  });
+
+  test('confirmed location outside a Place they were in marks them left', () => {
+    const state = {
+      ...emptyGeofenceState(),
+      inside: true,
+      lastEventType: EVENT_TYPE.ARRIVED,
+      lastTransitionAt: 1_000,
+    };
+    const result = evaluateConfirmedSample({
+      place: home,
+      state,
+      coords: outside,
+      now: 5_000,
+    });
+    expect(result.event.eventType).toBe(EVENT_TYPE.LEFT);
+    expect(result.state.inside).toBe(false);
+  });
+
+  test('confirmed location evaluates every Place for presence', () => {
+    const { events, presence, states } = evaluateConfirmedLocation({
+      places: [home],
+      states: {},
+      coords: inside,
+      now: 2_000,
+      userId: 'mom',
+    });
+    expect(states.home.inside).toBe(true);
+    expect(presence).toEqual([{ placeId: 'home', inside: true }]);
+    expect(events[0].eventType).toBe(EVENT_TYPE.ARRIVED);
   });
 });

@@ -1,4 +1,4 @@
-import { getPlaceWatcher, ingestLocationSample, resetPlaceWatcherForTests } from './watcher';
+import { getPlaceWatcher, ingestConfirmedLocation, ingestLocationSample, resetPlaceWatcherForTests } from './watcher';
 import { resetPlacePermissionRequestForTests } from './permissions';
 import { EVENT_TYPE } from './constants';
 
@@ -33,8 +33,10 @@ jest.mock('@capacitor/core', () => ({
 }));
 
 const mockRecordPlaceEvent = jest.fn();
+const mockUpsertPlacePresence = jest.fn();
 jest.mock('./api', () => ({
   recordPlaceEvent: (...args) => mockRecordPlaceEvent(...args),
+  upsertPlacePresence: (...args) => mockUpsertPlacePresence(...args),
   flushPendingPlaceEvents: jest.fn(() => Promise.resolve([])),
 }));
 
@@ -43,6 +45,9 @@ describe('place watcher restart and ingest', () => {
 
   beforeEach(() => {
     mockRecordPlaceEvent.mockReset();
+    mockUpsertPlacePresence.mockReset();
+    mockRecordPlaceEvent.mockResolvedValue({ eventId: 'e1', duplicate: false });
+    mockUpsertPlacePresence.mockResolvedValue(undefined);
     resetPlaceWatcherForTests();
     global.localStorage = {
       getItem: () => null,
@@ -108,5 +113,29 @@ describe('place watcher restart and ingest', () => {
     };
     await ingestLocationSample(runtime, { latitude: 37.77, longitude: -122.41, accuracy: 10 }, 50_000);
     expect(mockRecordPlaceEvent).not.toHaveBeenCalled();
+  });
+
+  test('status or check-in GPS inside a Place records arrival immediately', async () => {
+    const runtime = {
+      bubbleId: 'b1',
+      userId: 'mom',
+      nodeId: 'n1',
+      displayName: 'Mom',
+      places: [{
+        placeId: 'home',
+        familyBubbleId: 'b1',
+        latitude: 37.77,
+        longitude: -122.41,
+        radiusMeters: 200,
+        isActive: true,
+      }],
+      states: {},
+    };
+    await ingestConfirmedLocation(runtime, { latitude: 37.77, longitude: -122.41, accuracy: 10 }, 1_000);
+    expect(mockRecordPlaceEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: EVENT_TYPE.ARRIVED,
+      place: expect.objectContaining({ placeId: 'home' }),
+    }));
+    expect(runtime.states.home.inside).toBe(true);
   });
 });

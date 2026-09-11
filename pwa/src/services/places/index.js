@@ -23,5 +23,6 @@ export {
   flushPendingPlaceEvents,
   everyoneAtHome,
   countOwnedPlaces,
+  upsertPlacePresence,
 } from './api';
-export { createPlaceWatcher, getPlaceWatcher, ingestLocationSample } from './watcher';
+export { createPlaceWatcher, getPlaceWatcher, ingestLocationSample, ingestConfirmedLocation } from './watcher';

@@ -302,6 +302,11 @@ const writePresence = async (bubbleId, userId, placeId, { inside, lastEventType,
   }, { merge: true });
 };
 
+export const upsertPlacePresence = async (bubbleId, userId, placeId, fields) => {
+  if (!bubbleId || !userId || !placeId) return;
+  await writePresence(bubbleId, userId, placeId, fields);
+};
+
 export const recordPlaceEvent = async ({
   bubbleId,
   place,
@@ -355,9 +360,9 @@ export const recordPlaceEvent = async ({
     throw error;
   }
 
-  if (eventType === EVENT_TYPE.ARRIVED || eventType === EVENT_TYPE.LEFT) {
+  if (eventType === EVENT_TYPE.ARRIVED || eventType === EVENT_TYPE.LEFT || eventType === EVENT_TYPE.CHECKED_IN) {
     await writePresence(bubbleId, actorId, place.placeId, {
-      inside: eventType === EVENT_TYPE.ARRIVED,
+      inside: eventType !== EVENT_TYPE.LEFT,
       lastEventType: eventType,
       lastEventId: eventRef.id,
       timestamp: payload.timestamp,
