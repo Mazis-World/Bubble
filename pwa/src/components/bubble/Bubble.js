@@ -17,6 +17,7 @@ import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
 import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
+import MapViewBadges from './MapViewBadges';
 import { Circle, MapPin, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
@@ -250,16 +251,6 @@ const Bubble = ({
             </div>
           <button
             onClick={() => {
-              setPlacesFocusId(null);
-              setShowPlaces(true);
-            }}
-            className="flex items-center justify-center text-gray-300 hover:text-white transition-all duration-300 p-1.5 sm:p-2 glass-light hover:bg-white/10 rounded-xl active:scale-95"
-            title="Places"
-          >
-            <MapPin size={18} className="sm:w-5 sm:h-5" />
-          </button>
-          <button
-            onClick={() => {
               setShowSettings(true);
               analyticsService.trackSettingsOpen();
             }}
@@ -276,8 +267,6 @@ const Bubble = ({
           <GlobeView
             bubbleData={bubbleData}
             focusTarget={mapFocus}
-            onMemberCountClick={() => setShowOverview(true)}
-            onMemosClick={() => setShowMemos(true)}
             onCheckIn={handleCheckIn}
             checkInState={checkInState}
             checkInOpen={showCheckIn}
@@ -287,7 +276,6 @@ const Bubble = ({
               && (memo.userId === bubbleData.currentMember.userId || memo.nodeId === bubbleData.currentMember.id)
             ))}
             onCloseCheckIn={closeCheckIn}
-            memoCount={familyMemos.length}
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
@@ -305,6 +293,18 @@ const Bubble = ({
             }}
           />
         )}
+        <MapViewBadges
+          memberCount={bubbleData.allMembers.length}
+          memoCount={familyMemos.length}
+          checkInState={checkInState}
+          onMemberCountClick={() => setShowOverview(true)}
+          onMemosClick={() => setShowMemos(true)}
+          onCheckIn={handleCheckIn}
+          onPlacesClick={() => {
+            setPlacesFocusId(null);
+            setShowPlaces(true);
+          }}
+        />
       </div>
 
       <div className="p-4 sm:p-6 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 

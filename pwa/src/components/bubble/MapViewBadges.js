@@ -26,6 +26,7 @@ const MapViewBadges = ({
   onMemberCountClick,
   onMemosClick,
   onCheckIn,
+  onPlacesClick,
   checkInState = 'idle',
 }) => {
   const memberCountLabel = `${memberCount} ${memberCount === 1 ? 'Member' : 'Members'}`;
@@ -60,16 +61,28 @@ const MapViewBadges = ({
           </button>
         )}
       </div>
-      {onMemosClick && (
-        <button
-          type="button"
-          onClick={onMemosClick}
-          className={`absolute top-4 right-4 z-10 ${MAP_BADGE_CLASS}`}
-          aria-label={`${memoCountLabel}. Open family memos`}
-        >
-          <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
-        </button>
-      )}
+      <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+        {onMemosClick && (
+          <button
+            type="button"
+            onClick={onMemosClick}
+            className={MAP_BADGE_CLASS}
+            aria-label={`${memoCountLabel}. Open family memos`}
+          >
+            <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
+          </button>
+        )}
+        {onPlacesClick && (
+          <button
+            type="button"
+            onClick={onPlacesClick}
+            className={MAP_BADGE_CLASS}
+            aria-label="Open Places"
+          >
+            <p className="text-white text-sm font-semibold">📍 Places</p>
+          </button>
+        )}
+      </div>
     </>
   );
 };

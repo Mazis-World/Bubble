@@ -3,7 +3,6 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
-import MapViewBadges from './MapViewBadges';
 import CheckInPopup from './CheckInPopup';
 
 // Create amazing glass-like bubbles that pop off the globe
@@ -330,15 +329,12 @@ const animateFloatingHeads = (globe) => {
 const GlobeView = ({
   bubbleData,
   onMemberClick,
-  onMemberCountClick,
-  onMemosClick,
   onCheckIn,
   checkInState = 'idle',
   checkInOpen = false,
   checkInMember = null,
   checkInMemo = null,
   onCloseCheckIn,
-  memoCount = 0,
   focusTarget = null,
 }) => {
   const globeEl = useRef();
@@ -520,17 +516,6 @@ const GlobeView = ({
     );
   }
 
-  const mapBadges = (
-    <MapViewBadges
-      memberCount={bubbleData.allMembers.length}
-      memoCount={memoCount}
-      onMemberCountClick={onMemberCountClick}
-      onMemosClick={onMemosClick}
-      onCheckIn={onCheckIn}
-      checkInState={checkInState}
-    />
-  );
-
   const checkInOverlay = (
     <CheckInPopup
       open={checkInOpen}
@@ -569,7 +554,6 @@ const GlobeView = ({
             </div>
           </div>
         )}
-        {mapBadges}
         {checkInOverlay}
       </div>
     );
@@ -646,13 +630,11 @@ const GlobeView = ({
         enablePointerInteraction={true}
       />
       
-      {/* Overlay info — members and memos are separate sheets */}
-      {mapBadges}
       {checkInOverlay}
       
       {/* Hovered member info */}
       {hoveredPoint && (
-        <div className="absolute top-20 right-4 glass-strong rounded-xl px-4 py-3 border border-white/10 z-10 shadow-xl max-w-xs">
+        <div className="absolute top-36 right-4 glass-strong rounded-xl px-4 py-3 border border-white/10 z-10 shadow-xl max-w-xs">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">{getStatusEmoji(hoveredPoint.member.status || '⚪')}</span>
             <div>
