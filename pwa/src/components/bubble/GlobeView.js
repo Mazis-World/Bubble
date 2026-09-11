@@ -336,6 +336,7 @@ const GlobeView = ({
   checkInMemo = null,
   onCloseCheckIn,
   focusTarget = null,
+  overlay = null,
 }) => {
   const globeEl = useRef();
   const containerRef = useRef();
@@ -554,6 +555,7 @@ const GlobeView = ({
             </div>
           </div>
         )}
+        {overlay}
         {checkInOverlay}
       </div>
     );
@@ -630,6 +632,7 @@ const GlobeView = ({
         enablePointerInteraction={true}
       />
       
+      {overlay}
       {checkInOverlay}
       
       {/* Hovered member info */}

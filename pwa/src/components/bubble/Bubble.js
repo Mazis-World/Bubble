@@ -190,6 +190,21 @@ const Bubble = ({
     );
   }
 
+  const viewBadges = (
+    <MapViewBadges
+      memberCount={bubbleData.allMembers.length}
+      memoCount={familyMemos.length}
+      checkInState={checkInState}
+      onMemberCountClick={() => setShowOverview(true)}
+      onMemosClick={() => setShowMemos(true)}
+      onCheckIn={handleCheckIn}
+      onPlacesClick={() => {
+        setPlacesFocusId(null);
+        setShowPlaces(true);
+      }}
+    />
+  );
+
   return (
     <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden flex flex-col safe-area-insets" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
       {/* Modern animated background */}
@@ -276,6 +291,7 @@ const Bubble = ({
               && (memo.userId === bubbleData.currentMember.userId || memo.nodeId === bubbleData.currentMember.id)
             ))}
             onCloseCheckIn={closeCheckIn}
+            overlay={viewBadges}
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
@@ -285,6 +301,7 @@ const Bubble = ({
         ) : (
           <BubbleCluster
             bubbleData={bubbleData}
+            overlay={viewBadges}
             onStatusClick={() => setShowStatus(true)}
             onMemberClick={(member) => {
               setSelectedMember(member);
@@ -293,18 +310,6 @@ const Bubble = ({
             }}
           />
         )}
-        <MapViewBadges
-          memberCount={bubbleData.allMembers.length}
-          memoCount={familyMemos.length}
-          checkInState={checkInState}
-          onMemberCountClick={() => setShowOverview(true)}
-          onMemosClick={() => setShowMemos(true)}
-          onCheckIn={handleCheckIn}
-          onPlacesClick={() => {
-            setPlacesFocusId(null);
-            setShowPlaces(true);
-          }}
-        />
       </div>
 
       <div className="p-4 sm:p-6 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 

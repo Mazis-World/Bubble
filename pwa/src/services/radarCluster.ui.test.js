@@ -1,5 +1,6 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import BubbleCluster from '../components/bubble/BubbleCluster';
+import MapViewBadges from '../components/bubble/MapViewBadges';
 import { RADAR_BUBBLE_SIZE } from './radarLayout';
 
 describe('BubbleCluster radar avatars', () => {
@@ -37,5 +38,34 @@ describe('BubbleCluster radar avatars', () => {
     });
     const keys = new Set(positions.map((pos) => `${pos.left},${pos.top}`));
     expect(keys.size).toBe(3);
+  });
+
+  test('shows members, check-in, memos, and Places on the radar view', () => {
+    const house = { latitude: -26.2, longitude: 28.04 };
+    const bubbleData = {
+      currentMember: { id: 'me', name: 'Me', lastKnownLocation: house },
+      allMembers: [{ id: 'me', name: 'Me', lastKnownLocation: house }],
+    };
+    render(
+      <BubbleCluster
+        bubbleData={bubbleData}
+        onStatusClick={() => {}}
+        onMemberClick={() => {}}
+        overlay={(
+          <MapViewBadges
+            memberCount={4}
+            memoCount={2}
+            onMemberCountClick={() => {}}
+            onMemosClick={() => {}}
+            onCheckIn={() => {}}
+            onPlacesClick={() => {}}
+          />
+        )}
+      />
+    );
+    expect(screen.getByRole('button', { name: /4 Members/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Check in' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /2 Memos/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Open Places/ })).toBeTruthy();
   });
 });

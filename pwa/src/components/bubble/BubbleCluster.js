@@ -16,7 +16,7 @@ const RADAR_THEMES = {
   },
 };
 
-const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'default' }) => {
+const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'default', overlay = null }) => {
   const clusterRef = useRef(null);
 
   const [nodes, setNodes] = useState([]);
@@ -114,6 +114,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
 
   return (
     <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4" style={{ width: '100%', height: '100%' }}>
+      {overlay}
       {/* Outer radar frame with glow - mobile optimized - PERFECTLY CENTERED */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div 

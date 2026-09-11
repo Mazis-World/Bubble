@@ -35,7 +35,7 @@ const MapViewBadges = ({
 
   return (
     <>
-      <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-2">
+      <div className="absolute top-4 left-4 z-30 flex flex-col items-start gap-2">
         {onMemberCountClick && (
           <button
             type="button"
@@ -61,7 +61,7 @@ const MapViewBadges = ({
           </button>
         )}
       </div>
-      <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+      <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2">
         {onMemosClick && (
           <button
             type="button"
