@@ -45,3 +45,31 @@ export function inviteLimitMessage() {
 export function joinLimitMessage() {
   return 'This bubble is full. Ask the owner to upgrade to Premium for more family members.';
 }
+
+export function isBubbleOwner({ userId, member, bubble } = {}) {
+  const uid = userId || member?.userId;
+  if (!uid) return false;
+  if (bubble?.ownerId && String(bubble.ownerId) === String(uid)) return true;
+  if (member?.type === 'owner') return true;
+  if (Number(member?.tier) === 1) return true;
+  return false;
+}
+
+export function bubbleOwnerDisplayName({ members = [], bubble } = {}) {
+  const owner = (members || []).find((item) => (
+    item?.type === 'owner'
+    || Number(item?.tier) === 1
+    || (bubble?.ownerId && item?.userId === bubble.ownerId)
+  ));
+  const full = String(owner?.name || owner?.fullName || '').trim();
+  if (!full) return '';
+  return full.split(/\s+/)[0];
+}
+
+export function contactOwnerToUpgradeMessage(ownerName) {
+  const who = String(ownerName || '').trim();
+  if (who) {
+    return `Only ${who} can sign up for FamilyBubble Premium. Ask them to upgrade so everyone in this bubble can use SOS and invite more family.`;
+  }
+  return 'Only the FamilyBubble owner can sign up for Premium. Ask the person who created this bubble to upgrade so everyone can use SOS and invite more family.';
+}

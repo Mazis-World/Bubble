@@ -6,7 +6,13 @@ import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'fi
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
 import useSos from '../../hooks/useSos';
-import { canInviteMoreMembers, inviteLimitMessage } from '../../services/billing';
+import {
+  bubbleOwnerDisplayName,
+  canInviteMoreMembers,
+  inviteLimitMessage,
+  isBubbleOwner,
+} from '../../services/billing';
+import ContactOwnerPremiumSheet from '../paywall/ContactOwnerPremiumSheet';
 
 const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, isLapsedSubscriber = false, onUpgrade, onRestorePurchases, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
   const [bubbleData, setBubbleData] = useState(null);
@@ -18,6 +24,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const [manualInviteCode, setManualInviteCode] = useState('');
   const [joiningManual, setJoiningManual] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [showContactOwner, setShowContactOwner] = useState(false);
   const unsubscribeRef = useRef(null);
   const currentBubbleIdRef = useRef(null);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
@@ -581,6 +588,28 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }
   };
 
+  const isOwner = isBubbleOwner({
+    userId,
+    member: bubbleData?.currentMember,
+    bubble: bubbleData?.bubble,
+  });
+  const ownerName = bubbleOwnerDisplayName({
+    members: bubbleData?.allMembers,
+    bubble: bubbleData?.bubble,
+  });
+
+  const requestPremium = () => {
+    if (isOwner) {
+      if (onUpgrade) {
+        onUpgrade();
+      } else {
+        alert(inviteLimitMessage());
+      }
+      return;
+    }
+    setShowContactOwner(true);
+  };
+
   const handleGenerateInvite = async () => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.bubble.id) {
       console.error("Cannot generate invite: bubbleData or bubbleId is missing.", { bubbleData });
@@ -595,11 +624,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       ? bubbleData.allMembers.length
       : (bubbleData.bubble.members || []).length;
     if (!canInviteMoreMembers({ isPremium: Boolean(isSubscribed), memberCount })) {
-      if (onUpgrade) {
-        onUpgrade();
-      } else {
-        alert(inviteLimitMessage());
-      }
+      requestPremium();
       return;
     }
     
@@ -679,27 +704,37 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   }
 
   return (
-    <Bubble
-      bubbleData={bubbleData}
-      showStatus={showStatus}
-      setShowStatus={setShowStatus}
-      showInvite={showInvite}
-      setShowInvite={setShowInvite}
-      showSettings={showSettings}
-      setShowSettings={setShowSettings}
-      inviteToken={inviteToken}
-      handleStatusChange={handleStatusChange}
-      handleGenerateInvite={handleGenerateInvite}
-      isGeneratingInvite={isGeneratingInvite}
-      handlePhotoUpdate={handlePhotoUpdate}
-      handleProfileUpdate={handleProfileUpdate}
-      onLogout={onLogout}
-      sos={sos}
-      isSubscribed={Boolean(isSubscribed)}
-      isLapsedSubscriber={Boolean(isLapsedSubscriber)}
-      onUpgrade={onUpgrade}
-      onRestorePurchases={onRestorePurchases}
-    />
+    <>
+      <Bubble
+        bubbleData={bubbleData}
+        showStatus={showStatus}
+        setShowStatus={setShowStatus}
+        showInvite={showInvite}
+        setShowInvite={setShowInvite}
+        showSettings={showSettings}
+        setShowSettings={setShowSettings}
+        inviteToken={inviteToken}
+        handleStatusChange={handleStatusChange}
+        handleGenerateInvite={handleGenerateInvite}
+        isGeneratingInvite={isGeneratingInvite}
+        handlePhotoUpdate={handlePhotoUpdate}
+        handleProfileUpdate={handleProfileUpdate}
+        onLogout={onLogout}
+        sos={sos}
+        isSubscribed={Boolean(isSubscribed)}
+        isLapsedSubscriber={Boolean(isLapsedSubscriber)}
+        isOwner={isOwner}
+        ownerName={ownerName}
+        onUpgrade={requestPremium}
+        onRestorePurchases={isOwner ? onRestorePurchases : undefined}
+      />
+      {showContactOwner && (
+        <ContactOwnerPremiumSheet
+          ownerName={ownerName}
+          onClose={() => setShowContactOwner(false)}
+        />
+      )}
+    </>
   );
 };
 
