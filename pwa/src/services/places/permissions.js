@@ -57,6 +57,15 @@ export const queryGeolocationPermission = async () => {
   return 'prompt';
 };
 
+export const permissionStatusFromLocationError = (error) => {
+  const code = error?.code;
+  if (code === 'permission_denied' || code === 1) return 'denied';
+  if (code === 'gps_unavailable' || code === 'gps_timeout' || code === 2 || code === 3) {
+    return 'unavailable';
+  }
+  return 'unavailable';
+};
+
 export const requestPlaceLocation = () =>
   new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -85,6 +94,40 @@ export const requestPlaceLocation = () =>
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }
     );
   });
+
+let inFlightPermissionRequest = null;
+
+export const resetPlacePermissionRequestForTests = () => {
+  inFlightPermissionRequest = null;
+};
+
+/**
+ * Permissions.query only reports status. Browsers and Capacitor webviews
+ * show the OS prompt when getCurrentPosition runs, so a check that needs
+ * access must actually request it.
+ */
+export const ensurePlaceLocationPermission = async () => {
+  if (inFlightPermissionRequest) return inFlightPermissionRequest;
+  inFlightPermissionRequest = (async () => {
+    const queried = await queryGeolocationPermission();
+    if (queried === 'granted') {
+      return { status: 'granted', coords: null };
+    }
+    try {
+      const coords = await requestPlaceLocation();
+      return { status: 'granted', coords };
+    } catch (error) {
+      return {
+        status: permissionStatusFromLocationError(error),
+        coords: null,
+        error,
+      };
+    }
+  })().finally(() => {
+    inFlightPermissionRequest = null;
+  });
+  return inFlightPermissionRequest;
+};
 
 export const automaticDetectionAvailable = (permission) =>
   permission === 'granted';

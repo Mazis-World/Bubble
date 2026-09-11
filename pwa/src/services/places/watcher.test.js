@@ -1,4 +1,5 @@
-import { ingestLocationSample, resetPlaceWatcherForTests } from './watcher';
+import { getPlaceWatcher, ingestLocationSample, resetPlaceWatcherForTests } from './watcher';
+import { resetPlacePermissionRequestForTests } from './permissions';
 import { EVENT_TYPE } from './constants';
 
 jest.mock('../../firebase', () => ({
@@ -38,6 +39,8 @@ jest.mock('./api', () => ({
 }));
 
 describe('place watcher restart and ingest', () => {
+  const originalNavigator = global.navigator;
+
   beforeEach(() => {
     mockRecordPlaceEvent.mockReset();
     resetPlaceWatcherForTests();
@@ -46,6 +49,37 @@ describe('place watcher restart and ingest', () => {
       setItem: () => {},
       removeItem: () => {},
     };
+  });
+
+  afterEach(() => {
+    resetPlaceWatcherForTests();
+    resetPlacePermissionRequestForTests();
+    Object.defineProperty(global, 'navigator', {
+      configurable: true,
+      value: originalNavigator,
+    });
+  });
+
+  test('asks for location when starting instead of only querying permission', async () => {
+    const getCurrentPosition = jest.fn((ok) => {
+      ok({ coords: { latitude: 37.77, longitude: -122.41, accuracy: 10 } });
+    });
+    Object.defineProperty(global, 'navigator', {
+      configurable: true,
+      value: {
+        geolocation: {
+          getCurrentPosition,
+          watchPosition: jest.fn(() => 1),
+          clearWatch: jest.fn(),
+        },
+        permissions: { query: jest.fn(async () => ({ state: 'prompt' })) },
+      },
+    });
+
+    const permission = await getPlaceWatcher().start();
+
+    expect(getCurrentPosition).toHaveBeenCalled();
+    expect(permission).toBe('granted');
   });
 
   test('restores state after restart without re-notifying while still inside', async () => {

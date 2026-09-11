@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
@@ -18,6 +18,7 @@ import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
 import MapViewBadges from './MapViewBadges';
+import { ensurePlaceLocationPermission } from '../../services/places/permissions';
 import { Circle, Navigation, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
@@ -72,18 +73,23 @@ const Bubble = ({
   );
   const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
 
+  const openPlaces = useCallback((placeId = null) => {
+    setPlacesFocusId(placeId);
+    setShowPlaces(true);
+    ensurePlaceLocationPermission();
+  }, []);
+
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const placeId = params.get('place');
       if (placeId) {
-        setPlacesFocusId(placeId);
-        setShowPlaces(true);
+        openPlaces(placeId);
       }
     } catch (error) {
       // ignore malformed URLs
     }
-  }, []);
+  }, [openPlaces]);
 
   const handleShare = async () => {
     if (!inviteToken || inviteToken === 'Generating...') return;
@@ -198,10 +204,7 @@ const Bubble = ({
       onMemberCountClick={() => setShowOverview(true)}
       onMemosClick={() => setShowMemos(true)}
       onCheckIn={handleCheckIn}
-      onPlacesClick={() => {
-        setPlacesFocusId(null);
-        setShowPlaces(true);
-      }}
+      onPlacesClick={() => openPlaces()}
     />
   );
 
@@ -582,8 +585,7 @@ const Bubble = ({
             type="button"
             onClick={() => {
               setShowSettings(false);
-              setPlacesFocusId(null);
-              setShowPlaces(true);
+              openPlaces();
             }}
             className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-600/30 transition-all"
           >

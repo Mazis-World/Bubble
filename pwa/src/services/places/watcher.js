@@ -5,7 +5,7 @@ import {
 } from './constants';
 import { evaluateAllPlaces } from './geofence';
 import { enqueuePendingPlaceEvent } from './offline';
-import { queryGeolocationPermission } from './permissions';
+import { ensurePlaceLocationPermission } from './permissions';
 import { flushPendingPlaceEvents, recordPlaceEvent } from './api';
 
 const browserStorage = () => {
@@ -108,7 +108,9 @@ const watchViaNavigator = (onSample, onError) => {
     PLACE_WATCH_OPTIONS
   );
   return () => {
-    navigator.geolocation.clearWatch(watchId);
+    if (typeof navigator !== 'undefined' && navigator.geolocation?.clearWatch) {
+      navigator.geolocation.clearWatch(watchId);
+    }
   };
 };
 
@@ -176,18 +178,24 @@ export const createPlaceWatcher = () => {
       }
     },
     async start() {
-      runtime.permission = await queryGeolocationPermission();
+      const result = await ensurePlaceLocationPermission();
+      runtime.permission = result.status;
       if (runtime.permission === 'denied' || runtime.permission === 'unavailable') {
         runtime.started = false;
         return runtime.permission;
       }
       startWatch();
-      runtime.started = true;
-      if (typeof document !== 'undefined') {
-        document.addEventListener('visibilitychange', this._onVisibility);
+      if (!runtime.started) {
+        runtime.started = true;
+        if (typeof document !== 'undefined') {
+          document.addEventListener('visibilitychange', this._onVisibility);
+        }
+        if (typeof window !== 'undefined') {
+          window.addEventListener('online', this._onOnline);
+        }
       }
-      if (typeof window !== 'undefined') {
-        window.addEventListener('online', this._onOnline);
+      if (result.coords) {
+        await ingestLocationSample(runtime, result.coords);
       }
       return runtime.permission;
     },

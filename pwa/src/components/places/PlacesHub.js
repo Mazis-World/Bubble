@@ -6,12 +6,12 @@ import {
 import { canCreatePlace } from '../../services/places/authz';
 import {
   automaticDetectionAvailable,
+  ensurePlaceLocationPermission,
   markPlacePermissionPrompted,
-  queryGeolocationPermission,
   readPlacePermissionPrompted,
   requestPlaceLocation,
-  shouldPromptPlacePermission,
 } from '../../services/places/permissions';
+import { getPlaceWatcher } from '../../services/places/watcher';
 import {
   checkInAtPlace,
   createPlace,
@@ -50,17 +50,25 @@ const PlacesHub = ({
   const selected = places.find((place) => place.placeId === selectedId) || null;
 
   useEffect(() => {
-    queryGeolocationPermission().then((state) => {
-      setPermission(state);
-      if (shouldPromptPlacePermission({
-        permission: state,
-        prompted: readPlacePermissionPrompted(),
-        hasPlaces: mine.length > 0,
-      })) {
-        setShowPermission(true);
+    let cancelled = false;
+    (async () => {
+      const alreadyPrompted = readPlacePermissionPrompted();
+      const result = await ensurePlaceLocationPermission();
+      if (cancelled) return;
+      setPermission(result.status);
+      markPlacePermissionPrompted();
+      if (result.status === 'granted') {
+        setShowPermission(false);
+        getPlaceWatcher().start();
+        return;
       }
-    });
-  }, [mine.length]);
+      if (alreadyPrompted && result.status === 'denied') return;
+      setShowPermission(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const goList = () => {
     setView('list');
@@ -150,6 +158,7 @@ const PlacesHub = ({
       setPermission('granted');
       markPlacePermissionPrompted();
       setShowPermission(false);
+      await getPlaceWatcher().start();
     } catch (err) {
       setPermission(err.code === 'permission_denied' ? 'denied' : 'unavailable');
       markPlacePermissionPrompted();
