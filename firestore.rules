@@ -74,10 +74,17 @@ service cloud.firestore {
                      request.resource.data.fullName is string &&
                      request.resource.data.bubbles is list;
       
-      // Users can update their own profile
+      // Users can update their own profile. ownedPlaceIds caps Places at 3 per user.
       allow update: if isOwner(userId) &&
                      request.resource.data.fullName is string &&
-                     request.resource.data.bubbles is list;
+                     request.resource.data.bubbles is list &&
+                     (
+                       !('ownedPlaceIds' in request.resource.data) ||
+                       (
+                         request.resource.data.ownedPlaceIds is list &&
+                         request.resource.data.ownedPlaceIds.size() <= 3
+                       )
+                     );
       
       // Users cannot delete their own profile (prevent accidental deletion)
       allow delete: if false;
@@ -225,10 +232,62 @@ service cloud.firestore {
         allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.bubbleId == bubbleId &&
-                       request.resource.data.type in ['status', 'sos', 'checkin'] &&
+                       request.resource.data.type in ['status', 'sos', 'checkin', 'place'] &&
                        request.resource.data.userId is string;
 
         allow update, delete: if false;
+      }
+
+      // ============================================================================
+      // PLACES Subcollection
+      // Owner creates/edits/deletes their own Places. Members may read for status.
+      // The 3-Place cap is enforced with users/{uid}.ownedPlaceIds in the same batch.
+      // ============================================================================
+      match /places/{placeId} {
+        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
+
+        allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
+                       request.resource.data.ownerId == request.auth.uid &&
+                       request.resource.data.familyBubbleId == bubbleId &&
+                       request.resource.data.name is string &&
+                       request.resource.data.latitude is number &&
+                       request.resource.data.longitude is number &&
+                       request.resource.data.radiusMeters is number &&
+                       request.resource.data.recipientUserIds is list &&
+                       getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+                         .data.get('ownedPlaceIds', []).hasAny([placeId]) &&
+                       getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+                         .data.get('ownedPlaceIds', []).size() <= 3;
+
+        allow update: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
+                       resource.data.ownerId == request.auth.uid &&
+                       request.resource.data.ownerId == resource.data.ownerId &&
+                       request.resource.data.familyBubbleId == bubbleId;
+
+        allow delete: if resource.data.ownerId == request.auth.uid;
+      }
+
+      match /placeEvents/{eventId} {
+        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
+
+        allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.familyBubbleId == bubbleId &&
+                       request.resource.data.placeId is string &&
+                       request.resource.data.eventType in ['ARRIVED', 'LEFT', 'CHECKED_IN', 'UPDATED'] &&
+                       request.resource.data.source in ['GEOFENCE', 'MANUAL'];
+
+        allow update, delete: if false;
+      }
+
+      match /placePresence/{presenceId} {
+        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
+
+        allow create, update: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
+                               request.resource.data.userId == request.auth.uid &&
+                               request.resource.data.placeId is string;
+
+        allow delete: if resource.data.userId == request.auth.uid;
       }
     }
     

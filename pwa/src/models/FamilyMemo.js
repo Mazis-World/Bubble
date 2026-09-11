@@ -13,6 +13,9 @@ class FamilyMemo {
     message = null,
     location = null,
     sosId = null,
+    placeId = null,
+    placeEventType = null,
+    recipientUserIds = null,
     createdAt = null,
   }) {
     this.memoId = memoId;
@@ -24,6 +27,9 @@ class FamilyMemo {
     this.message = message;
     this.location = location;
     this.sosId = sosId;
+    this.placeId = placeId;
+    this.placeEventType = placeEventType;
+    this.recipientUserIds = recipientUserIds;
     this.createdAt = createdAt;
   }
 
@@ -39,6 +45,9 @@ class FamilyMemo {
       message: data.message || null,
       location: data.location || null,
       sosId: data.sosId || null,
+      placeId: data.placeId || null,
+      placeEventType: data.placeEventType || null,
+      recipientUserIds: Array.isArray(data.recipientUserIds) ? data.recipientUserIds : null,
       createdAt: data.createdAt || null,
     });
   }

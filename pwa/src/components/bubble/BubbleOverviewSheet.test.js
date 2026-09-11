@@ -53,4 +53,19 @@ describe('Bubble overview sheets', () => {
     expect(screen.getByText(/📍 Checked in/)).toBeTruthy();
     expect(screen.getByText('Checked in')).toBeTruthy();
   });
+
+  test('place memos show the family-friendly message', () => {
+    render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={[
+          { memoId: 'm3', userId: 'u1', nodeId: 'n1', type: 'place', message: '🏠 Ada arrived Home' },
+        ]}
+        bubbleName="Home"
+        onMemoClick={() => {}}
+      />
+    );
+    expect(screen.getByText('🏠 Ada arrived Home')).toBeTruthy();
+  });
 });

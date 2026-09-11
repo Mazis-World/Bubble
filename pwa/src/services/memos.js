@@ -14,6 +14,7 @@ export const MEMO_TYPE = {
   STATUS: 'status',
   SOS: 'sos',
   CHECKIN: 'checkin',
+  PLACE: 'place',
 };
 
 const MEMO_LIMIT = 50;
@@ -31,7 +32,10 @@ export const canViewMemos = ({ isBubbleMember }) => isBubbleMember === true;
 export const canCreateMemo = ({ authUid, userId, isBubbleMember, type }) => {
   if (!authUid || authUid !== userId) return false;
   if (!isBubbleMember) return false;
-  return type === MEMO_TYPE.STATUS || type === MEMO_TYPE.SOS || type === MEMO_TYPE.CHECKIN;
+  return type === MEMO_TYPE.STATUS
+    || type === MEMO_TYPE.SOS
+    || type === MEMO_TYPE.CHECKIN
+    || type === MEMO_TYPE.PLACE;
 };
 
 export const formatMemberLocation = (location) => {
@@ -75,23 +79,33 @@ export const createFamilyMemo = async ({
   message = null,
   location = null,
   sosId = null,
+  placeId = null,
+  placeEventType = null,
+  recipientUserIds = null,
 }) => {
   const uid = auth.currentUser?.uid;
   if (!canCreateMemo({ authUid: uid, userId, isBubbleMember: true, type })) {
     throw new Error('You cannot post a memo to this bubble.');
   }
 
-  const ref = await addDoc(memosCollection(bubbleId), {
+  const payload = {
     bubbleId,
     userId: uid,
     nodeId: nodeId || null,
     type,
     status: status || null,
     message: message || null,
-    location: compactLocation(location),
+    location: type === MEMO_TYPE.PLACE ? null : compactLocation(location),
     sosId: sosId || null,
     createdAt: serverTimestamp(),
-  });
+  };
+  if (type === MEMO_TYPE.PLACE) {
+    payload.placeId = placeId || null;
+    payload.placeEventType = placeEventType || null;
+    payload.recipientUserIds = Array.isArray(recipientUserIds) ? recipientUserIds : [];
+  }
+
+  const ref = await addDoc(memosCollection(bubbleId), payload);
   return ref.id;
 };
 

@@ -224,6 +224,27 @@ const NotificationSettings = () => {
             </button>
           </div>
 
+          {/* Place Alerts */}
+          <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">Place arrivals and departures</p>
+              <p className="text-xs text-gray-400">When family arrive at or leave Home, School, or Work</p>
+            </div>
+            <button
+              onClick={() => handleTogglePreference('placeAlerts')}
+              disabled={!preferences.enabled}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                preferences.placeAlerts !== false && preferences.enabled ? 'bg-blue-600' : 'bg-gray-700'
+              } disabled:opacity-50`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  preferences.placeAlerts !== false && preferences.enabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Location Updates - Off by default */}
           <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
             <div className="flex-1">

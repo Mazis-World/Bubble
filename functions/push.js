@@ -21,34 +21,69 @@ const tokensFromUserData = (data) => {
     .filter(Boolean);
 };
 
+const placeNotifyType = (eventType) => {
+  if (eventType === 'ARRIVED') return 'PLACE_ARRIVAL';
+  if (eventType === 'LEFT') return 'PLACE_DEPARTURE';
+  if (eventType === 'CHECKED_IN') return 'PLACE_CHECKIN';
+  if (eventType === 'UPDATED') return 'PLACE_UPDATED';
+  return 'PLACE_UPDATED';
+};
+
 const buildMemoPush = (memo, bubbleId) => {
   const isSos = memo && memo.type === 'sos';
   const isCheckin = memo && memo.type === 'checkin';
+  const isPlace = memo && memo.type === 'place';
   const title = isSos ? '🚨 SOS ALERT' : 'FamilyBubble';
   const body = (memo && memo.message)
-    || (isSos ? 'A family member needs help' : isCheckin ? 'A family member checked in' : 'A family member updated their status');
+    || (isSos
+      ? 'A family member needs help'
+      : isCheckin
+        ? 'A family member checked in'
+        : isPlace
+          ? 'A family member updated a Place'
+          : 'A family member updated their status');
   const sosId = (memo && memo.sosId) || '';
+  const placeId = (memo && memo.placeId) || '';
+  const notifyType = isSos
+    ? 'sos'
+    : isPlace
+      ? placeNotifyType(memo && memo.placeEventType)
+      : isCheckin
+        ? 'checkin'
+        : 'status';
   const url = isSos && sosId
     ? `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`
-    : '/';
+    : isPlace && placeId
+      ? `/?place=${encodeURIComponent(placeId)}&bubble=${encodeURIComponent(bubbleId)}`
+      : '/';
   const tag = isSos
     ? `sos-${sosId || 'alert'}`
-    : isCheckin
-      ? `checkin-${(memo && memo.userId) || 'update'}`
-      : `status-${(memo && memo.userId) || 'update'}`;
+    : isPlace
+      ? `place-${placeId || 'update'}-${(memo && memo.placeEventType) || 'event'}`
+      : isCheckin
+        ? `checkin-${(memo && memo.userId) || 'update'}`
+        : `status-${(memo && memo.userId) || 'update'}`;
   return {
     title,
     body,
     data: {
       title,
       body,
-      type: isSos ? 'sos' : isCheckin ? 'checkin' : 'status',
+      type: notifyType,
       bubbleId: String(bubbleId || ''),
       sosId: String(sosId),
+      placeId: String(placeId),
       url,
       tag,
     },
   };
+};
+
+const filterPlaceMemoRecipients = ({ memberUserIds, actorUserId, placeRecipientUserIds }) => {
+  const members = (memberUserIds || []).filter((userId) => userId && userId !== actorUserId);
+  if (!Array.isArray(placeRecipientUserIds)) return [];
+  const allowed = new Set(placeRecipientUserIds);
+  return members.filter((userId) => allowed.has(userId));
 };
 
 const isInvalidTokenError = (error) => {
@@ -63,5 +98,6 @@ module.exports = {
   recipientUserIdsFromNodes,
   tokensFromUserData,
   buildMemoPush,
+  filterPlaceMemoRecipients,
   isInvalidTokenError,
 };

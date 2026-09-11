@@ -52,6 +52,35 @@ describe('push helpers', () => {
     assert.equal(payload.data.tag, 'sos-sos-1');
   });
 
+  it('builds a place arrival payload without coordinates', () => {
+    const payload = buildMemoPush(
+      {
+        type: 'place',
+        userId: 'user-2',
+        placeId: 'home',
+        placeEventType: 'ARRIVED',
+        message: '🏠 Dad arrived Home',
+      },
+      'bubble-1'
+    );
+    assert.equal(payload.data.type, 'PLACE_ARRIVAL');
+    assert.equal(payload.body, '🏠 Dad arrived Home');
+    assert.equal(payload.data.url, '/?place=home&bubble=bubble-1');
+    assert.equal(JSON.stringify(payload).includes('latitude'), false);
+  });
+
+  it('filters place recipients to the allow list', () => {
+    const { filterPlaceMemoRecipients } = require('./push');
+    assert.deepEqual(
+      filterPlaceMemoRecipients({
+        memberUserIds: ['mom', 'dad', 'emma', 'grandpa'],
+        actorUserId: 'mom',
+        placeRecipientUserIds: ['dad', 'emma'],
+      }),
+      ['dad', 'emma']
+    );
+  });
+
   it('detects stale FCM tokens', () => {
     assert.equal(isInvalidTokenError({ code: 'messaging/registration-token-not-registered' }), true);
     assert.equal(isInvalidTokenError({ code: 'messaging/internal-error' }), false);

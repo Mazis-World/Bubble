@@ -48,6 +48,20 @@ describe('push payload helpers', () => {
     expect(payload.data.tag).toBe('checkin-user-2');
   });
 
+  test('place memos use a Place notification type without coordinates', () => {
+    const payload = buildMemoPush({
+      type: 'place',
+      userId: 'user-2',
+      placeId: 'home',
+      placeEventType: 'ARRIVED',
+      message: '🏠 Dad arrived Home',
+    }, 'bubble-1');
+    expect(payload.data.type).toBe('PLACE_ARRIVAL');
+    expect(payload.body).toBe('🏠 Dad arrived Home');
+    expect(payload.data.url).toBe('/?place=home&bubble=bubble-1');
+    expect(JSON.stringify(payload)).not.toMatch(/latitude|longitude/);
+  });
+
   test('SOS memos deep-link to the alert', () => {
     const payload = buildMemoPush({
       type: 'sos',

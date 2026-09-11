@@ -53,6 +53,12 @@ describe('Family Memos', () => {
       isBubbleMember: true,
       type: MEMO_TYPE.CHECKIN,
     })).toBe(true);
+    expect(canCreateMemo({
+      authUid: 'user-1',
+      userId: 'user-1',
+      isBubbleMember: true,
+      type: MEMO_TYPE.PLACE,
+    })).toBe(true);
   });
 
   test('sorts newest first and pins active SOS memos', () => {

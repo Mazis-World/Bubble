@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
@@ -15,8 +15,8 @@ import SosAlertScreen from '../sos/SosAlertScreen';
 import SosPermissionSheet from '../sos/SosPermissionSheet';
 import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
 import PremiumSettings from '../paywall/PremiumSettings';
-import BubbleOverviewSheet from './BubbleOverviewSheet';
-import { Circle, Plus, Share2, Settings } from 'lucide-react';
+import PlacesHub from '../places/PlacesHub';
+import { Circle, MapPin, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
 import { auth } from '../../firebase';
@@ -62,11 +62,26 @@ const Bubble = ({
   const [checkInState, setCheckInState] = useState('idle');
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [checkInMemo, setCheckInMemo] = useState(null);
+  const [showPlaces, setShowPlaces] = useState(false);
+  const [placesFocusId, setPlacesFocusId] = useState(null);
   const openSosIds = useMemo(
     () => (sos?.openEvents || []).map((event) => event.sosId),
     [sos?.openEvents]
   );
   const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const placeId = params.get('place');
+      if (placeId) {
+        setPlacesFocusId(placeId);
+        setShowPlaces(true);
+      }
+    } catch (error) {
+      // ignore malformed URLs
+    }
+  }, []);
 
   const handleShare = async () => {
     if (!inviteToken || inviteToken === 'Generating...') return;
@@ -232,6 +247,16 @@ const Bubble = ({
                 <span className="hidden sm:inline">Map</span>
               </button>
             </div>
+          <button
+            onClick={() => {
+              setPlacesFocusId(null);
+              setShowPlaces(true);
+            }}
+            className="flex items-center justify-center text-gray-300 hover:text-white transition-all duration-300 p-1.5 sm:p-2 glass-light hover:bg-white/10 rounded-xl active:scale-95"
+            title="Places"
+          >
+            <MapPin size={18} className="sm:w-5 sm:h-5" />
+          </button>
           <button
             onClick={() => {
               setShowSettings(true);
@@ -538,6 +563,29 @@ const Bubble = ({
         </div>
         
         <div className="my-6 border-t border-gray-800" />
+
+        <div className="space-y-3 mb-6">
+          <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+            <MapPin size={16} />
+            Places
+          </h4>
+          <p className="text-gray-400 text-sm">
+            Save Home, School, or Work and FamilyBubble can let family know when you arrive or leave.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettings(false);
+              setPlacesFocusId(null);
+              setShowPlaces(true);
+            }}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-600/30 transition-all"
+          >
+            Open Places
+          </button>
+        </div>
+        
+        <div className="my-6 border-t border-gray-800" />
         
         {/* Notification Settings */}
         <NotificationSettings />
@@ -562,6 +610,26 @@ const Bubble = ({
             Sign Out
           </button>
         </div>
+      </SlideUpCard>
+
+      <SlideUpCard
+        isOpen={showPlaces}
+        onClose={() => {
+          setShowPlaces(false);
+          setPlacesFocusId(null);
+        }}
+        title="Places"
+      >
+        <PlacesHub
+          bubbleId={bubbleData?.bubble?.id}
+          members={bubbleData?.allMembers || []}
+          currentMember={bubbleData?.currentMember}
+          initialPlaceId={placesFocusId}
+          onClose={() => {
+            setShowPlaces(false);
+            setPlacesFocusId(null);
+          }}
+        />
       </SlideUpCard>
 
       {/* Profile View Modal */}

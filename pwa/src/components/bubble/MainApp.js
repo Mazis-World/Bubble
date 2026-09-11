@@ -6,6 +6,8 @@ import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'fi
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
 import useSos from '../../hooks/useSos';
+import usePlaceWatcher from '../../hooks/usePlaceWatcher';
+import { getPlaceWatcher } from '../../services/places/watcher';
 import { canInviteMoreMembers, inviteLimitMessage } from '../../services/billing';
 
 const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, isLapsedSubscriber = false, onUpgrade, onRestorePurchases, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
@@ -25,6 +27,13 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const isSubscribedRef = useRef(isSubscribed);
   isSubscribedRef.current = isSubscribed;
   const sos = useSos({ userId, bubbleData, initialSosLink: sosLink });
+  usePlaceWatcher({
+    bubbleId: bubbleData?.bubble?.id,
+    userId: bubbleData?.currentMember?.userId || userId,
+    nodeId: bubbleData?.currentMember?.id,
+    displayName: bubbleData?.currentMember?.name,
+    enabled: Boolean(bubbleData?.bubble?.id && bubbleData?.currentMember && !sos.sosActive),
+  });
 
   const setupRealtimeListener = React.useCallback((bubbleId, memberId) => {
     // Clean up previous listener
@@ -419,6 +428,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
     try {
       const location = await getCurrentLocation();
+      getPlaceWatcher().ingest(location).catch(() => {});
       await API.updateLocation(
         bubbleData.bubble.id,
         bubbleData.currentMember.id,
