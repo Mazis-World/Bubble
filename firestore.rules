@@ -154,8 +154,13 @@ service cloud.firestore {
                        request.resource.data.keys().hasAll(['fromNode', 'createdAt']) &&
                        request.resource.data.fromNode is string;
         
-        // Owner can update any edge. Joiners can accept a pending invite.
-        allow update: if isBubbleOwner(bubbleId) || canAccessBubble(bubbleId);
+        // Owner can update any edge. A pending invite may only be accepted once.
+        allow update: if isBubbleOwner(bubbleId) ||
+                       (
+                         canAccessBubble(bubbleId) &&
+                         resource.data.accepted == false &&
+                         request.resource.data.accepted == true
+                       );
         
         // Only bubble owner can delete edges
         allow delete: if isBubbleOwner(bubbleId);
@@ -241,12 +246,14 @@ service cloud.firestore {
                      request.resource.data.bubbleId is string &&
                      request.resource.data.token is string;
       
-      // Creator/owner can edit invites. Joiners may only mark a pending invite used.
+      // Creator/owner can edit invites. Joiners may only mark a still-pending invite used once.
       allow update: if isAuthenticated() &&
                      (
                        resource.data.createdBy == request.auth.uid ||
                        isBubbleOwner(resource.data.bubbleId) ||
                        (
+                         resource.data.get('accepted', false) != true &&
+                         resource.data.get('used', false) != true &&
                          request.resource.data.diff(resource.data).affectedKeys()
                            .hasOnly(['accepted', 'acceptedBy', 'acceptedAt', 'used']) &&
                          request.resource.data.accepted == true

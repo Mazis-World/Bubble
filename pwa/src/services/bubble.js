@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   writeBatch,
+  runTransaction,
   serverTimestamp,
   query,
   where,
@@ -23,6 +24,7 @@ import User from '../models/User';
 import { MEMO_TYPE, createFamilyMemo } from './memos';
 import { buildCheckInMemo } from './checkin';
 import { canJoinAtMemberCap, joinLimitMessage, memberLimitForPlan } from './billing';
+import { INVITE_ALREADY_USED, inviteFromRecords } from './invites';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -147,7 +149,7 @@ const invitationFromDoc = (invitationDoc, edgeDoc = null) => {
     fromNodeId: invitation.fromNodeId || invitation.referredNode || edgeDoc?.data()?.fromNode,
     edgeDoc,
     invitationDoc,
-    accepted: invitation.accepted === true || invitation.used === true,
+    accepted: inviteFromRecords(invitation, edgeDoc?.data()),
   };
 };
 
@@ -159,7 +161,7 @@ const edgeInviteFromDoc = (edgeDoc) => {
     fromNodeId: data.fromNode,
     edgeDoc,
     invitationDoc: null,
-    accepted: data.accepted === true,
+    accepted: inviteFromRecords({}, data),
   };
 };
 
@@ -741,7 +743,7 @@ export const API = {
       throw new Error('Invalid or expired invite code.');
     }
     if (invite.accepted) {
-      throw new Error('This invite code has already been used.');
+      throw new Error(INVITE_ALREADY_USED);
     }
 
     const bubbleId = invite.bubbleId;
@@ -816,42 +818,49 @@ export const API = {
       locationData
     );
 
-    // Record membership first so node create passes member checks.
+    // Record membership, the new node, and consume the invite in one commit
+    // so a second person cannot redeem the same code.
     try {
-      await updateDoc(userRef, {
-        bubbles: arrayUnion(bubbleId),
+      await runTransaction(db, async (transaction) => {
+        const invitationSnap = invite.invitationDoc
+          ? await transaction.get(invite.invitationDoc.ref)
+          : null;
+        const edgeSnap = invite.edgeDoc
+          ? await transaction.get(invite.edgeDoc.ref)
+          : null;
+
+        if (inviteFromRecords(invitationSnap?.data() || {}, edgeSnap?.data() || null)) {
+          throw new Error(INVITE_ALREADY_USED);
+        }
+        if (!invitationSnap?.exists() && !edgeSnap?.exists()) {
+          throw new Error('Invalid or expired invite code.');
+        }
+
+        transaction.update(userRef, {
+          bubbles: arrayUnion(bubbleId),
+        });
+        transaction.set(nodeRef, node.toFirestore());
+        transaction.update(bubbleRef, {
+          members: arrayUnion(userId),
+        });
+        if (edgeSnap?.exists()) {
+          transaction.update(edgeSnap.ref, {
+            toNode: nodeRef.id,
+            accepted: true,
+            acceptedAt: serverTimestamp(),
+            tier: newMemberTier,
+          });
+        }
+        if (invitationSnap?.exists()) {
+          transaction.update(invitationSnap.ref, {
+            accepted: true,
+            used: true,
+            acceptedBy: userId,
+            acceptedAt: serverTimestamp(),
+          });
+        }
       });
-      console.log("User membership updated for join:", bubbleId);
-    } catch (membershipError) {
-      console.error("Error updating user bubbles before join:", membershipError);
-      throw new Error(`Failed to join bubble: ${membershipError.message}`);
-    }
-
-    const batch = writeBatch(db);
-    batch.set(nodeRef, node.toFirestore());
-
-    if (edgeDoc) {
-      batch.update(edgeDoc.ref, {
-        toNode: nodeRef.id,
-        accepted: true,
-        acceptedAt: serverTimestamp(),
-        tier: newMemberTier,
-      });
-    }
-
-    batch.update(bubbleRef, {
-      members: arrayUnion(userId),
-    });
-
-    console.log("Committing batch for join bubble - bubbleId:", bubbleId, "userId:", userId);
-    console.log("Batch operations:");
-    console.log("  1. Create node:", nodeRef.id);
-    console.log("  2. Update edge:", edgeDoc?.id || '(none)');
-    console.log("  3. Update bubble members:", bubbleId);
-    
-    try {
-      await batch.commit();
-      console.log("✓ Batch committed successfully");
+      console.log("✓ Join committed and invite code consumed");
       
       // Wait a moment for Firestore to propagate
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -926,19 +935,6 @@ export const API = {
         }
       }
 
-      if (invite.invitationDoc) {
-        try {
-          await updateDoc(invite.invitationDoc.ref, {
-            accepted: true,
-            used: true,
-            acceptedBy: userId,
-            acceptedAt: serverTimestamp(),
-          });
-        } catch (invitationUpdateError) {
-          console.warn("Could not mark invitation used:", invitationUpdateError);
-        }
-      }
-
       if (userPhotoFile) {
         try {
           uploadedPhotoUrl = await uploadImage(userPhotoFile, userId);
@@ -954,10 +950,12 @@ export const API = {
       
       return { bubbleId, nodeId: nodeRef.id, nodeUserId: userId };
     } catch (batchError) {
-      console.error("✗ Error committing batch:", batchError);
+      if (batchError?.message === INVITE_ALREADY_USED) {
+        throw batchError;
+      }
+      console.error("✗ Error committing join:", batchError);
       console.error("Error code:", batchError.code);
       console.error("Error message:", batchError.message);
-      console.error("Error stack:", batchError.stack);
       throw new Error(`Failed to join bubble: ${batchError.message}`);
     }
   },
