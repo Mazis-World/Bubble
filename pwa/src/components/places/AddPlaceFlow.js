@@ -7,13 +7,23 @@ import {
 import { overlappingWarning, shouldWarnOverlapping } from '../../services/places/geofence';
 import PlaceMapPicker from './PlaceMapPicker';
 
-const StepShell = ({ title, subtitle, children, onBack, onNext, nextLabel = 'Continue', canGoNext, busy }) => (
+const StepShell = ({
+  title,
+  subtitle,
+  children,
+  onBack,
+  backLabel = 'Back',
+  onNext,
+  nextLabel = 'Continue',
+  canGoNext,
+  busy,
+}) => (
   <div className="space-y-5">
     <div>
       {onBack && (
         <button type="button" onClick={onBack} className="text-gray-400 hover:text-white tap-target mb-2 flex items-center gap-1">
           <ArrowLeft size={16} />
-          Back
+          {backLabel}
         </button>
       )}
       <h4 className="text-xl font-black text-white">{title}</h4>
@@ -105,6 +115,7 @@ const AddPlaceFlow = ({
         title={editing ? 'Edit Place' : 'Name this Place'}
         subtitle="Pick something your family will recognize."
         onBack={onCancel}
+        backLabel="Places"
         onNext={() => setStep(2)}
         canGoNext={Boolean(name)}
       >

@@ -169,7 +169,7 @@ const PlacesHub = ({
 
   return (
     <div className="space-y-4">
-      {view !== 'list' && (
+      {view === 'detail' && (
         <button type="button" onClick={goList} className="text-gray-400 hover:text-white text-sm font-semibold tap-target">
           ← Places
         </button>

@@ -36,7 +36,11 @@ describe('Add Place flow', () => {
       />
     );
     fireEvent.click(screen.getByText('Home'));
+    expect(screen.getByRole('button', { name: /places/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^back$/i })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('button', { name: /^back$/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /places/i })).toBeNull();
     fireEvent.click(screen.getByText('Use test location'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
