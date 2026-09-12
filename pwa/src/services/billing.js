@@ -9,7 +9,6 @@ export const FREE_MEMBER_LIMIT = 6;
 export const PREMIUM_MEMBER_LIMIT = 50;
 
 export const PREMIUM_FEATURE = {
-  SOS: 'sos',
   UNLIMITED_MEMBERS: 'unlimited_members',
 };
 

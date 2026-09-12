@@ -1,6 +1,6 @@
 /**
  * Family memo stored at /bubbles/{bubbleId}/memos/{memoId}
- * Status updates, SOS events, and check-ins are written here for the bubble board.
+ * Status, check-ins, and Place updates are written here for the bubble board.
  */
 class FamilyMemo {
   constructor({

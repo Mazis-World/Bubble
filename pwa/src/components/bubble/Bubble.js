@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
@@ -8,12 +8,6 @@ import ProfileEditForm from '../ui/ProfileEditForm';
 import EmojiPicker from '../ui/EmojiPicker';
 import LocationStep from '../ui/LocationStep';
 import NotificationSettings from '../ui/NotificationSettings';
-import SosButton from '../sos/SosButton';
-import SosConfirmOverlay from '../sos/SosConfirmOverlay';
-import SosActiveScreen from '../sos/SosActiveScreen';
-import SosAlertScreen from '../sos/SosAlertScreen';
-import SosPermissionSheet from '../sos/SosPermissionSheet';
-import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
 import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
@@ -45,7 +39,6 @@ const Bubble = ({
   handleProfileUpdate,
   onLogout,
   isGeneratingInvite = false,
-  sos = null,
   isSubscribed = false,
   isLapsedSubscriber = false,
   onUpgrade,
@@ -69,11 +62,7 @@ const Bubble = ({
   const [checkInMemo, setCheckInMemo] = useState(null);
   const [showPlaces, setShowPlaces] = useState(false);
   const [placesFocusId, setPlacesFocusId] = useState(null);
-  const openSosIds = useMemo(
-    () => (sos?.openEvents || []).map((event) => event.sosId),
-    [sos?.openEvents]
-  );
-  const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
+  const familyMemos = useFamilyMemos(bubbleData?.bubble?.id);
   const { places, presence } = usePlaces(bubbleData?.bubble?.id);
 
   const openPlaces = useCallback((placeId = null) => {
@@ -320,14 +309,6 @@ const Bubble = ({
         paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
       }}>
         <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl space-y-3">
-          {sos && (
-            <SosButton
-              onHoldComplete={sos.handleHoldComplete}
-              disabled={sos.busy || sos.sosActive}
-              locked={!isSubscribed}
-              onLockedPress={onUpgrade}
-            />
-          )}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
               onClick={() => setShowStatus(true)}
@@ -607,9 +588,6 @@ const Bubble = ({
           onRestorePurchases={onRestorePurchases}
         />
         
-        <div className="my-6 border-t border-gray-800" />
-        <EmergencyNumberSettings />
-        
         <div className="border-t border-gray-800 mt-6" />
         <div className="space-y-3 mt-6">
           <button
@@ -724,9 +702,6 @@ const Bubble = ({
                 longitude: location.longitude,
               });
             }
-            if (memo.type === MEMO_TYPE.SOS && memo.sosId && sos?.focusSos) {
-              sos.focusSos(memo.sosId);
-            }
           }}
         />
       </SlideUpCard>
@@ -742,44 +717,6 @@ const Bubble = ({
         onConfirm={handleCheckIn}
         onClose={closeCheckIn}
       />
-
-      {sos && (
-        <>
-          <SosConfirmOverlay
-            open={sos.showConfirm}
-            onConfirm={sos.activateAfterConfirm}
-            onCancel={sos.cancelConfirm}
-          />
-          <SosPermissionSheet
-            reason={sos.permissionReason}
-            enabling={sos.enablingLocation}
-            onEnable={sos.handleEnableLocation}
-            onContinueWithout={sos.continueWithoutLocation}
-            onClose={sos.closePermission}
-          />
-          {sos.showActiveScreen && (
-            <SosActiveScreen
-              sos={sos.ownOpenSos}
-              deliveryState={sos.deliveryState}
-              locationError={sos.locationError}
-              onResolve={sos.handleResolve}
-              onCancel={sos.handleCancel}
-              resolving={sos.busy}
-            />
-          )}
-          {sos.incomingSos && (
-            <SosAlertScreen
-              sos={sos.incomingSos}
-              member={sos.memberForSos(sos.incomingSos)}
-              acknowledgedByName={sos.acknowledgedByName}
-              onAcknowledge={sos.handleAcknowledge}
-              acknowledging={sos.busy}
-              onClose={sos.closeIncoming}
-              onMuteSound={sos.muteAlertSound}
-            />
-          )}
-        </>
-      )}
 
     </div>
   );

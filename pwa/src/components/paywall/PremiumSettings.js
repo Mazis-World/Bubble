@@ -18,7 +18,7 @@ const PremiumSettings = ({
             FamilyBubble Premium
           </div>
           <p className="text-sm text-gray-300">
-            SOS and unlimited family members are unlocked.
+            Unlimited family members are unlocked.
           </p>
         </div>
       ) : (
@@ -29,7 +29,7 @@ const PremiumSettings = ({
           </div>
           <p className="text-sm text-gray-300">
             The app is free: radar, map, check-in, status, memos, and up to {FREE_MEMBER_LIMIT} family members.
-            Premium unlocks SOS alerts and room for the whole family.
+            Premium unlocks room for the whole family.
           </p>
           {onUpgrade && (
             <button

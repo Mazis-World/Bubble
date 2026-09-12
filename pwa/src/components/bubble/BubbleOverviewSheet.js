@@ -42,29 +42,24 @@ const MemberRow = ({ member, onClick }) => (
 );
 
 const MemoRow = ({ memo, member, onClick }) => {
-  const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
   const isPlace = memo.type === MEMO_TYPE.PLACE;
-  const title = isSos
-    ? '🚨 SOS ALERT'
-    : isCheckin
-      ? '📍 Checked in'
-      : isPlace
-        ? (memo.message || 'Place update')
-        : getStatusEmoji(memo.status);
-  const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : isPlace ? 'Place update' : 'Updated status';
+  const title = isCheckin
+    ? '📍 Checked in'
+    : isPlace
+      ? (memo.message || 'Place update')
+      : getStatusEmoji(memo.status);
+  const fallbackMessage = isCheckin ? 'Checked in' : isPlace ? 'Place update' : 'Updated status';
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left p-3 rounded-2xl border tap-target ${
-        isSos ? 'bg-red-950/70 border-red-500/50' : 'glass-light border-white/10'
-      }`}
+      className="w-full text-left p-3 rounded-2xl border tap-target glass-light border-white/10"
     >
       <div className="flex items-start gap-3">
         <MemberAvatar member={member} size={40} />
         <div className="min-w-0 flex-1">
-          <p className={`font-bold ${isSos ? 'text-red-200' : 'text-white'}`}>
+          <p className="font-bold text-white">
             {isPlace ? title : (
               <>
                 {title}{' '}
@@ -73,7 +68,7 @@ const MemoRow = ({ memo, member, onClick }) => {
             )}
           </p>
           {!isPlace && (
-          <p className={`text-sm ${isSos ? 'text-red-100' : 'text-gray-300'}`}>
+          <p className="text-sm text-gray-300">
             {memo.message || fallbackMessage}
           </p>
           )}

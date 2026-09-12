@@ -31,7 +31,7 @@ const MemberAvatar = ({ member }) => {
 
 /**
  * Mobile bottom sheet for check-in. Portaled to document.body so the map
- * pane, SOS dock, and overflow:hidden layout cannot clip or bury it.
+ * pane, bottom dock, and overflow:hidden layout cannot clip or bury it.
  */
 const CheckInPopup = ({
   open = false,

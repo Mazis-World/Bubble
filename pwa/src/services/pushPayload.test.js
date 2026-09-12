@@ -25,7 +25,7 @@ describe('push payload helpers', () => {
     expect(tokensFromUserData({ fcmTokens: ['abc', { token: 'def' }] })).toEqual(['abc', 'def']);
   });
 
-  test('status memos do not include an SOS deep link', () => {
+  test('status memos do not include a Place deep link', () => {
     const payload = buildMemoPush({
       type: 'status',
       userId: 'user-2',
@@ -36,7 +36,7 @@ describe('push payload helpers', () => {
     expect(payload.data.tag).toBe('status-user-2');
   });
 
-  test('check-in memos use a check-in tag without an SOS deep link', () => {
+  test('check-in memos use a check-in tag without a Place deep link', () => {
     const payload = buildMemoPush({
       type: 'checkin',
       userId: 'user-2',
@@ -63,14 +63,17 @@ describe('push payload helpers', () => {
     expect(JSON.stringify(payload)).not.toMatch(/latitude|longitude/);
   });
 
-  test('SOS memos deep-link to the alert', () => {
+  test('legacy SOS memos do not deep-link or use SOS copy', () => {
     const payload = buildMemoPush({
       type: 'sos',
       userId: 'user-2',
       sosId: 'sos-9',
       message: 'SOS – I need help',
     }, 'bubble-1');
-    expect(payload.data.url).toBe('/?sos=sos-9&bubble=bubble-1');
-    expect(clickUrlFromPushData(payload.data)).toBe('/?sos=sos-9&bubble=bubble-1');
+    expect(payload.data.type).toBe('status');
+    expect(payload.data.url).toBe('/');
+    expect(payload.title).toBe('FamilyBubble');
+    expect(clickUrlFromPushData(payload.data)).toBe('/');
+    expect(JSON.stringify(payload)).not.toMatch(/\?sos=/);
   });
 });

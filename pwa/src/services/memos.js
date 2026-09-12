@@ -33,7 +33,6 @@ export const canCreateMemo = ({ authUid, userId, isBubbleMember, type }) => {
   if (!authUid || authUid !== userId) return false;
   if (!isBubbleMember) return false;
   return type === MEMO_TYPE.STATUS
-    || type === MEMO_TYPE.SOS
     || type === MEMO_TYPE.CHECKIN
     || type === MEMO_TYPE.PLACE;
 };
@@ -57,16 +56,12 @@ const compactLocation = (location) => {
 };
 
 /**
- * Active SOS memos stay pinned above newer status memos.
- * Everything else is newest-first.
+ * Newest-first. Legacy SOS memos are hidden from the family board.
  */
-export const sortFamilyMemos = (memos, openSosIds = []) =>
-  [...memos].sort((a, b) => {
-    const aPin = a.type === MEMO_TYPE.SOS && (!a.sosId || openSosIds.includes(a.sosId));
-    const bPin = b.type === MEMO_TYPE.SOS && (!b.sosId || openSosIds.includes(b.sosId));
-    if (aPin !== bPin) return aPin ? -1 : 1;
-    return timestampToMs(b.createdAt) - timestampToMs(a.createdAt);
-  });
+export const sortFamilyMemos = (memos) =>
+  [...memos]
+    .filter((memo) => memo.type !== MEMO_TYPE.SOS)
+    .sort((a, b) => timestampToMs(b.createdAt) - timestampToMs(a.createdAt));
 
 const memosCollection = (bubbleId) => collection(db, 'bubbles', bubbleId, 'memos');
 

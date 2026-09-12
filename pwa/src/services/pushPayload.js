@@ -28,9 +28,6 @@ export const tokensFromUserData = (data) => {
 
 export const clickUrlFromPushData = (data = {}) => {
   if (data.url) return data.url;
-  if (data.sosId && data.bubbleId) {
-    return `/?sos=${encodeURIComponent(data.sosId)}&bubble=${encodeURIComponent(data.bubbleId)}`;
-  }
   if (data.placeId && data.bubbleId) {
     return `/?place=${encodeURIComponent(data.placeId)}&bubble=${encodeURIComponent(data.bubbleId)}`;
   }
@@ -46,46 +43,34 @@ const placeNotifyType = (eventType) => {
 };
 
 export const buildMemoPush = (memo, bubbleId) => {
-  const isSos = memo?.type === 'sos';
   const isCheckin = memo?.type === 'checkin';
   const isPlace = memo?.type === 'place';
   const isArrival = isPlace && memo?.placeEventType === 'ARRIVED';
-  const title = isSos
-    ? '🚨 SOS ALERT'
-    : isArrival && memo?.message
-      ? memo.message
-      : 'FamilyBubble';
+  const title = isArrival && memo?.message
+    ? memo.message
+    : 'FamilyBubble';
   const body = isArrival
     ? "They're okay."
     : memo?.message
-      || (isSos
-        ? 'A family member needs help'
-        : isCheckin
-          ? 'A family member checked in'
-          : isPlace
-            ? 'A family member updated a Place'
-            : 'A family member updated their status');
-  const sosId = memo?.sosId || '';
+      || (isCheckin
+        ? 'A family member checked in'
+        : isPlace
+          ? 'A family member updated a Place'
+          : 'A family member updated their status');
   const placeId = memo?.placeId || '';
-  const notifyType = isSos
-    ? 'sos'
-    : isPlace
-      ? placeNotifyType(memo?.placeEventType)
-      : isCheckin
-        ? 'checkin'
-        : 'status';
-  const url = isSos && sosId
-    ? `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`
-    : isPlace && placeId
-      ? `/?place=${encodeURIComponent(placeId)}&bubble=${encodeURIComponent(bubbleId)}`
-      : '/';
-  const tag = isSos
-    ? `sos-${sosId || 'alert'}`
-    : isPlace
-      ? `place-${placeId || 'update'}-${memo?.placeEventType || 'event'}`
-      : isCheckin
-        ? `checkin-${memo?.userId || 'update'}`
-        : `status-${memo?.userId || 'update'}`;
+  const notifyType = isPlace
+    ? placeNotifyType(memo?.placeEventType)
+    : isCheckin
+      ? 'checkin'
+      : 'status';
+  const url = isPlace && placeId
+    ? `/?place=${encodeURIComponent(placeId)}&bubble=${encodeURIComponent(bubbleId)}`
+    : '/';
+  const tag = isPlace
+    ? `place-${placeId || 'update'}-${memo?.placeEventType || 'event'}`
+    : isCheckin
+      ? `checkin-${memo?.userId || 'update'}`
+      : `status-${memo?.userId || 'update'}`;
   return {
     title,
     body,
@@ -94,7 +79,6 @@ export const buildMemoPush = (memo, bubbleId) => {
       body,
       type: notifyType,
       bubbleId: String(bubbleId || ''),
-      sosId: String(sosId),
       placeId: String(placeId),
       url,
       tag,

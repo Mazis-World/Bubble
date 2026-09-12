@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Check, Sparkles, Users, MapPin, Shield, Zap, Gift } from 'lucide-react';
+import { X, Check, Sparkles, Users, MapPin, Gift } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
 import { analyticsService } from '../../services/analytics';
 
@@ -544,22 +544,10 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
 
   const features = [
     { 
-      icon: Shield, 
-      text: "SOS emergency alerts",
-      visual: "security",
-      description: "Hold for 3 seconds to alert everyone in your bubble with live location"
-    },
-    { 
       icon: Users, 
       text: "Unlimited family members",
       visual: "radar",
       description: "Free includes 6 people. Premium is for the whole extended family"
-    },
-    { 
-      icon: Zap, 
-      text: "Instant SOS notifications",
-      visual: "notifications",
-      description: "Family gets an immediate alert with a deep link to your pin"
     },
     { 
       icon: MapPin, 
@@ -656,11 +644,11 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               Unlock FamilyBubble Premium
             </h1>
             <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              The family bubble is free. Premium adds SOS emergency alerts and room for your whole family.
+              The family bubble is free. Premium adds room for your whole family.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Free to use • Premium for SOS & unlimited family</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Free to use • Premium for unlimited family</span>
             </div>
           </div>
 
@@ -669,7 +657,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
             {/* Left side - Features with Visuals */}
             <div className="order-2 lg:order-1 animate-slide-in-left" style={{ opacity: 0, animationDelay: '0.6s' }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 text-center lg:text-left">
-                Premium safety for your bubble
+                More room for your bubble
               </h2>
               <div className="space-y-6 sm:space-y-8">
                 {features.map((feature, index) => {
@@ -779,45 +767,6 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
                             </div>
                             <div className="h-3 bg-white/20 rounded w-32 mx-auto"></div>
                             <div className="h-2 bg-white/10 rounded w-24 mx-auto"></div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {feature.visual === 'security' && (
-                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-gray-900/20 to-slate-900/20 rounded-xl overflow-hidden border border-gray-500/20 p-4 flex items-center justify-center">
-                          <div className="text-center space-y-4">
-                            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center shadow-lg border-2 border-gray-500/50">
-                              <Shield size={40} className="text-white" />
-                            </div>
-                            <div className="space-y-2">
-                              <div className="h-2 bg-white/20 rounded w-40 mx-auto"></div>
-                              <div className="h-2 bg-white/10 rounded w-32 mx-auto"></div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {feature.visual === 'notifications' && (
-                        <div className="mt-4 relative h-48 sm:h-56 bg-gradient-to-br from-yellow-900/20 to-orange-900/20 rounded-xl overflow-hidden border border-yellow-500/20 p-4">
-                          <div className="space-y-3">
-                            <div className="bg-white/10 rounded-lg p-3 flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
-                                <Zap size={20} className="text-white" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="h-3 bg-white/20 rounded w-full mb-1"></div>
-                                <div className="h-2 bg-white/10 rounded w-2/3"></div>
-                              </div>
-                            </div>
-                            <div className="bg-white/5 rounded-lg p-3 flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                                <MapPin size={20} className="text-white" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="h-3 bg-white/20 rounded w-full mb-1"></div>
-                                <div className="h-2 bg-white/10 rounded w-1/2"></div>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       )}
