@@ -88,7 +88,7 @@ const NotificationSettings = () => {
               <Bell size={20} className="text-yellow-400" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-white">Enable notifications</p>
-                <p className="text-xs text-gray-400">Get lock-screen alerts for status updates and SOS, even when the app is closed</p>
+                <p className="text-xs text-gray-400">Get lock-screen alerts for status updates, even when the app is closed</p>
               </div>
             </div>
             <button
@@ -157,26 +157,6 @@ const NotificationSettings = () => {
               <span
                 className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
                   preferences.enabled ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* SOS Alerts - on by default */}
-          <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">SOS alerts</p>
-              <p className="text-xs text-gray-400">When a family member activates SOS</p>
-            </div>
-            <button
-              onClick={() => handleTogglePreference('sosAlerts')}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                preferences.sosAlerts !== false ? 'bg-red-600' : 'bg-gray-700'
-              }`}
-            >
-              <span
-                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                  preferences.sosAlerts !== false ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>

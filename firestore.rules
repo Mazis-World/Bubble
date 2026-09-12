@@ -192,51 +192,12 @@ service cloud.firestore {
       // ============================================================================
       match /sosEvents/{sosId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
-
-        allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.bubbleId == bubbleId &&
-                       request.resource.data.status == 'ACTIVE' &&
-                       request.resource.data.userId is string;
-
-        allow update: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
-                       (
-                         (
-                           resource.data.userId == request.auth.uid &&
-                           (
-                             (
-                               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['latestLocation']) &&
-                               resource.data.status in ['ACTIVE', 'ACKNOWLEDGED']
-                             ) ||
-                             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['delivered']) ||
-                             (
-                               resource.data.status in ['ACTIVE', 'ACKNOWLEDGED'] &&
-                               request.resource.data.status == 'RESOLVED' &&
-                               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt'])
-                             ) ||
-                             (
-                               resource.data.status == 'ACTIVE' &&
-                               request.resource.data.status == 'CANCELLED' &&
-                               request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
-                             )
-                           )
-                         ) ||
-                         (
-                           resource.data.userId != request.auth.uid &&
-                           resource.data.status == 'ACTIVE' &&
-                           request.resource.data.status == 'ACKNOWLEDGED' &&
-                           request.resource.data.acknowledgedBy == request.auth.uid &&
-                           request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['status', 'acknowledgedAt', 'acknowledgedBy'])
-                         )
-                       );
-
-        allow delete: if false;
+        allow create, update, delete: if false;
       }
 
       // ============================================================================
       // FAMILY MEMOS Subcollection
-      // Status, SOS, and check-in board for this bubble only. Membership is server-checked.
+      // Status, check-in, and Place board for this bubble only. Membership is server-checked.
       // ============================================================================
       match /memos/{memoId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
@@ -244,7 +205,7 @@ service cloud.firestore {
         allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.bubbleId == bubbleId &&
-                       request.resource.data.type in ['status', 'sos', 'checkin', 'place'] &&
+                       request.resource.data.type in ['status', 'checkin', 'place'] &&
                        request.resource.data.userId is string;
 
         allow update, delete: if false;

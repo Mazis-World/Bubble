@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CheckInPopup from './CheckInPopup';
 
 describe('Check in popup', () => {
-  test('stays off-screen until opened so it cannot sit under the SOS dock', () => {
+  test('stays off-screen until opened so it cannot sit under the bottom dock', () => {
     render(
       <div className="relative">
         <CheckInPopup open={false} state="idle" onConfirm={() => {}} onClose={() => {}} />

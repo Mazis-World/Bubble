@@ -249,54 +249,6 @@ class NotificationService {
   }
 
   /**
-   * Show notification for an SOS from another bubble member.
-   * SOS alerts are not gated behind status-update preferences.
-   */
-  notifySosAlert(member, sos, onOpen) {
-    if (this.preferences.sosAlerts === false) {
-      return null;
-    }
-    if (!('Notification' in window) || Notification.permission !== 'granted') {
-      return null;
-    }
-
-    const memberName = member?.name || 'A family member';
-    const sosId = sos?.sosId;
-    const bubbleId = sos?.bubbleId;
-    const url = sosId && bubbleId
-      ? `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`
-      : '/';
-
-    return this.show('🚨 SOS ALERT', {
-      body: `${memberName} has activated an SOS alert.\n\nTap to view their location.`,
-      icon: member?.photoUrl || member?.photoURL || '/favicon.svg',
-      tag: `sos-${sosId || member?.id || 'alert'}`,
-      requireInteraction: true,
-      force: true,
-      silent: false,
-      vibrate: [400, 150, 400, 150, 400],
-      badge: '/favicon-32x32.png',
-      data: {
-        type: 'sos',
-        sosId,
-        bubbleId,
-        url,
-        tag: `sos-${sosId || member?.id || 'alert'}`,
-      },
-      onClick: () => {
-        try {
-          window.focus();
-        } catch (error) {
-          // Some environments (tests / embedded webviews) do not implement focus.
-        }
-        if (sosId && bubbleId) {
-          window.history.replaceState({}, document.title, url);
-        }
-        onOpen?.();
-      },
-    });
-  }
-  /**
    * Show notification for location update
    */
   notifyLocationUpdate(member) {
@@ -378,8 +330,6 @@ class NotificationService {
           this.show(title, {
             body: data.body || payload?.notification?.body || '',
             tag: data.tag || 'familybubble',
-            requireInteraction: data.type === 'sos',
-            force: data.type === 'sos',
             data,
           });
         });
@@ -436,7 +386,6 @@ class NotificationService {
       statusUpdates: true,
       newMembers: true,
       locationUpdates: false,
-      sosAlerts: true,
       placeAlerts: true,
     };
   }

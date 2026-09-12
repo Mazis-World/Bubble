@@ -31,7 +31,7 @@ describe('push helpers', () => {
     );
   });
 
-  it('builds a check-in payload without an SOS deep link', () => {
+  it('builds a check-in payload without a Place deep link', () => {
     const payload = buildMemoPush(
       { type: 'checkin', userId: 'user-2', message: 'Checked in' },
       'bubble-1'
@@ -42,14 +42,15 @@ describe('push helpers', () => {
     assert.equal(payload.data.tag, 'checkin-user-2');
   });
 
-  it('builds a data-only SOS payload with a deep link', () => {
+  it('does not treat legacy SOS memos as emergency alerts', () => {
     const payload = buildMemoPush(
       { type: 'sos', userId: 'user-2', sosId: 'sos-1', message: 'SOS – I need help' },
       'bubble-1'
     );
-    assert.equal(payload.data.type, 'sos');
-    assert.equal(payload.data.url, '/?sos=sos-1&bubble=bubble-1');
-    assert.equal(payload.data.tag, 'sos-sos-1');
+    assert.equal(payload.data.type, 'status');
+    assert.equal(payload.data.url, '/');
+    assert.equal(payload.title, 'FamilyBubble');
+    assert.equal(String(payload.data.url).includes('sos='), false);
   });
 
   it('builds a place arrival payload without coordinates', () => {

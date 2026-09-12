@@ -20,7 +20,6 @@ describe('notification service push path', () => {
     notificationService.preferences = {
       enabled: true,
       statusUpdates: true,
-      sosAlerts: true,
     };
     notificationService.pushRegistration = null;
     delete navigator.serviceWorker;

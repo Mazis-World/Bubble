@@ -20,8 +20,7 @@ const notificationOptionsFromData = (data = {}) => ({
   badge: '/logo192.png',
   tag: data.tag || 'familybubble',
   data,
-  requireInteraction: data.type === 'sos',
-  vibrate: data.type === 'sos' ? [400, 150, 400, 150, 400] : [200, 100, 200],
+  vibrate: [200, 100, 200],
   silent: false,
 });
 
@@ -43,10 +42,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const data = event.notification.data || {};
-  const url = data.url
-    || (data.sosId && data.bubbleId
-      ? `/?sos=${encodeURIComponent(data.sosId)}&bubble=${encodeURIComponent(data.bubbleId)}`
-      : '/');
+  const url = data.url || '/';
 
   event.waitUntil((async () => {
     const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });

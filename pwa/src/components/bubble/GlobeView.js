@@ -441,7 +441,7 @@ const GlobeView = ({
     }
   }, [bubbleData?.currentMember?.lastKnownLocation]);
 
-  // Center on an SOS / memo / check-in target without requiring a page refresh.
+  // Center on a memo / check-in target without requiring a page refresh.
   useEffect(() => {
     if (!globeEl.current || focusTarget?.latitude == null || focusTarget?.longitude == null) return;
     setAutoRotate(false);

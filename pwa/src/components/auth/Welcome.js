@@ -47,7 +47,7 @@ const Welcome = ({ onLogin, onCreate, onJoin }) => {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 md:mb-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
           <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-          <span className="text-emerald-200 font-semibold text-sm sm:text-base">Free to start · Premium SOS</span>
+          <span className="text-emerald-200 font-semibold text-sm sm:text-base">Free to start · Premium for bigger families</span>
         </div>
 
         {/* Action Cards */}

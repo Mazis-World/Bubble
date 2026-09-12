@@ -8,12 +8,11 @@ FamilyBubble — One bubble. One shared space. | Private family location & statu
 ## Description
 Stay close to the people who matter.
 
-FamilyBubble is a private family space: see everyone on a living radar, check in on the map, share a status, and send an SOS to your bubble — not the whole internet.
+FamilyBubble is a private family space: see everyone on a living radar, check in on the map, and share a status — not the whole internet.
 
 • See your family on radar
 • Check in with live location in one tap
 • Share status, memos, and moments
-• Hold for SOS when you need help
 • Invite-only. Just family.
 
 Get started free: https://familybubble.online
@@ -22,13 +21,13 @@ Get started free: https://familybubble.online
 0:05 One bubble. One shared space.
 0:10 See everyone at a glance
 0:18 Check in on the map
-0:26 Status, memos, and SOS
+0:26 Status and memos
 0:34 Get started free
 
 #FamilyBubble #FamilyApp #FamilySafety #StayConnected
 
 ## Tags
-FamilyBubble, family app, family location, private family network, family radar, check in app, family SOS, status updates, family safety, stay connected, invite only family app
+FamilyBubble, family app, family location, private family network, family radar, check in app, status updates, family safety, stay connected, invite only family app
 
 ## Thumbnail
 Use `youtube-promo-thumbnail.png` (16:9). Keep the logo and “One bubble. One shared space.” readable at small sizes.
@@ -52,9 +51,9 @@ Your whole family, always in view.
 Know they’re safe.  
 One tap to check in.
 
-**0:26–0:34 — Status, memos, SOS**  
+**0:26–0:34 — Status and memos**  
 Share a moment.  
-And if you need help — hold for SOS.
+A status your family can see.
 
 **0:34–0:45 — CTA**  
 Get started free.  

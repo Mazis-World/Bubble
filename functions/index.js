@@ -86,7 +86,7 @@ async function sendPushToTokens(tokens, tokenOwners, payload) {
     data: payload.data,
     webpush: {
       fcmOptions: { link: payload.data.url || '/' },
-      headers: { Urgency: payload.data.type === 'sos' ? 'high' : 'normal' },
+      headers: { Urgency: 'normal' },
     },
   });
 
@@ -111,6 +111,7 @@ exports.onFamilyMemoCreated = onDocumentCreated(
     const memo = event.data && event.data.data();
     const bubbleId = event.params.bubbleId;
     if (!memo || !memo.userId) return;
+    if (memo.type === 'sos') return;
 
     const { tokens, tokenOwners } = memo.type === 'place'
       ? await tokensForPlaceMemo(bubbleId, memo)

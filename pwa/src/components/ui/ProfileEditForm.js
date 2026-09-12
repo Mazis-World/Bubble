@@ -105,7 +105,7 @@ const ProfileEditForm = ({ member, bubbleId, onSave }) => {
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          placeholder="For family SOS call button"
+          placeholder="Phone number"
           className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
         />
       </div>

@@ -255,7 +255,7 @@ const CreateBubbleFlow = ({ onComplete, onBack }) => {
               <h2 className="text-3xl font-bold">{bubbleName}</h2>
               <p className="text-gray-300">Welcome, {firstName} {lastName} ({relationshipRole})!</p>
               <p className="text-sm text-gray-500">
-                Creating a bubble is free. You can upgrade later for SOS and extra family members.
+                Creating a bubble is free. You can upgrade later for extra family members.
               </p>
             </div>
           </Step>
