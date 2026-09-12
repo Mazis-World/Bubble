@@ -45,6 +45,34 @@ describe('Places list', () => {
     expect(screen.getByText('1 of 3 Places used')).toBeTruthy();
   });
 
+  test('shows another family member’s Home and Work in their color group', () => {
+    render(
+      <PlacesList
+        currentUserId="mom"
+        members={members}
+        places={[
+          {
+            placeId: 'eh',
+            ownerId: 'emma',
+            name: 'Home',
+            icon: '🏠',
+            type: 'home',
+          },
+          {
+            placeId: 'ew',
+            ownerId: 'emma',
+            name: 'Work',
+            icon: '💼',
+            type: 'work',
+          },
+        ]}
+      />
+    );
+    expect(screen.getByText("Emma's places")).toBeTruthy();
+    expect(screen.getByText('Home')).toBeTruthy();
+    expect(screen.getByText('Work')).toBeTruthy();
+  });
+
   test('blocks a fourth place with a friendly message', () => {
     const onAdd = jest.fn();
     const places = ['Home', 'School', 'Work'].map((name, index) => ({

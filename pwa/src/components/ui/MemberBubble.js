@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getStatusEmoji, formatLastSeen } from '../../utils/timeUtils';
 import { RADAR_BUBBLE_SIZE } from '../../services/radarLayout';
+import { colorForMember } from '../../utils/memberColor';
 
-const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, size = RADAR_BUBBLE_SIZE }) => {
+const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, size = RADAR_BUBBLE_SIZE, familyMembers = [] }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -13,6 +14,7 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, size = RAD
 
   const sizePx = size;
   const photoSrc = member.photoUrl || member.photoURL;
+  const accent = colorForMember(member, familyMembers);
 
   const StatusIcon = ({ status }) => {
     const defaultStyle = { color: 'bg-gray-500', ring: 'ring-gray-500/50' };
@@ -95,15 +97,18 @@ const MemberBubble = ({ member, onClick, isCenter = false, delay = 0, size = RAD
         <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent rounded-full opacity-60 pointer-events-none"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent rounded-full pointer-events-none"></div>
 
-        <div className={`absolute inset-0 rounded-full border-2 ${
-          isCenter ? 'border-white/60' : 'border-white/40'
-        } transition-all duration-300 ${isHovered ? 'border-white/80' : ''} pointer-events-none`}></div>
+        <div
+          className="absolute inset-0 rounded-full pointer-events-none"
+          style={{
+            boxShadow: `inset 0 0 0 3px ${accent}, 0 0 12px ${accent}88`,
+          }}
+        ></div>
       </div>
 
       <StatusIcon status={member.status || '⚪'} />
 
       {isCenter && (
-        <div className="absolute -top-0.5 left-1/2 transform -translate-x-1/2 w-6 h-5 bg-blue-500 rounded-full flex items-center justify-center border border-white shadow-lg z-20">
+        <div className="absolute -top-0.5 left-1/2 transform -translate-x-1/2 w-6 h-5 rounded-full flex items-center justify-center border border-white shadow-lg z-20" style={{ background: accent }}>
           <span className="text-white text-[8px] font-bold leading-none">YOU</span>
         </div>
       )}

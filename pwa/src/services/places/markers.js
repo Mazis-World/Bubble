@@ -1,4 +1,6 @@
 import { firstName, placeIcon } from './copy';
+import { placeMapMeta } from './mapStyle';
+import { colorForMember } from '../../utils/memberColor';
 import { getStatusEmoji } from '../../utils/timeUtils';
 
 export const memberPhotoUrl = (member) => member?.photoUrl || member?.photoURL;
@@ -69,15 +71,18 @@ export const createPlaceHtmlMarker = (place, {
   occupants = [],
   onMemberClick,
   currentMemberId,
+  members = [],
 } = {}) => {
-  const name = String(place?.name || 'Place');
-  const color = place?.color || '#818cf8';
+  const meta = placeMapMeta(place, members);
+  const name = meta.label;
+  const color = meta.color;
   const people = occupants || [];
   const occupied = people.length > 0;
   const who = people.map((member) => firstName(member?.name || member?.fullName)).join(', ');
 
   const button = document.createElement('div');
   button.className = occupied ? 'place-globe-marker place-globe-cluster' : 'place-globe-marker';
+  button.dataset.ownerColor = color;
   button.setAttribute('role', occupied ? 'group' : 'button');
   button.setAttribute('aria-label', occupied ? `${name} place, ${who} here` : `${name} place`);
   if (!occupied) button.tabIndex = 0;
@@ -150,7 +155,7 @@ export const createPlaceHtmlMarker = (place, {
 
   const label = document.createElement('span');
   label.style.cssText = [
-    'max-width:88px',
+    'max-width:120px',
     'overflow:hidden',
     'text-overflow:ellipsis',
     'white-space:nowrap',
@@ -175,7 +180,7 @@ export const createPlaceHtmlMarker = (place, {
   return button;
 };
 
-export const globePlacePoints = (places = [], occupancy = null) =>
+export const globePlacePoints = (places = [], occupancy = null, members = []) =>
   (places || [])
     .filter((place) => (
       place
@@ -187,7 +192,8 @@ export const globePlacePoints = (places = [], occupancy = null) =>
       lat: place.latitude,
       lng: place.longitude,
       place,
-      occupants: occupancy?.byPlace?.[place.placeId] || [],
+      members,
+      occupants: occupancy?.byPlace?.[place.placeId] || occupancy?.byPlace?.[place.id] || [],
     }));
 
 const memberInitial = (member) => {
@@ -199,8 +205,9 @@ const memberInitial = (member) => {
  * Face bubble for a family member on the globe. DOM photos show even when
  * the 3D texture cannot load.
  */
-export const createMemberHtmlMarker = (member, { onClick, isCurrent = false } = {}) => {
+export const createMemberHtmlMarker = (member, { onClick, isCurrent = false, members = [] } = {}) => {
   const name = String(member?.name || member?.fullName || 'Family member').trim() || 'Family member';
+  const accent = colorForMember(member, members);
   const root = document.createElement('button');
   root.type = 'button';
   root.className = 'member-globe-marker';
@@ -232,8 +239,8 @@ export const createMemberHtmlMarker = (member, { onClick, isCurrent = false } = 
     'align-items:center',
     'justify-content:center',
     'background:linear-gradient(135deg,#2563eb,#7c3aed)',
-    'border:2px solid rgba(255,255,255,0.7)',
-    'box-shadow:0 0 16px rgba(59,130,246,0.55)',
+    `border:3px solid ${accent}`,
+    `box-shadow:0 0 16px ${accent}99`,
     'color:#fff',
     'font-size:18px',
     'font-weight:800',
@@ -274,7 +281,7 @@ export const createMemberHtmlMarker = (member, { onClick, isCurrent = false } = 
       'top:-6px',
       'left:50%',
       'transform:translateX(-50%)',
-      'background:#3b82f6',
+      `background:${accent}`,
       'color:#fff',
       'font-size:8px',
       'font-weight:800',
@@ -319,7 +326,7 @@ export const globeMemberPoints = (members = []) =>
       lat: Number(member.lastKnownLocation.latitude),
       lng: Number(member.lastKnownLocation.longitude),
       size: member.tier === 1 ? 0.6 : 0.4,
-      color: member.tier === 1 ? '#a855f7' : '#3b82f6',
+      color: colorForMember(member, members),
       member,
       name: member.name,
     }));
@@ -354,5 +361,5 @@ export const fanOutSharedGlobePoints = (points = [], { radiusPx = 46 } = {}) => 
 
 export const globeHtmlLayers = ({ members = [], places = [], occupancy = null } = {}) => [
   ...fanOutSharedGlobePoints(globeMemberPoints(members)),
-  ...globePlacePoints(places, occupancy),
+  ...fanOutSharedGlobePoints(globePlacePoints(places, occupancy, members), { radiusPx: 62 }),
 ];

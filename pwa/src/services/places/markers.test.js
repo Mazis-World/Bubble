@@ -45,7 +45,7 @@ describe('place markers', () => {
       { placeId: 'nowhere', name: 'Nowhere', icon: '📍' },
     ]);
     expect(points).toEqual([
-      { lat: 1, lng: 2, occupants: [], place: expect.objectContaining({ placeId: 'home' }) },
+      { lat: 1, lng: 2, occupants: [], members: [], place: expect.objectContaining({ placeId: 'home' }) },
     ]);
   });
 });
@@ -94,5 +94,49 @@ describe('globe member face bubbles', () => {
     expect(layers.some((item) => item.member?.id === 'dad')).toBe(true);
     expect(layers.some((item) => item.member?.id === 'me')).toBe(true);
     expect(layers.some((item) => item.place?.placeId === 'home')).toBe(true);
+  });
+});
+
+describe('member-colored family places', () => {
+  const sister = { id: 'n-sis', userId: 'sister', name: 'Sister' };
+  const dad = { id: 'n-dad', userId: 'dad', name: 'Dad' };
+  const family = [sister, dad];
+
+  test('sister home and work pins share her color, dad’s work does not', () => {
+    const home = createPlaceHtmlMarker(
+      { placeId: 'sh', ownerId: 'sister', name: 'Home', icon: '🏠', type: 'home' },
+      { members: family }
+    );
+    const work = createPlaceHtmlMarker(
+      { placeId: 'sw', ownerId: 'sister', name: 'Work', icon: '💼', type: 'work' },
+      { members: family }
+    );
+    const dadWork = createPlaceHtmlMarker(
+      { placeId: 'dw', ownerId: 'dad', name: 'Work', icon: '💼', type: 'work' },
+      { members: family }
+    );
+    expect(home.dataset.ownerColor).toBe(work.dataset.ownerColor);
+    expect(dadWork.dataset.ownerColor).not.toBe(home.dataset.ownerColor);
+    expect(home.getAttribute('aria-label')).toBe("Sister's Home place");
+    expect(work.getAttribute('aria-label')).toBe("Sister's Work place");
+    expect(home.textContent).toContain("Sister's Home");
+    expect(work.textContent).toContain("Sister's Work");
+  });
+
+  test('globe layers include every member’s places', () => {
+    const layers = globeHtmlLayers({
+      members: [
+        { ...sister, lastKnownLocation: { latitude: 1, longitude: 1 } },
+        { ...dad, lastKnownLocation: { latitude: 2, longitude: 2 } },
+      ],
+      places: [
+        { placeId: 'sh', ownerId: 'sister', name: 'Home', latitude: 10, longitude: 10 },
+        { placeId: 'sw', ownerId: 'sister', name: 'Work', latitude: 11, longitude: 11 },
+        { placeId: 'dh', ownerId: 'dad', name: 'Home', latitude: 20, longitude: 20 },
+        { placeId: 'dw', ownerId: 'dad', name: 'Work', latitude: 21, longitude: 21 },
+      ],
+    });
+    const placeIds = layers.filter((item) => item.place).map((item) => item.place.placeId).sort();
+    expect(placeIds).toEqual(['dh', 'dw', 'sh', 'sw']);
   });
 });
