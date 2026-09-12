@@ -25,6 +25,7 @@ import { MEMO_TYPE, createFamilyMemo } from './memos';
 import { buildCheckInMemo } from './checkin';
 import { canJoinAtMemberCap, joinLimitMessage, memberLimitForPlan } from './billing';
 import { INVITE_ALREADY_USED, inviteFromRecords } from './invites';
+import { getPlaceWatcher } from './places/watcher';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -1083,6 +1084,10 @@ export const API = {
     await updateDoc(nodeRef, {
       lastKnownLocation: locationData,
       lastUpdated: serverTimestamp(),
+    });
+
+    getPlaceWatcher().ingestConfirmed(location).catch((error) => {
+      console.warn('Place presence sync failed:', error);
     });
 
     console.log("Location updated successfully");

@@ -3,8 +3,8 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
-import MapViewBadges from './MapViewBadges';
 import CheckInPopup from './CheckInPopup';
+import { createPlaceHtmlMarker, createMemberHtmlMarker, globeHtmlLayers, globeMemberPoints } from '../../services/places/markers';
 
 // Create amazing glass-like bubbles that pop off the globe
 const createFloatingHead = (member, size) => {
@@ -16,11 +16,12 @@ const createFloatingHead = (member, size) => {
   
   // Create amazing glass bubble material
   let material;
-  if (member.photoUrl) {
+  const photoSrc = member.photoUrl || member.photoURL;
+  if (photoSrc) {
     // Load texture from photo with glass bubble effect
     const loader = new THREE.TextureLoader();
     const texture = loader.load(
-      member.photoUrl,
+      photoSrc,
       undefined,
       undefined,
       (err) => {
@@ -330,16 +331,16 @@ const animateFloatingHeads = (globe) => {
 const GlobeView = ({
   bubbleData,
   onMemberClick,
-  onMemberCountClick,
-  onMemosClick,
   onCheckIn,
   checkInState = 'idle',
   checkInOpen = false,
   checkInMember = null,
   checkInMemo = null,
   onCloseCheckIn,
-  memoCount = 0,
   focusTarget = null,
+  overlay = null,
+  places = [],
+  onPlaceClick,
 }) => {
   const globeEl = useRef();
   const containerRef = useRef();
@@ -353,18 +354,7 @@ const GlobeView = ({
   useEffect(() => {
     if (!bubbleData || !bubbleData.allMembers) return;
 
-    // Convert members to globe points with cartoonish sizing
-    const memberPoints = bubbleData.allMembers
-      .filter(member => member.lastKnownLocation && member.lastKnownLocation.latitude && member.lastKnownLocation.longitude)
-      .map(member => ({
-        lat: member.lastKnownLocation.latitude,
-        lng: member.lastKnownLocation.longitude,
-        size: member.tier === 1 ? 0.6 : 0.4, // Larger for more cartoonish effect
-        color: member.tier === 1 ? '#a855f7' : '#3b82f6',
-        member: member,
-        name: member.name,
-      }));
-
+    const memberPoints = globeMemberPoints(bubbleData.allMembers);
     setPoints(memberPoints);
 
     // Create arcs between members (optional - show connections)
@@ -520,17 +510,6 @@ const GlobeView = ({
     );
   }
 
-  const mapBadges = (
-    <MapViewBadges
-      memberCount={bubbleData.allMembers.length}
-      memoCount={memoCount}
-      onMemberCountClick={onMemberCountClick}
-      onMemosClick={onMemosClick}
-      onCheckIn={onCheckIn}
-      checkInState={checkInState}
-    />
-  );
-
   const checkInOverlay = (
     <CheckInPopup
       open={checkInOpen}
@@ -545,9 +524,14 @@ const GlobeView = ({
   const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
     ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
     : [];
+  const globeLayers = globeHtmlLayers({
+    members: bubbleData.allMembers,
+    places,
+  });
+  const placePoints = globeLayers.filter((item) => item.place);
 
   // If no members have locations yet, show a message
-  if (points.length === 0) {
+  if (points.length === 0 && placePoints.length === 0) {
     return (
       <div ref={containerRef} className="w-full h-full relative flex items-center justify-center">
         <Globe
@@ -569,7 +553,7 @@ const GlobeView = ({
             </div>
           </div>
         )}
-        {mapBadges}
+        {overlay}
         {checkInOverlay}
       </div>
     );
@@ -639,6 +623,42 @@ const GlobeView = ({
         ringMaxRadius={2.2}
         ringPropagationSpeed={2.2}
         ringRepeatPeriod={700}
+        htmlElementsData={globeLayers}
+        htmlLat="lat"
+        htmlLng="lng"
+        htmlAltitude={(item) => (item.member ? 0.06 : 0.02)}
+        htmlTransition={0}
+        htmlElement={(item) => {
+          if (item.member) {
+            const marker = createMemberHtmlMarker(item.member, {
+              isCurrent: item.member.id === bubbleData?.currentMember?.id,
+              onClick: (member) => {
+                if (globeEl.current) {
+                  globeEl.current.pointOfView(
+                    { lat: item.lat, lng: item.lng, altitude: 1.5 },
+                    800
+                  );
+                }
+                if (onMemberClick) onMemberClick(member);
+              },
+            });
+            if (item.dx || item.dy) {
+              marker.style.transform = `translate(${item.dx}px, ${item.dy}px) translate(-50%, -100%)`;
+            }
+            return marker;
+          }
+          return createPlaceHtmlMarker(item.place, {
+            onClick: (place) => {
+              if (globeEl.current) {
+                globeEl.current.pointOfView(
+                  { lat: place.latitude, lng: place.longitude, altitude: 1.5 },
+                  800
+                );
+              }
+              if (onPlaceClick) onPlaceClick(place);
+            },
+          });
+        }}
         showAtmosphere={true}
         atmosphereColor="#3b82f6"
         atmosphereAltitude={0.2}
@@ -646,13 +666,12 @@ const GlobeView = ({
         enablePointerInteraction={true}
       />
       
-      {/* Overlay info — members and memos are separate sheets */}
-      {mapBadges}
+      {overlay}
       {checkInOverlay}
       
       {/* Hovered member info */}
       {hoveredPoint && (
-        <div className="absolute top-20 right-4 glass-strong rounded-xl px-4 py-3 border border-white/10 z-10 shadow-xl max-w-xs">
+        <div className="absolute top-36 right-4 glass-strong rounded-xl px-4 py-3 border border-white/10 z-10 shadow-xl max-w-xs">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">{getStatusEmoji(hoveredPoint.member.status || '⚪')}</span>
             <div>

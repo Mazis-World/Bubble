@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Loader2, MapPin } from 'lucide-react';
+import { Check, Loader2, MapPinned, Navigation } from 'lucide-react';
 import { checkInButtonLabel } from '../../services/checkin';
 
 export const MAP_BADGE_CLASS =
@@ -13,7 +13,7 @@ const CheckInIcon = ({ state }) => {
     return <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" aria-hidden="true" />;
   }
   return (
-    <MapPin
+    <MapPinned
       className={`w-4 h-4 flex-shrink-0 ${state === 'error' ? 'text-amber-400' : 'text-blue-400'}`}
       aria-hidden="true"
     />
@@ -26,6 +26,7 @@ const MapViewBadges = ({
   onMemberCountClick,
   onMemosClick,
   onCheckIn,
+  onPlacesClick,
   checkInState = 'idle',
 }) => {
   const memberCountLabel = `${memberCount} ${memberCount === 1 ? 'Member' : 'Members'}`;
@@ -34,7 +35,7 @@ const MapViewBadges = ({
 
   return (
     <>
-      <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-2">
+      <div className="absolute top-4 left-4 z-30 flex flex-col items-start gap-2">
         {onMemberCountClick && (
           <button
             type="button"
@@ -60,16 +61,29 @@ const MapViewBadges = ({
           </button>
         )}
       </div>
-      {onMemosClick && (
-        <button
-          type="button"
-          onClick={onMemosClick}
-          className={`absolute top-4 right-4 z-10 ${MAP_BADGE_CLASS}`}
-          aria-label={`${memoCountLabel}. Open family memos`}
-        >
-          <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
-        </button>
-      )}
+      <div className="absolute top-4 right-4 z-30 flex flex-col items-end gap-2">
+        {onMemosClick && (
+          <button
+            type="button"
+            onClick={onMemosClick}
+            className={MAP_BADGE_CLASS}
+            aria-label={`${memoCountLabel}. Open family memos`}
+          >
+            <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
+          </button>
+        )}
+        {onPlacesClick && (
+          <button
+            type="button"
+            onClick={onPlacesClick}
+            className={`${MAP_BADGE_CLASS} flex items-center gap-2`}
+            aria-label="Open Places"
+          >
+            <Navigation className="w-4 h-4 text-blue-400 flex-shrink-0" aria-hidden="true" />
+            <p className="text-white text-sm font-semibold">Places</p>
+          </button>
+        )}
+      </div>
     </>
   );
 };

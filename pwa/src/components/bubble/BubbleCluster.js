@@ -1,7 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import MemberBubble from '../ui/MemberBubble';
+import PlaceRadarMarker from '../places/PlaceRadarMarker';
 import { Radio } from 'lucide-react';
-import { layoutRadarNodes, RADAR_BUBBLE_SIZE } from '../../services/radarLayout';
+import {
+  hydrateRadarNodes,
+  layoutRadarNodes,
+  layoutRadarPlaces,
+  radarMaxDistanceKm,
+  RADAR_BUBBLE_SIZE,
+} from '../../services/radarLayout';
+import {
+  assignMembersToPlaces,
+  isMemberInPlaceBubble,
+} from '../../services/places/occupancy';
 
 // Theme system - ready for future additions like snowflakes
 // eslint-disable-next-line no-unused-vars
@@ -16,10 +27,20 @@ const RADAR_THEMES = {
   },
 };
 
-const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'default' }) => {
+const BubbleCluster = ({
+  bubbleData,
+  onStatusClick,
+  onMemberClick,
+  theme = 'default',
+  overlay = null,
+  places = [],
+  presence = [],
+  onPlaceClick,
+}) => {
   const clusterRef = useRef(null);
 
   const [nodes, setNodes] = useState([]);
+  const [placeNodes, setPlaceNodes] = useState([]);
   const [positions, setPositions] = useState({});
   const [maxDistance, setMaxDistance] = useState(100); // km
   const [sweepAngle, setSweepAngle] = useState(0);
@@ -44,6 +65,12 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
     const loc = member.lastKnownLocation;
     return `${member.id}:${loc?.latitude ?? ''}:${loc?.longitude ?? ''}`;
   }).join('|');
+  const placeKey = (places || []).map((place) => (
+    `${place.placeId}:${place.latitude ?? ''}:${place.longitude ?? ''}:${place.icon ?? ''}:${place.isActive !== false ? 1 : 0}`
+  )).join('|');
+  const presenceKey = (presence || []).map((item) => (
+    `${item.userId}:${item.placeId}:${item.inside ? 1 : 0}`
+  )).join('|');
 
   /** ----------------------------
    * RADAR POSITIONING BASED ON LOCATION
@@ -57,19 +84,45 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
       const container = clusterRef.current;
       if (!container) return;
 
+      const origin = currentMember.lastKnownLocation;
+      const maxDistanceKm = radarMaxDistanceKm({
+        origin,
+        members: validMembers,
+        places,
+        currentMemberId: currentMember.id,
+      });
+
+      const occupancy = assignMembersToPlaces({
+        members: validMembers,
+        places,
+        presence,
+      });
       const radarNodes = layoutRadarNodes({
         members: validMembers,
         currentMemberId: currentMember.id,
         width: container.offsetWidth,
         height: container.offsetHeight,
+        maxDistanceKm,
+      });
+      const radarPlaces = layoutRadarPlaces({
+        places,
+        origin,
+        width: container.offsetWidth,
+        height: container.offsetHeight,
+        maxDistanceKm,
+        memberNodes: radarNodes,
+        occupancy,
+        currentMemberId: currentMember.id,
       });
 
       const farthest = Math.max(
         10,
-        ...radarNodes.map((node) => (typeof node.distance === 'number' ? node.distance : 0))
+        ...radarNodes.map((node) => (typeof node.distance === 'number' ? node.distance : 0)),
+        ...radarPlaces.map((node) => (typeof node.distance === 'number' ? node.distance : 0))
       );
       setMaxDistance(farthest);
       setNodes(radarNodes);
+      setPlaceNodes(radarPlaces);
       const nextPositions = {};
       radarNodes.forEach((node) => {
         nextPositions[node.id] = { x: node.x, y: node.y };
@@ -88,7 +141,7 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
     // validMembers is represented by memberIdString + locationKey so layout
     // does not rerun on every parent render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memberIdString, locationKey, currentMember?.id]);
+  }, [memberIdString, locationKey, placeKey, presenceKey, currentMember?.id]);
 
   /** ----------------------------
    * ANIMATED RADAR SWEEP
@@ -112,8 +165,24 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
     );
   }
 
+  const occupancy = assignMembersToPlaces({
+    members: validMembers,
+    places,
+    presence,
+  });
+  const displayNodes = hydrateRadarNodes(nodes, validMembers)
+    .filter((node) => !isMemberInPlaceBubble(occupancy, node.id));
+  const displayPlaces = placeNodes.map((node) => ({
+    ...node,
+    occupants: (occupancy.byPlace[node.place?.placeId] || []).map((member) => {
+      const live = validMembers.find((item) => item.id === member.id);
+      return live || member;
+    }),
+  }));
+
   return (
     <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4" style={{ width: '100%', height: '100%' }}>
+      {overlay}
       {/* Outer radar frame with glow - mobile optimized - PERFECTLY CENTERED */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div 
@@ -368,8 +437,23 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
         <div className="absolute inset-0 rounded-full glass-light pointer-events-none" style={{ zIndex: 9, opacity: 0.3 }}></div>
 
 
+        {/* Place icons sit on the radar before member avatars */}
+        {displayPlaces.map((node) => (
+          <PlaceRadarMarker
+            key={node.id}
+            place={node.place}
+            x={node.x}
+            y={node.y}
+            occupants={node.occupants}
+            currentMemberId={currentMember.id}
+            onClick={onPlaceClick}
+            onMemberClick={onMemberClick}
+            onStatusClick={onStatusClick}
+          />
+        ))}
+
         {/* Member bubbles positioned by location - z-index 10+ (on top of everything) */}
-        {nodes.map((node, index) => {
+        {displayNodes.map((node, index) => {
           const pos = positions[node.id] || { x: node.x, y: node.y };
           const isCurrentUser = node.id === currentMember.id;
 

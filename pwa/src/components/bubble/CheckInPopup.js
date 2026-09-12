@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Loader2, MapPin } from 'lucide-react';
+import { Check, Loader2, MapPinned } from 'lucide-react';
 import { checkInButtonLabel, checkInHint } from '../../services/checkin';
 import { formatLastSeen } from '../../utils/timeUtils';
 
@@ -11,7 +11,7 @@ const CheckInIcon = ({ state, onGreen = false }) => {
   if (state === 'done') {
     return <Check className={`w-4 h-4 flex-shrink-0 ${onGreen ? 'text-white' : 'text-emerald-400'}`} aria-hidden="true" />;
   }
-  return <MapPin className={`${className} ${state === 'error' ? 'text-amber-400' : ''}`} aria-hidden="true" />;
+  return <MapPinned className={`${className} ${state === 'error' ? 'text-amber-400' : ''}`} aria-hidden="true" />;
 };
 
 const MemberAvatar = ({ member }) => {

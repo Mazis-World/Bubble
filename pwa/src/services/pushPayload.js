@@ -31,35 +31,84 @@ export const clickUrlFromPushData = (data = {}) => {
   if (data.sosId && data.bubbleId) {
     return `/?sos=${encodeURIComponent(data.sosId)}&bubble=${encodeURIComponent(data.bubbleId)}`;
   }
+  if (data.placeId && data.bubbleId) {
+    return `/?place=${encodeURIComponent(data.placeId)}&bubble=${encodeURIComponent(data.bubbleId)}`;
+  }
   return '/';
+};
+
+const placeNotifyType = (eventType) => {
+  if (eventType === 'ARRIVED') return 'PLACE_ARRIVAL';
+  if (eventType === 'LEFT') return 'PLACE_DEPARTURE';
+  if (eventType === 'CHECKED_IN') return 'PLACE_CHECKIN';
+  if (eventType === 'UPDATED') return 'PLACE_UPDATED';
+  return 'PLACE_UPDATED';
 };
 
 export const buildMemoPush = (memo, bubbleId) => {
   const isSos = memo?.type === 'sos';
   const isCheckin = memo?.type === 'checkin';
-  const title = isSos ? '🚨 SOS ALERT' : 'FamilyBubble';
-  const body = memo?.message
-    || (isSos ? 'A family member needs help' : isCheckin ? 'A family member checked in' : 'A family member updated their status');
+  const isPlace = memo?.type === 'place';
+  const isArrival = isPlace && memo?.placeEventType === 'ARRIVED';
+  const title = isSos
+    ? '🚨 SOS ALERT'
+    : isArrival && memo?.message
+      ? memo.message
+      : 'FamilyBubble';
+  const body = isArrival
+    ? "They're okay."
+    : memo?.message
+      || (isSos
+        ? 'A family member needs help'
+        : isCheckin
+          ? 'A family member checked in'
+          : isPlace
+            ? 'A family member updated a Place'
+            : 'A family member updated their status');
   const sosId = memo?.sosId || '';
+  const placeId = memo?.placeId || '';
+  const notifyType = isSos
+    ? 'sos'
+    : isPlace
+      ? placeNotifyType(memo?.placeEventType)
+      : isCheckin
+        ? 'checkin'
+        : 'status';
   const url = isSos && sosId
     ? `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`
-    : '/';
+    : isPlace && placeId
+      ? `/?place=${encodeURIComponent(placeId)}&bubble=${encodeURIComponent(bubbleId)}`
+      : '/';
   const tag = isSos
     ? `sos-${sosId || 'alert'}`
-    : isCheckin
-      ? `checkin-${memo?.userId || 'update'}`
-      : `status-${memo?.userId || 'update'}`;
+    : isPlace
+      ? `place-${placeId || 'update'}-${memo?.placeEventType || 'event'}`
+      : isCheckin
+        ? `checkin-${memo?.userId || 'update'}`
+        : `status-${memo?.userId || 'update'}`;
   return {
     title,
     body,
     data: {
       title,
       body,
-      type: isSos ? 'sos' : isCheckin ? 'checkin' : 'status',
+      type: notifyType,
       bubbleId: String(bubbleId || ''),
       sosId: String(sosId),
+      placeId: String(placeId),
       url,
       tag,
     },
   };
+};
+
+export const filterPlaceMemoRecipients = ({
+  memberUserIds = [],
+  actorUserId,
+  placeRecipientUserIds,
+}) => {
+  const members = (memberUserIds || []).filter((userId) => userId && userId !== actorUserId);
+  if (!Array.isArray(placeRecipientUserIds)) return [];
+  const allowed = new Set(placeRecipientUserIds);
+  return members.filter((userId) => allowed.has(userId));
 };
