@@ -112,8 +112,8 @@ export const ingestConfirmedLocation = async (runtime, coords, now = Date.now())
     if (eventPlaceIds.has(item.placeId)) continue;
     try {
       await upsertPlacePresence(runtime.bubbleId, runtime.userId, item.placeId, {
-        inside: item.inside,
-        lastEventType: EVENT_TYPE.ARRIVED,
+        inside: item.inside === true,
+        lastEventType: item.inside === true ? EVENT_TYPE.ARRIVED : EVENT_TYPE.LEFT,
         timestamp: now,
       });
     } catch (error) {

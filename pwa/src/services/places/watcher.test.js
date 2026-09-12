@@ -138,4 +138,66 @@ describe('place watcher restart and ingest', () => {
     }));
     expect(runtime.states.home.inside).toBe(true);
   });
+
+  test('status GPS outside a Place they were in records a leave', async () => {
+    const runtime = {
+      bubbleId: 'b1',
+      userId: 'mom',
+      nodeId: 'n1',
+      displayName: 'Mom',
+      places: [{
+        placeId: 'home',
+        familyBubbleId: 'b1',
+        latitude: 37.77,
+        longitude: -122.41,
+        radiusMeters: 200,
+        isActive: true,
+      }],
+      states: {
+        home: {
+          inside: true,
+          lastEventType: EVENT_TYPE.ARRIVED,
+          lastTransitionAt: 1,
+          pendingInsideSince: 0,
+          pendingOutsideSince: 0,
+        },
+      },
+    };
+    await ingestConfirmedLocation(runtime, { latitude: 37.80, longitude: -122.41, accuracy: 10 }, 5_000);
+    expect(mockRecordPlaceEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: EVENT_TYPE.LEFT,
+      place: expect.objectContaining({ placeId: 'home' }),
+    }));
+    expect(runtime.states.home.inside).toBe(false);
+  });
+
+  test('status GPS outside with no local geofence state upserts left presence', async () => {
+    const runtime = {
+      bubbleId: 'b1',
+      userId: 'mom',
+      nodeId: 'n1',
+      displayName: 'Mom',
+      places: [{
+        placeId: 'home',
+        familyBubbleId: 'b1',
+        latitude: 37.77,
+        longitude: -122.41,
+        radiusMeters: 200,
+        isActive: true,
+      }],
+      states: {},
+    };
+    await ingestConfirmedLocation(runtime, { latitude: 37.80, longitude: -122.41, accuracy: 10 }, 5_000);
+    expect(mockRecordPlaceEvent).not.toHaveBeenCalled();
+    expect(mockUpsertPlacePresence).toHaveBeenCalledWith(
+      'b1',
+      'mom',
+      'home',
+      expect.objectContaining({
+        inside: false,
+        lastEventType: EVENT_TYPE.LEFT,
+      }),
+    );
+    expect(runtime.states.home.inside).toBe(false);
+  });
 });

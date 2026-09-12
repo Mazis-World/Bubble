@@ -311,6 +311,8 @@ export const evaluateConfirmedLocation = ({ places, states, coords, now, userId 
     nextStates[place.placeId] = result.state;
     if (result.markInside === true) {
       presence.push({ placeId: place.placeId, inside: true });
+    } else if (result.markInside === false) {
+      presence.push({ placeId: place.placeId, inside: false });
     }
     if (result.event) {
       events.push({

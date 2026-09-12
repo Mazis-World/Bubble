@@ -199,4 +199,60 @@ describe('BubbleCluster radar avatars', () => {
     expect(screen.getByRole('button', { name: 'Me in Home' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Home place, Me, Dad here' })).toBeTruthy();
   });
+
+  test('a status location away leaves the Place bubble even with stale presence', () => {
+    const house = { latitude: -26.2, longitude: 28.04 };
+    const away = { latitude: -26.25, longitude: 28.1 };
+    const home = {
+      placeId: 'home',
+      name: 'Home',
+      icon: '🏠',
+      color: '#60a5fa',
+      type: 'home',
+      latitude: house.latitude,
+      longitude: house.longitude,
+      radiusMeters: 200,
+    };
+    const atHome = {
+      currentMember: { id: 'me', userId: 'me', name: 'Me', lastKnownLocation: house },
+      allMembers: [
+        { id: 'me', userId: 'me', name: 'Me', lastKnownLocation: house },
+        { id: 'dad', userId: 'dad', name: 'Dad', lastKnownLocation: house },
+      ],
+    };
+    const presence = [{ userId: 'me', placeId: 'home', inside: true }];
+    const { container, rerender } = render(
+      <BubbleCluster
+        bubbleData={atHome}
+        onStatusClick={() => {}}
+        onMemberClick={() => {}}
+        places={[home]}
+        presence={presence}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Me in Home' })).toBeTruthy();
+
+    rerender(
+      <BubbleCluster
+        bubbleData={{
+          currentMember: { id: 'me', userId: 'me', name: 'Me', lastKnownLocation: away },
+          allMembers: [
+            { id: 'me', userId: 'me', name: 'Me', lastKnownLocation: away },
+            { id: 'dad', userId: 'dad', name: 'Dad', lastKnownLocation: house },
+          ],
+        }}
+        onStatusClick={() => {}}
+        onMemberClick={() => {}}
+        places={[home]}
+        presence={presence}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Me in Home' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Dad in Home' })).toBeTruthy();
+    const wrappers = [...container.querySelectorAll('.member-bubble-wrapper')];
+    expect(wrappers).toHaveLength(1);
+    expect(wrappers[0].textContent).toContain('M');
+  });
 });
