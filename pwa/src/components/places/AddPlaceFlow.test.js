@@ -41,6 +41,8 @@ describe('Add Place flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByRole('button', { name: /^back$/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /places/i })).toBeNull();
+    expect(screen.getByText(/search or use your current location/i)).toBeTruthy();
+    expect(screen.queryByText(/pick a spot on the map/i)).toBeNull();
     fireEvent.click(screen.getByText('Use test location'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
