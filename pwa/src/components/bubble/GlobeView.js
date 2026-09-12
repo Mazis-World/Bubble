@@ -3,12 +3,15 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
-import CheckInPopup from './CheckInPopup';
 import { createPlaceHtmlMarker, createMemberHtmlMarker, globeHtmlLayers, globeMemberPoints } from '../../services/places/markers';
+import { assignMembersToPlaces } from '../../services/places/occupancy';
+import { groupPlacesByOwner } from '../../services/places/mapStyle';
+import { colorForMember, hexToNumber } from '../../utils/memberColor';
 
 // Create amazing glass-like bubbles that pop off the globe
-const createFloatingHead = (member, size) => {
+const createFloatingHead = (member, size, members = []) => {
   const group = new THREE.Group();
+  const accent = hexToNumber(colorForMember(member, members));
   
   // Main bubble sphere - larger for better visibility
   const bubbleRadius = size * 0.25;
@@ -42,14 +45,12 @@ const createFloatingHead = (member, size) => {
       ior: 1.5, // Glass-like index of refraction
       transmission: 0.9, // Glass transmission
       thickness: bubbleRadius * 0.5,
-      emissive: member.tier === 1 ? 0x4a1d96 : 0x1e3a8a,
+      emissive: accent,
       emissiveIntensity: 0.3,
     });
   } else {
     // Glass bubble material for members without photos
-    const colors = member.tier === 1 
-      ? 0xa855f7 // Purple for owner
-      : 0x3b82f6; // Blue for participants
+    const colors = accent;
     material = new THREE.MeshPhysicalMaterial({
       color: colors,
       transparent: true,
@@ -99,7 +100,7 @@ const createFloatingHead = (member, size) => {
   // Add outer glow ring that pulses (like a bubble's edge)
   const glowGeometry = new THREE.SphereGeometry(bubbleRadius * 1.4, 32, 32);
   const glowMaterial = new THREE.MeshBasicMaterial({
-    color: member.tier === 1 ? 0xa855f7 : 0x3b82f6,
+    color: accent,
     transparent: true,
     opacity: 0.3,
     side: THREE.BackSide,
@@ -331,15 +332,11 @@ const animateFloatingHeads = (globe) => {
 const GlobeView = ({
   bubbleData,
   onMemberClick,
-  onCheckIn,
-  checkInState = 'idle',
   checkInOpen = false,
-  checkInMember = null,
-  checkInMemo = null,
-  onCloseCheckIn,
   focusTarget = null,
   overlay = null,
   places = [],
+  presence = [],
   onPlaceClick,
 }) => {
   const globeEl = useRef();
@@ -510,25 +507,21 @@ const GlobeView = ({
     );
   }
 
-  const checkInOverlay = (
-    <CheckInPopup
-      open={checkInOpen}
-      state={checkInState}
-      member={checkInMember}
-      memo={checkInMemo}
-      onConfirm={onCheckIn}
-      onClose={onCloseCheckIn}
-    />
-  );
-
   const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
     ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
     : [];
+  const occupancy = assignMembersToPlaces({
+    members: bubbleData.allMembers,
+    places,
+    presence,
+  });
   const globeLayers = globeHtmlLayers({
     members: bubbleData.allMembers,
     places,
+    occupancy,
   });
   const placePoints = globeLayers.filter((item) => item.place);
+  const placeGroups = groupPlacesByOwner(places, bubbleData.allMembers);
 
   // If no members have locations yet, show a message
   if (points.length === 0 && placePoints.length === 0) {
@@ -554,7 +547,6 @@ const GlobeView = ({
           </div>
         )}
         {overlay}
-        {checkInOverlay}
       </div>
     );
   }
@@ -568,7 +560,7 @@ const GlobeView = ({
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
         pointsData={points}
         pointThreeObject={(point) => {
-          const head = createFloatingHead(point.member, point.size || 0.4);
+          const head = createFloatingHead(point.member, point.size || 0.4, bubbleData.allMembers);
           // Store initial Y position for floating animation
           head.userData.initialY = head.position.y;
           return head;
@@ -629,9 +621,10 @@ const GlobeView = ({
         htmlAltitude={(item) => (item.member ? 0.06 : 0.02)}
         htmlTransition={0}
         htmlElement={(item) => {
-          if (item.member) {
-            const marker = createMemberHtmlMarker(item.member, {
+          const marker = item.member
+            ? createMemberHtmlMarker(item.member, {
               isCurrent: item.member.id === bubbleData?.currentMember?.id,
+              members: bubbleData.allMembers,
               onClick: (member) => {
                 if (globeEl.current) {
                   globeEl.current.pointOfView(
@@ -641,23 +634,28 @@ const GlobeView = ({
                 }
                 if (onMemberClick) onMemberClick(member);
               },
+            })
+            : createPlaceHtmlMarker(item.place, {
+              members: bubbleData.allMembers,
+              occupants: item.occupants,
+              currentMemberId: bubbleData?.currentMember?.id,
+              onMemberClick: (member) => {
+                if (onMemberClick) onMemberClick(member);
+              },
+              onClick: (place) => {
+                if (globeEl.current) {
+                  globeEl.current.pointOfView(
+                    { lat: place.latitude, lng: place.longitude, altitude: 1.5 },
+                    800
+                  );
+                }
+                if (onPlaceClick) onPlaceClick(place);
+              },
             });
-            if (item.dx || item.dy) {
-              marker.style.transform = `translate(${item.dx}px, ${item.dy}px) translate(-50%, -100%)`;
-            }
-            return marker;
+          if (item.dx || item.dy) {
+            marker.style.transform = `translate(${item.dx}px, ${item.dy}px) translate(-50%, -100%)`;
           }
-          return createPlaceHtmlMarker(item.place, {
-            onClick: (place) => {
-              if (globeEl.current) {
-                globeEl.current.pointOfView(
-                  { lat: place.latitude, lng: place.longitude, altitude: 1.5 },
-                  800
-                );
-              }
-              if (onPlaceClick) onPlaceClick(place);
-            },
-          });
+          return marker;
         }}
         showAtmosphere={true}
         atmosphereColor="#3b82f6"
@@ -667,7 +665,6 @@ const GlobeView = ({
       />
       
       {overlay}
-      {checkInOverlay}
       
       {/* Hovered member info */}
       {hoveredPoint && (
@@ -722,6 +719,32 @@ const GlobeView = ({
         </div>
       )}
       
+      {!checkInOpen && placeGroups.length > 0 && (
+        <div
+          className="absolute bottom-36 left-3 z-10 glass-strong rounded-2xl px-3 py-2 border border-white/10 shadow-xl max-w-[240px]"
+          data-testid="place-map-legend"
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">Family places</p>
+          <div className="space-y-1.5">
+            {placeGroups.map((group) => (
+              <div key={group.ownerId} className="flex items-start gap-2">
+                <span
+                  aria-hidden="true"
+                  className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                  style={{ background: group.color, boxShadow: `0 0 8px ${group.color}` }}
+                />
+                <div className="min-w-0">
+                  <p className="text-white text-xs font-bold leading-tight">{group.name}</p>
+                  <p className="text-gray-400 text-[11px] leading-tight truncate">
+                    {group.places.map((place) => place.name || 'Place').join(', ')}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Toggle controls button */}
       {!checkInOpen && (
         <button

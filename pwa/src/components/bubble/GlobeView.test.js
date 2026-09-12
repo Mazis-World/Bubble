@@ -28,4 +28,26 @@ describe('Globe map face bubbles', () => {
     expect(layers.filter((item) => item.member?.id === 'dad')).toHaveLength(1);
     expect(layers.filter((item) => item.place?.placeId === 'home')).toHaveLength(1);
   });
+
+  test('map layers keep every person’s places even when they have several', () => {
+    const sister = { id: 'sis', userId: 'sister', name: 'Sister', lastKnownLocation: away };
+    const layers = globeHtmlLayers({
+      members: [me, sister],
+      places: [
+        { ...home, placeId: 'sis-home', ownerId: 'sister', name: 'Home' },
+        {
+          placeId: 'sis-work',
+          ownerId: 'sister',
+          name: 'Work',
+          icon: '💼',
+          latitude: away.latitude,
+          longitude: away.longitude,
+        },
+        { ...home, placeId: 'me-home', ownerId: 'me', name: 'Home' },
+      ],
+    });
+    expect(layers.filter((item) => item.place?.placeId === 'sis-home')).toHaveLength(1);
+    expect(layers.filter((item) => item.place?.placeId === 'sis-work')).toHaveLength(1);
+    expect(layers.filter((item) => item.place?.placeId === 'me-home')).toHaveLength(1);
+  });
 });

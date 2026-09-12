@@ -1,6 +1,7 @@
 import React from 'react';
 import MemberBubble from '../ui/MemberBubble';
 import { firstName, placeIcon } from '../../services/places/copy';
+import { ownedPlaceLabel, placeAccentColor } from '../../services/places/mapStyle';
 import { RADAR_PLACE_CLUSTER_SIZE, RADAR_PLACE_SIZE } from '../../services/radarLayout';
 
 const occupantFaceSize = (count) => {
@@ -15,13 +16,14 @@ const PlaceRadarMarker = ({
   y,
   occupants = [],
   currentMemberId,
+  members = [],
   onClick,
   onMemberClick,
   onStatusClick,
 }) => {
   const icon = placeIcon(place);
-  const name = place?.name || 'Place';
-  const color = place?.color || '#818cf8';
+  const name = ownedPlaceLabel(place, members);
+  const color = placeAccentColor(place, members);
   const people = occupants || [];
   const occupied = people.length > 0;
 
@@ -78,7 +80,7 @@ const PlaceRadarMarker = ({
         >
           {icon}
         </span>
-        <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 text-[9px] font-bold text-white whitespace-nowrap max-w-[72px] truncate px-1 rounded bg-slate-950/80">
+        <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 text-[9px] font-bold text-white whitespace-nowrap max-w-[96px] truncate px-1 rounded bg-slate-950/80">
           {name}
         </span>
       </button>
@@ -162,6 +164,7 @@ const PlaceRadarMarker = ({
               isCenter={member.id === currentMemberId}
               size={faceSize}
               delay={0}
+              familyMembers={members}
             />
           </button>
         ))}
@@ -174,7 +177,7 @@ const PlaceRadarMarker = ({
           </span>
         )}
       </div>
-      <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 text-[9px] font-bold text-white whitespace-nowrap max-w-[88px] truncate px-1 rounded bg-slate-950/80 pointer-events-none">
+      <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 text-[9px] font-bold text-white whitespace-nowrap max-w-[96px] truncate px-1 rounded bg-slate-950/80 pointer-events-none">
         {name}
       </span>
     </div>

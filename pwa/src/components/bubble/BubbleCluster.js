@@ -445,6 +445,7 @@ const BubbleCluster = ({
             x={node.x}
             y={node.y}
             occupants={node.occupants}
+            members={validMembers}
             currentMemberId={currentMember.id}
             onClick={onPlaceClick}
             onMemberClick={onMemberClick}
@@ -480,6 +481,7 @@ const BubbleCluster = ({
                 member={node}
                 isCenter={isCurrentUser}
                 size={RADAR_BUBBLE_SIZE}
+                familyMembers={validMembers}
                 onClick={isCurrentUser ? onStatusClick : () => onMemberClick && onMemberClick(node)}
                 delay={index * 50}
               />

@@ -18,6 +18,7 @@ import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
 import MapViewBadges from './MapViewBadges';
+import CheckInPopup from './CheckInPopup';
 import { ensurePlaceLocationPermission } from '../../services/places/permissions';
 import usePlaces from '../../hooks/usePlaces';
 import { Circle, Navigation, Plus, Share2, Settings } from 'lucide-react';
@@ -287,15 +288,7 @@ const Bubble = ({
           <GlobeView
             bubbleData={bubbleData}
             focusTarget={mapFocus}
-            onCheckIn={handleCheckIn}
-            checkInState={checkInState}
             checkInOpen={showCheckIn}
-            checkInMember={bubbleData.currentMember}
-            checkInMemo={checkInMemo || familyMemos.find((memo) => (
-              memo.type === MEMO_TYPE.CHECKIN
-              && (memo.userId === bubbleData.currentMember.userId || memo.nodeId === bubbleData.currentMember.id)
-            ))}
-            onCloseCheckIn={closeCheckIn}
             overlay={viewBadges}
             places={places}
             presence={presence}
@@ -737,6 +730,18 @@ const Bubble = ({
           }}
         />
       </SlideUpCard>
+
+      <CheckInPopup
+        open={showCheckIn}
+        state={checkInState}
+        member={bubbleData.currentMember}
+        memo={checkInMemo || familyMemos.find((memo) => (
+          memo.type === MEMO_TYPE.CHECKIN
+          && (memo.userId === bubbleData.currentMember.userId || memo.nodeId === bubbleData.currentMember.id)
+        ))}
+        onConfirm={handleCheckIn}
+        onClose={closeCheckIn}
+      />
 
       {sos && (
         <>
