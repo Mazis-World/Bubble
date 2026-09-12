@@ -41,6 +41,12 @@ bash pwa/scripts/assemble-just-checking-in-ad.sh pwa/public/familybubble-just-ch
 ```
 
 App plates are recorded from `just-checking-in-ad.html`.
+The dinner overlay is a cropped phone-UI fragment of the Grandma Home check-in
+(`just-checking-in-overlay.html` / `just-checking-in-overlay.png`), captured with:
+
+```bash
+bash pwa/scripts/capture-just-checking-in-overlay.sh
+```
 
 Each Mixkit clip is used once. Do not reuse footage from earlier FamilyBubble ads
 (check-in 8729 / 8733 / 51126, SOS 40640 / 4891 / 4523, okay 41323).

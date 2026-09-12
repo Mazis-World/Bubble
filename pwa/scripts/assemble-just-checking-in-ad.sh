@@ -58,9 +58,8 @@ EOF
 cat > /tmp/jci/captions/cta3.txt <<'EOF'
 familybubble.online
 EOF
-cat > /tmp/jci/captions/home.txt <<'EOF'
-Grandma is home.
-EOF
+CARD="${CARD:-$ROOT/pwa/public/just-checking-in-overlay.png}"
+need "$CARD"
 
 SCALE="fps=30,scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,format=yuv420p,eq=contrast=1.05:saturation=1.04,settb=1/30,setpts=PTS-STARTPTS"
 
@@ -87,6 +86,7 @@ ffmpeg -y \
   -f lavfi -t 5.8 -i "color=c=0x0B1220:s=1920x1080:r=30" \
   -i "$BROLL_DIR/vo.wav" \
   -i "$BROLL_DIR/thinking-about-you.mp3" \
+  -loop 1 -t 5.4 -i "$CARD" \
   -filter_complex "
 [0:v] ${SCALE} [v0];
 [1:v] ${SCALE} [v1];
@@ -105,9 +105,9 @@ ffmpeg -y \
 [14:v] ${SCALE} [v14];
 [15:v] ${SCALE} [v15];
 [16:v] ${SCALE} [v16];
-[17:v] ${SCALE},
-drawbox=x=620:y=820:w=680:h=86:color=black@0.55:t=fill:enable='gte(t,2.2)',
-drawtext=fontfile=${FONT}:textfile=/tmp/jci/captions/home.txt:fontsize=36:fontcolor=white:x=(w-text_w)/2:y=846:enable='gte(t,2.2)' [v17];
+[17:v] ${SCALE} [d17];
+[22:v] fps=30,format=rgba,fade=t=in:st=1.4:d=0.35:alpha=1,settb=1/30,setpts=PTS-STARTPTS [card];
+[d17][card] overlay=(W-w)/2:H-h-24:shortest=1,format=yuv420p,settb=1/30,setpts=PTS-STARTPTS [v17];
 [18:v] ${SCALE} [v18];
 [19:v] format=yuv420p,
 drawtext=fontfile=${FONT}:textfile=/tmp/jci/captions/cta1.txt:fontsize=84:fontcolor=white:x=(w-text_w)/2:y=390,
