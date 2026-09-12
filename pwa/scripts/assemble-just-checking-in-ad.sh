@@ -105,10 +105,10 @@ ffmpeg -y \
 [14:v] ${SCALE} [v14];
 [15:v] ${SCALE} [v15];
 [16:v] ${SCALE} [v16];
-[17:v] ${SCALE} [v17];
-[18:v] ${SCALE},
-drawbox=x=620:y=820:w=680:h=86:color=black@0.55:t=fill:enable='gte(t,1.2)',
-drawtext=fontfile=${FONT}:textfile=/tmp/jci/captions/home.txt:fontsize=36:fontcolor=white:x=(w-text_w)/2:y=846:enable='gte(t,1.2)' [v18];
+[17:v] ${SCALE},
+drawbox=x=620:y=820:w=680:h=86:color=black@0.55:t=fill:enable='gte(t,2.2)',
+drawtext=fontfile=${FONT}:textfile=/tmp/jci/captions/home.txt:fontsize=36:fontcolor=white:x=(w-text_w)/2:y=846:enable='gte(t,2.2)' [v17];
+[18:v] ${SCALE} [v18];
 [19:v] format=yuv420p,
 drawtext=fontfile=${FONT}:textfile=/tmp/jci/captions/cta1.txt:fontsize=84:fontcolor=white:x=(w-text_w)/2:y=390,
 drawtext=fontfile=${FONT2}:textfile=/tmp/jci/captions/cta2.txt:fontsize=32:fontcolor=0xC4B5FD:x=(w-text_w)/2:y=510,
