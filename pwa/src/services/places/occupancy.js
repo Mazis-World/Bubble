@@ -18,30 +18,36 @@ export const presenceForMemberPlace = (member, place, presence = []) =>
 
 /**
  * True when a family member should be drawn inside a Place bubble.
- * Live presence wins; otherwise GPS inside the detection radius counts.
+ * Fresh GPS outside the Place wins over stale presence. Presence is used
+ * when GPS is missing or still inside the radius.
  */
 export const memberIsAtPlace = (member, place, presence = []) => {
   if (!member || !place) return false;
+  const location = member.lastKnownLocation;
+  const distance = location ? haversineMeters(location, place) : null;
+  const radius = clampRadiusMeters(place.radiusMeters);
+  if (distance != null && distance > radius) return false;
+
   const record = presenceForMemberPlace(member, place, presence);
   if (record?.inside === true) return true;
   if (record?.inside === false) return false;
-  const location = member.lastKnownLocation;
-  if (!location) return false;
-  const distance = haversineMeters(location, place);
   if (distance == null) return false;
-  return distance <= clampRadiusMeters(place.radiusMeters);
+  return distance <= radius;
 };
 
 const occupancyScore = (member, place, presence = []) => {
+  const distance = haversineMeters(member?.lastKnownLocation, place);
+  const radius = clampRadiusMeters(place.radiusMeters);
+  if (distance != null && distance > radius) return Number.POSITIVE_INFINITY;
   const record = presenceForMemberPlace(member, place, presence);
   if (record?.inside === true) return -1;
-  const distance = haversineMeters(member?.lastKnownLocation, place);
   return distance == null ? Number.POSITIVE_INFINITY : distance;
 };
 
 /**
- * Each member belongs to at most one Place. Presence `inside` wins;
- * otherwise the nearest Place whose radius covers their GPS.
+ * Each member belongs to at most one Place. Fresh GPS outside a Place
+ * wins over stale presence; otherwise presence `inside` or the nearest
+ * covering GPS radius decides.
  */
 export const assignMembersToPlaces = ({
   members = [],
