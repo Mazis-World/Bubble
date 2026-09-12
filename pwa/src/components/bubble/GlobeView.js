@@ -5,6 +5,7 @@ import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import CheckInPopup from './CheckInPopup';
 import { createPlaceHtmlMarker, globePlacePoints } from '../../services/places/markers';
+import { assignMembersToPlaces, isMemberInPlaceBubble } from '../../services/places/occupancy';
 
 // Create amazing glass-like bubbles that pop off the globe
 const createFloatingHead = (member, size) => {
@@ -339,6 +340,7 @@ const GlobeView = ({
   focusTarget = null,
   overlay = null,
   places = [],
+  presence = [],
   onPlaceClick,
 }) => {
   const globeEl = useRef();
@@ -353,9 +355,17 @@ const GlobeView = ({
   useEffect(() => {
     if (!bubbleData || !bubbleData.allMembers) return;
 
-    // Convert members to globe points with cartoonish sizing
+    const occupancy = assignMembersToPlaces({
+      members: bubbleData.allMembers,
+      places,
+      presence,
+    });
+
+    // Convert members to globe points with cartoonish sizing.
+    // People who are inside a Place are drawn on that Place pin instead.
     const memberPoints = bubbleData.allMembers
       .filter(member => member.lastKnownLocation && member.lastKnownLocation.latitude && member.lastKnownLocation.longitude)
+      .filter(member => !isMemberInPlaceBubble(occupancy, member.id))
       .map(member => ({
         lat: member.lastKnownLocation.latitude,
         lng: member.lastKnownLocation.longitude,
@@ -387,7 +397,7 @@ const GlobeView = ({
       }
       setArcs(connections);
     }
-  }, [bubbleData]);
+  }, [bubbleData, places, presence]);
 
   // Setup globe lighting and controls
   useEffect(() => {
@@ -534,7 +544,12 @@ const GlobeView = ({
   const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
     ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
     : [];
-  const placePoints = globePlacePoints(places);
+  const occupancy = assignMembersToPlaces({
+    members: bubbleData.allMembers,
+    places,
+    presence,
+  });
+  const placePoints = globePlacePoints(places, occupancy);
 
   // If no members have locations yet, show a message
   if (points.length === 0 && placePoints.length === 0) {
@@ -635,6 +650,11 @@ const GlobeView = ({
         htmlAltitude={0.02}
         htmlTransition={0}
         htmlElement={(point) => createPlaceHtmlMarker(point.place, {
+          occupants: point.occupants,
+          currentMemberId: bubbleData?.currentMember?.id,
+          onMemberClick: (member) => {
+            if (onMemberClick) onMemberClick(member);
+          },
           onClick: (place) => {
             if (globeEl.current) {
               globeEl.current.pointOfView(

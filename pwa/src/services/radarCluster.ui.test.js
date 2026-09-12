@@ -124,4 +124,79 @@ describe('BubbleCluster radar avatars', () => {
     marker.click();
     expect(onPlaceClick).toHaveBeenCalledWith(expect.objectContaining({ placeId: 'school' }));
   });
+
+  test('folds overlapping people into the Place bubble', () => {
+    const house = { latitude: -26.2, longitude: 28.04 };
+    const away = { latitude: -26.25, longitude: 28.1 };
+    const onPlaceClick = jest.fn();
+    const onMemberClick = jest.fn();
+    const { container } = render(
+      <BubbleCluster
+        bubbleData={{
+          currentMember: { id: 'me', name: 'Me', lastKnownLocation: away },
+          allMembers: [
+            { id: 'me', name: 'Me', lastKnownLocation: away },
+            { id: 'dad', name: 'Dad', lastKnownLocation: house },
+          ],
+        }}
+        onStatusClick={() => {}}
+        onMemberClick={onMemberClick}
+        onPlaceClick={onPlaceClick}
+        places={[{
+          placeId: 'home',
+          name: 'Home',
+          icon: '🏠',
+          color: '#60a5fa',
+          type: 'home',
+          latitude: house.latitude,
+          longitude: house.longitude,
+          radiusMeters: 200,
+        }]}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Dad in Home' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Home place, Dad here' })).toBeTruthy();
+    const wrappers = [...container.querySelectorAll('.member-bubble-wrapper')];
+    expect(wrappers).toHaveLength(1);
+    expect(wrappers[0].textContent).toContain('M');
+    expect(screen.queryByRole('button', { name: 'School place' })).toBeNull();
+
+    screen.getByRole('button', { name: 'Dad in Home' }).click();
+    expect(onMemberClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'dad' }));
+    screen.getByRole('button', { name: 'Home place, Dad here' }).click();
+    expect(onPlaceClick).toHaveBeenCalledWith(expect.objectContaining({ placeId: 'home' }));
+  });
+
+  test('puts you and Dad in Home when you are both there', () => {
+    const house = { latitude: -26.2, longitude: 28.04 };
+    const { container } = render(
+      <BubbleCluster
+        bubbleData={{
+          currentMember: { id: 'me', name: 'Me', lastKnownLocation: house },
+          allMembers: [
+            { id: 'me', name: 'Me', lastKnownLocation: house },
+            { id: 'dad', name: 'Dad', lastKnownLocation: house },
+          ],
+        }}
+        onStatusClick={() => {}}
+        onMemberClick={() => {}}
+        places={[{
+          placeId: 'home',
+          name: 'Home',
+          icon: '🏠',
+          color: '#60a5fa',
+          type: 'home',
+          latitude: house.latitude,
+          longitude: house.longitude,
+          radiusMeters: 200,
+        }]}
+      />
+    );
+
+    expect(container.querySelectorAll('.member-bubble-wrapper')).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Dad in Home' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Me in Home' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Home place, Me, Dad here' })).toBeTruthy();
+  });
 });

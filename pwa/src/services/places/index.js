@@ -1,6 +1,7 @@
 export * from './constants';
 export * from './geofence';
 export * from './copy';
+export * from './occupancy';
 export * from './authz';
 export * from './offline';
 export * from './permissions';

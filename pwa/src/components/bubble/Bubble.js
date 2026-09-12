@@ -73,7 +73,7 @@ const Bubble = ({
     [sos?.openEvents]
   );
   const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
-  const { places } = usePlaces(bubbleData?.bubble?.id);
+  const { places, presence } = usePlaces(bubbleData?.bubble?.id);
 
   const openPlaces = useCallback((placeId = null) => {
     setPlacesFocusId(placeId);
@@ -298,6 +298,7 @@ const Bubble = ({
             onCloseCheckIn={closeCheckIn}
             overlay={viewBadges}
             places={places}
+            presence={presence}
             onPlaceClick={(place) => openPlaces(place?.placeId)}
             onMemberClick={(member) => {
               setSelectedMember(member);
@@ -310,6 +311,7 @@ const Bubble = ({
             bubbleData={bubbleData}
             overlay={viewBadges}
             places={places}
+            presence={presence}
             onPlaceClick={(place) => openPlaces(place?.placeId)}
             onStatusClick={() => setShowStatus(true)}
             onMemberClick={(member) => {

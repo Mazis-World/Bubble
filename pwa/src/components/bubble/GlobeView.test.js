@@ -1,44 +1,41 @@
-import { render, screen } from '@testing-library/react';
-import GlobeView from './GlobeView';
+import { globePlacePoints } from '../../services/places/markers';
+import {
+  assignMembersToPlaces,
+  isMemberInPlaceBubble,
+} from '../../services/places/occupancy';
 
-jest.mock('react-globe.gl', () => {
-  const React = require('react');
-  return React.forwardRef(function MockGlobe(props, _ref) {
-    return (
-      <div data-testid="mock-globe">
-        {(props.pointsData || []).map((point) => (
-          <div key={point.member?.id || point.name}>{point.name}</div>
-        ))}
-        {(props.htmlElementsData || []).map((item) => (
-          <div key={item.place.placeId} data-testid={`globe-place-${item.place.placeId}`}>
-            {item.place.icon} {item.place.name}
-          </div>
-        ))}
-      </div>
-    );
+describe('Globe map place occupancy', () => {
+  const house = { latitude: -26.2, longitude: 28.04 };
+  const away = { latitude: -26.25, longitude: 28.1 };
+  const home = {
+    placeId: 'home',
+    name: 'Home',
+    icon: '🏠',
+    color: '#60a5fa',
+    latitude: house.latitude,
+    longitude: house.longitude,
+    radiusMeters: 200,
+  };
+  const me = { id: 'me', name: 'Me', lastKnownLocation: away };
+  const dad = { id: 'dad', name: 'Dad', lastKnownLocation: house };
+
+  test('place pins include people who are at that Place', () => {
+    const occupancy = assignMembersToPlaces({
+      members: [me, dad],
+      places: [home],
+    });
+    const points = globePlacePoints([home], occupancy);
+    expect(points).toHaveLength(1);
+    expect(points[0].place.icon).toBe('🏠');
+    expect(points[0].occupants.map((member) => member.id)).toEqual(['dad']);
   });
-});
 
-describe('Globe map place icons', () => {
-  test('renders place icons on the map globe', () => {
-    const house = { latitude: -26.2, longitude: 28.04 };
-    render(
-      <GlobeView
-        bubbleData={{
-          currentMember: { id: 'me', name: 'Me', lastKnownLocation: house },
-          allMembers: [{ id: 'me', name: 'Me', lastKnownLocation: house }],
-        }}
-        places={[{
-          placeId: 'home',
-          name: 'Home',
-          icon: '🏠',
-          color: '#60a5fa',
-          latitude: -26.2,
-          longitude: 28.04,
-        }]}
-      />
-    );
-    expect(screen.getByTestId('globe-place-home').textContent).toContain('🏠');
-    expect(screen.getByTestId('globe-place-home').textContent).toContain('Home');
+  test('people at a Place are omitted from standalone globe bubbles', () => {
+    const occupancy = assignMembersToPlaces({
+      members: [me, dad],
+      places: [home],
+    });
+    const visible = [me, dad].filter((member) => !isMemberInPlaceBubble(occupancy, member.id));
+    expect(visible.map((member) => member.id)).toEqual(['me']);
   });
 });

@@ -3,6 +3,7 @@
 export const RADAR_BUBBLE_SIZE = 56;
 export const RADAR_BUBBLE_GAP = 10;
 export const RADAR_PLACE_SIZE = 36;
+export const RADAR_PLACE_CLUSTER_SIZE = 72;
 
 export const calculateBearing = (lat1, lon1, lat2, lon2) => {
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -114,7 +115,6 @@ export const separateOverlappingNodes = (
   }
 ) => {
   const next = nodes.map((node) => ({ ...node }));
-  const minDist = bubbleSize + gap;
 
   for (let iter = 0; iter < 40; iter += 1) {
     let moved = false;
@@ -125,7 +125,6 @@ export const separateOverlappingNodes = (
         let dx = b.x - a.x;
         let dy = b.y - a.y;
         let dist = Math.hypot(dx, dy);
-        if (dist >= minDist) continue;
 
         if (dist < 0.001) {
           const angle = ((i + j * 3) / Math.max(next.length, 1)) * Math.PI * 2;
@@ -134,7 +133,12 @@ export const separateOverlappingNodes = (
           dist = 0.001;
         }
 
-        const overlap = (minDist - dist) / 2;
+        const sizeA = a.size || bubbleSize;
+        const sizeB = b.size || bubbleSize;
+        const pairMin = (sizeA + sizeB) / 2 + gap;
+        if (dist >= pairMin) continue;
+
+        const overlap = (pairMin - dist) / 2;
         const nx = dx / dist;
         const ny = dy / dist;
         const aPinned = a.id === pinnedId;
@@ -314,7 +318,8 @@ export const hydrateRadarNodes = (nodes, members) => {
 
 /**
  * Project saved Places onto the radar using the same km scale as members.
- * Place icons are nudged off member avatars so they stay readable.
+ * Empty pins are nudged off member avatars. Occupied Place bubbles stay on
+ * the people who are inside them.
  */
 export const layoutRadarPlaces = ({
   places,
@@ -324,6 +329,9 @@ export const layoutRadarPlaces = ({
   maxDistanceKm,
   memberNodes = [],
   placeSize = RADAR_PLACE_SIZE,
+  clusterSize = RADAR_PLACE_CLUSTER_SIZE,
+  occupancy = null,
+  currentMemberId = null,
 }) => {
   if (!origin || !hasGeoPoint(origin.latitude, origin.longitude)) return [];
 
@@ -331,41 +339,55 @@ export const layoutRadarPlaces = ({
   const centerY = height / 2;
   const maxRadius = Math.max(Math.min(width, height) / 2 - placeSize / 2 - 4, placeSize);
   const scaleKm = Number.isFinite(maxDistanceKm) ? Math.max(10, maxDistanceKm) : 10;
+  const occupantsOf = (placeId) => occupancy?.byPlace?.[placeId] || [];
 
-  let placed = activePlacesWithLocation(places).map((place) => ({
-    id: `place:${place.placeId}`,
-    place,
-    ...projectRadarPoint({
-      origin,
-      latitude: place.latitude,
-      longitude: place.longitude,
-      centerX,
-      centerY,
-      maxRadius,
-      maxDistanceKm: scaleKm,
-    }),
-  }));
+  let placed = activePlacesWithLocation(places).map((place) => {
+    const occupants = occupantsOf(place.placeId);
+    const occupied = occupants.length > 0;
+    return {
+      id: `place:${place.placeId}`,
+      place,
+      occupants,
+      occupied,
+      size: occupied ? clusterSize : placeSize,
+      ...projectRadarPoint({
+        origin,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        centerX,
+        centerY,
+        maxRadius,
+        maxDistanceKm: scaleKm,
+      }),
+    };
+  });
 
-  const minMemberDist = (RADAR_BUBBLE_SIZE + placeSize) / 2 + RADAR_BUBBLE_GAP;
   placed = placed.map((node, index) => {
+    const occupantIds = new Set((node.occupants || []).map((member) => member.id));
+    const memberClearance = (RADAR_BUBBLE_SIZE + (node.size || placeSize)) / 2 + RADAR_BUBBLE_GAP;
     let { x, y } = node;
     memberNodes.forEach((member) => {
+      if (occupantIds.has(member.id)) return;
       let dx = x - member.x;
       let dy = y - member.y;
       let dist = Math.hypot(dx, dy);
-      if (dist >= minMemberDist) return;
+      if (dist >= memberClearance) return;
       if (dist < 0.001) {
         const angle = ((index + 1) / Math.max(placed.length, 1)) * Math.PI * 2;
         dx = Math.cos(angle);
         dy = Math.sin(angle);
         dist = 0.001;
       }
-      const scale = minMemberDist / dist;
+      const scale = memberClearance / dist;
       x = member.x + dx * scale;
       y = member.y + dy * scale;
     });
     return clampToRadar({ ...node, x, y }, centerX, centerY, maxRadius);
   });
+
+  const pinnedId = currentMemberId
+    ? placed.find((node) => (node.occupants || []).some((member) => member.id === currentMemberId))?.id
+    : null;
 
   return separateOverlappingNodes(placed, {
     centerX,
@@ -373,6 +395,7 @@ export const layoutRadarPlaces = ({
     maxRadius,
     bubbleSize: placeSize,
     gap: 6,
+    pinnedId,
   });
 };
 

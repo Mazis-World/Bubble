@@ -142,6 +142,37 @@ describe('radar layout', () => {
       .toBeGreaterThanOrEqual((RADAR_BUBBLE_SIZE + RADAR_PLACE_SIZE) / 2 + RADAR_BUBBLE_GAP - 1);
   });
 
+  test('keeps an occupied Place on the people inside it', () => {
+    const origin = { latitude: -26.2, longitude: 28.04 };
+    const me = { id: 'me', name: 'Me', lastKnownLocation: origin };
+    const home = {
+      placeId: 'home',
+      name: 'Home',
+      icon: '🏠',
+      latitude: origin.latitude,
+      longitude: origin.longitude,
+      radiusMeters: 200,
+    };
+    const occupancy = {
+      byPlace: { home: [me] },
+      memberPlace: { me: 'home' },
+    };
+    const memberNodes = [{ id: 'me', x: 200, y: 200 }];
+    const nodes = layoutRadarPlaces({
+      origin,
+      width: 400,
+      height: 400,
+      maxDistanceKm: 10,
+      memberNodes,
+      occupancy,
+      currentMemberId: 'me',
+      places: [home],
+    });
+    expect(distanceBetween(memberNodes[0], nodes[0])).toBeLessThan(8);
+    expect(nodes[0].occupants.map((member) => member.id)).toEqual(['me']);
+    expect(nodes[0].occupied).toBe(true);
+  });
+
   test('includes places in the shared km scale', () => {
     const origin = { latitude: 0, longitude: 0 };
     const km = radarMaxDistanceKm({
