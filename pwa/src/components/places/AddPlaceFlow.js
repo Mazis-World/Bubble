@@ -152,7 +152,7 @@ const AddPlaceFlow = ({
     return (
       <StepShell
         title="Where is it?"
-        subtitle="Search, use your current location, or pick a spot on the map."
+        subtitle="Search or use your current location."
         onBack={() => setStep(1)}
         onNext={() => setStep(3)}
         canGoNext={location?.latitude != null}
@@ -166,7 +166,7 @@ const AddPlaceFlow = ({
     return (
       <StepShell
         title="How close counts as arriving?"
-        subtitle="The radar on the map is your arrival bubble. Drag to change how far it reaches."
+        subtitle="This radar is your arrival bubble. Drag to change how far it reaches."
         onBack={() => setStep(2)}
         onNext={() => setStep(4)}
         canGoNext={location?.latitude != null}

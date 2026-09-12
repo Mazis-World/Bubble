@@ -1,70 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, MapPin, Search } from 'lucide-react';
-import PlaceMapPreview from './PlaceMapPreview';
 import PlaceDetectionRadar from './PlaceDetectionRadar';
-import { lat2tile, lon2tile, tile2lat, tile2lon } from '../../services/places/radarMap';
 import { MIN_RADIUS_METERS, MAX_RADIUS_METERS } from '../../services/places/constants';
-
-const TilePicker = ({ latitude, longitude, onPick }) => {
-  const zoom = 16;
-  const size = 88;
-  const centerX = lon2tile(longitude, zoom);
-  const centerY = lat2tile(latitude, zoom);
-  const tiles = useMemo(() => {
-    const cx = Math.floor(centerX);
-    const cy = Math.floor(centerY);
-    const cells = [];
-    for (let dy = -1; dy <= 1; dy += 1) {
-      for (let dx = -1; dx <= 1; dx += 1) {
-        cells.push({ x: cx + dx, y: cy + dy, dx, dy });
-      }
-    }
-    return cells;
-  }, [centerX, centerY]);
-
-  return (
-    <button
-      type="button"
-      className="relative mx-auto block overflow-hidden rounded-2xl border border-white/10"
-      style={{ width: size * 3, height: size * 3 }}
-      aria-label="Tap the map to move the pin"
-      onClick={(event) => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        const px = event.clientX - rect.left;
-        const py = event.clientY - rect.top;
-        const cx = Math.floor(centerX);
-        const cy = Math.floor(centerY);
-        const x = (cx - 1) + px / size;
-        const y = (cy - 1) + py / size;
-        onPick({
-          latitude: tile2lat(y, zoom),
-          longitude: tile2lon(x, zoom),
-        });
-      }}
-    >
-      {tiles.map((tile) => (
-        <img
-          key={`${tile.x}-${tile.y}`}
-          alt=""
-          src={`https://tile.openstreetmap.org/${zoom}/${tile.x}/${tile.y}.png`}
-          className="absolute"
-          style={{
-            width: size,
-            height: size,
-            left: (tile.dx + 1) * size,
-            top: (tile.dy + 1) * size,
-          }}
-        />
-      ))}
-      <span
-        className="absolute text-2xl pointer-events-none"
-        style={{ left: '50%', top: '50%', transform: 'translate(-50%, -90%)' }}
-      >
-        📍
-      </span>
-    </button>
-  );
-};
 
 const reverseGeocode = async (lat, lng) => {
   try {
@@ -91,7 +28,6 @@ const PlaceMapPicker = ({
   const [searching, setSearching] = useState(false);
   const [loadingGps, setLoadingGps] = useState(false);
   const [error, setError] = useState(null);
-  const [mapMode, setMapMode] = useState(false);
 
   useEffect(() => {
     if (location?.address && location.address !== queryText) {
@@ -166,25 +102,14 @@ const PlaceMapPicker = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={useCurrent}
-          disabled={loadingGps}
-          className={`bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl font-bold tap-target disabled:opacity-60 ${typeof onRadiusChange === 'function' ? 'w-full' : 'flex-1'}`}
-        >
-          {loadingGps ? 'Finding you…' : 'Use current location'}
-        </button>
-        {typeof onRadiusChange !== 'function' && (
-          <button
-            type="button"
-            onClick={() => setMapMode((value) => !value)}
-            className="flex-1 bg-white/10 text-white py-3 rounded-2xl font-bold tap-target"
-          >
-            {mapMode ? 'Hide map picker' : 'Select on map'}
-          </button>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={useCurrent}
+        disabled={loadingGps}
+        className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-2xl font-bold tap-target disabled:opacity-60"
+      >
+        {loadingGps ? 'Finding you…' : 'Use current location'}
+      </button>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -230,28 +155,11 @@ const PlaceMapPicker = ({
 
       {location?.latitude != null && (
         <>
-          {typeof onRadiusChange === 'function' ? (
+          {typeof onRadiusChange === 'function' && (
             <PlaceDetectionRadar
               latitude={location.latitude}
               longitude={location.longitude}
               radiusMeters={radiusMeters}
-              onPick={(next) => applyLocation(next)}
-            />
-          ) : mapMode ? (
-            <div className="space-y-2">
-              <p className="text-sm text-gray-300 text-center">Tap the map to move the pin</p>
-              <TilePicker
-                latitude={location.latitude}
-                longitude={location.longitude}
-                onPick={(next) => applyLocation(next)}
-              />
-            </div>
-          ) : (
-            <PlaceMapPreview
-              latitude={location.latitude}
-              longitude={location.longitude}
-              radiusMeters={radiusMeters}
-              title="Place preview"
             />
           )}
           <p className="text-sm text-gray-300">{location.address}</p>
@@ -275,7 +183,7 @@ const PlaceMapPicker = ({
             aria-label="Geofence radius"
           />
           <p className="text-xs text-gray-500">
-            The radar on the map is the arrival bubble. Drag to make it tighter or more forgiving.
+            This radar is the arrival bubble. Drag to make it tighter or more forgiving.
           </p>
         </div>
       )}
@@ -283,7 +191,7 @@ const PlaceMapPicker = ({
       {!location && (
         <div className="flex items-center justify-center gap-2 text-gray-400 py-6">
           <MapPin size={18} />
-          <span>Search, use your location, or pick a spot on the map</span>
+          <span>Search or use your current location</span>
         </div>
       )}
     </div>
