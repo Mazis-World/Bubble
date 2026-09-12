@@ -4,8 +4,7 @@ import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import CheckInPopup from './CheckInPopup';
-import { createPlaceHtmlMarker, globePlacePoints } from '../../services/places/markers';
-import { assignMembersToPlaces, isMemberInPlaceBubble } from '../../services/places/occupancy';
+import { createPlaceHtmlMarker, createMemberHtmlMarker, globeHtmlLayers, globeMemberPoints } from '../../services/places/markers';
 
 // Create amazing glass-like bubbles that pop off the globe
 const createFloatingHead = (member, size) => {
@@ -17,11 +16,12 @@ const createFloatingHead = (member, size) => {
   
   // Create amazing glass bubble material
   let material;
-  if (member.photoUrl) {
+  const photoSrc = member.photoUrl || member.photoURL;
+  if (photoSrc) {
     // Load texture from photo with glass bubble effect
     const loader = new THREE.TextureLoader();
     const texture = loader.load(
-      member.photoUrl,
+      photoSrc,
       undefined,
       undefined,
       (err) => {
@@ -340,7 +340,6 @@ const GlobeView = ({
   focusTarget = null,
   overlay = null,
   places = [],
-  presence = [],
   onPlaceClick,
 }) => {
   const globeEl = useRef();
@@ -355,26 +354,7 @@ const GlobeView = ({
   useEffect(() => {
     if (!bubbleData || !bubbleData.allMembers) return;
 
-    const occupancy = assignMembersToPlaces({
-      members: bubbleData.allMembers,
-      places,
-      presence,
-    });
-
-    // Convert members to globe points with cartoonish sizing.
-    // People who are inside a Place are drawn on that Place pin instead.
-    const memberPoints = bubbleData.allMembers
-      .filter(member => member.lastKnownLocation && member.lastKnownLocation.latitude && member.lastKnownLocation.longitude)
-      .filter(member => !isMemberInPlaceBubble(occupancy, member.id))
-      .map(member => ({
-        lat: member.lastKnownLocation.latitude,
-        lng: member.lastKnownLocation.longitude,
-        size: member.tier === 1 ? 0.6 : 0.4, // Larger for more cartoonish effect
-        color: member.tier === 1 ? '#a855f7' : '#3b82f6',
-        member: member,
-        name: member.name,
-      }));
-
+    const memberPoints = globeMemberPoints(bubbleData.allMembers);
     setPoints(memberPoints);
 
     // Create arcs between members (optional - show connections)
@@ -397,7 +377,7 @@ const GlobeView = ({
       }
       setArcs(connections);
     }
-  }, [bubbleData, places, presence]);
+  }, [bubbleData]);
 
   // Setup globe lighting and controls
   useEffect(() => {
@@ -544,12 +524,11 @@ const GlobeView = ({
   const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
     ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
     : [];
-  const occupancy = assignMembersToPlaces({
+  const globeLayers = globeHtmlLayers({
     members: bubbleData.allMembers,
     places,
-    presence,
   });
-  const placePoints = globePlacePoints(places, occupancy);
+  const placePoints = globeLayers.filter((item) => item.place);
 
   // If no members have locations yet, show a message
   if (points.length === 0 && placePoints.length === 0) {
@@ -644,27 +623,42 @@ const GlobeView = ({
         ringMaxRadius={2.2}
         ringPropagationSpeed={2.2}
         ringRepeatPeriod={700}
-        htmlElementsData={placePoints}
+        htmlElementsData={globeLayers}
         htmlLat="lat"
         htmlLng="lng"
-        htmlAltitude={0.02}
+        htmlAltitude={(item) => (item.member ? 0.06 : 0.02)}
         htmlTransition={0}
-        htmlElement={(point) => createPlaceHtmlMarker(point.place, {
-          occupants: point.occupants,
-          currentMemberId: bubbleData?.currentMember?.id,
-          onMemberClick: (member) => {
-            if (onMemberClick) onMemberClick(member);
-          },
-          onClick: (place) => {
-            if (globeEl.current) {
-              globeEl.current.pointOfView(
-                { lat: place.latitude, lng: place.longitude, altitude: 1.5 },
-                800
-              );
+        htmlElement={(item) => {
+          if (item.member) {
+            const marker = createMemberHtmlMarker(item.member, {
+              isCurrent: item.member.id === bubbleData?.currentMember?.id,
+              onClick: (member) => {
+                if (globeEl.current) {
+                  globeEl.current.pointOfView(
+                    { lat: item.lat, lng: item.lng, altitude: 1.5 },
+                    800
+                  );
+                }
+                if (onMemberClick) onMemberClick(member);
+              },
+            });
+            if (item.dx || item.dy) {
+              marker.style.transform = `translate(${item.dx}px, ${item.dy}px) translate(-50%, -100%)`;
             }
-            if (onPlaceClick) onPlaceClick(place);
-          },
-        })}
+            return marker;
+          }
+          return createPlaceHtmlMarker(item.place, {
+            onClick: (place) => {
+              if (globeEl.current) {
+                globeEl.current.pointOfView(
+                  { lat: place.latitude, lng: place.longitude, altitude: 1.5 },
+                  800
+                );
+              }
+              if (onPlaceClick) onPlaceClick(place);
+            },
+          });
+        }}
         showAtmosphere={true}
         atmosphereColor="#3b82f6"
         atmosphereAltitude={0.2}

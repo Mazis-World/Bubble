@@ -1,4 +1,14 @@
 import { firstName, placeIcon } from './copy';
+import { getStatusEmoji } from '../../utils/timeUtils';
+
+export const memberPhotoUrl = (member) => member?.photoUrl || member?.photoURL;
+
+export const hasMemberGeoPoint = (member) => {
+  const loc = member?.lastKnownLocation;
+  return loc != null
+    && Number.isFinite(Number(loc.latitude))
+    && Number.isFinite(Number(loc.longitude));
+};
 
 const occupantInitial = (member) => {
   const name = String(member?.name || member?.fullName || '').trim();
@@ -179,3 +189,170 @@ export const globePlacePoints = (places = [], occupancy = null) =>
       place,
       occupants: occupancy?.byPlace?.[place.placeId] || [],
     }));
+
+const memberInitial = (member) => {
+  const name = String(member?.name || member?.fullName || '').trim();
+  return name ? name.charAt(0).toUpperCase() : '?';
+};
+
+/**
+ * Face bubble for a family member on the globe. DOM photos show even when
+ * the 3D texture cannot load.
+ */
+export const createMemberHtmlMarker = (member, { onClick, isCurrent = false } = {}) => {
+  const name = String(member?.name || member?.fullName || 'Family member').trim() || 'Family member';
+  const root = document.createElement('button');
+  root.type = 'button';
+  root.className = 'member-globe-marker';
+  root.setAttribute('aria-label', name);
+  root.style.cssText = [
+    'display:flex',
+    'flex-direction:column',
+    'align-items:center',
+    'gap:2px',
+    'background:transparent',
+    'border:0',
+    'padding:0',
+    'cursor:pointer',
+    'transform:translate(-50%,-100%)',
+    'pointer-events:auto',
+  ].join(';');
+
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'position:relative;width:52px;height:52px;display:block;';
+
+  const face = document.createElement('span');
+  face.setAttribute('aria-hidden', 'true');
+  face.style.cssText = [
+    'width:52px',
+    'height:52px',
+    'border-radius:999px',
+    'overflow:hidden',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'background:linear-gradient(135deg,#2563eb,#7c3aed)',
+    'border:2px solid rgba(255,255,255,0.7)',
+    'box-shadow:0 0 16px rgba(59,130,246,0.55)',
+    'color:#fff',
+    'font-size:18px',
+    'font-weight:800',
+  ].join(';');
+
+  const photo = memberPhotoUrl(member);
+  if (photo) {
+    const img = document.createElement('img');
+    img.src = photo;
+    img.alt = name;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    face.append(img);
+  } else {
+    face.textContent = memberInitial(member);
+  }
+
+  const status = document.createElement('span');
+  status.textContent = getStatusEmoji(member?.status || '⚪');
+  status.style.cssText = [
+    'position:absolute',
+    'right:-2px',
+    'bottom:-2px',
+    'width:18px',
+    'height:18px',
+    'border-radius:999px',
+    'background:#0f172a',
+    'border:2px solid rgba(255,255,255,0.7)',
+    'font-size:11px',
+    'line-height:14px',
+    'text-align:center',
+  ].join(';');
+  wrap.append(face, status);
+  if (isCurrent) {
+    const you = document.createElement('span');
+    you.textContent = 'YOU';
+    you.style.cssText = [
+      'position:absolute',
+      'top:-6px',
+      'left:50%',
+      'transform:translateX(-50%)',
+      'background:#3b82f6',
+      'color:#fff',
+      'font-size:8px',
+      'font-weight:800',
+      'line-height:1',
+      'padding:2px 5px',
+      'border-radius:999px',
+      'border:1px solid rgba(255,255,255,0.8)',
+    ].join(';');
+    wrap.append(you);
+  }
+
+  const label = document.createElement('span');
+  label.textContent = firstName(name);
+  label.style.cssText = [
+    'max-width:72px',
+    'overflow:hidden',
+    'text-overflow:ellipsis',
+    'white-space:nowrap',
+    'font-size:10px',
+    'font-weight:700',
+    'color:#fff',
+    'background:rgba(2,6,23,0.82)',
+    'border:1px solid rgba(255,255,255,0.12)',
+    'border-radius:999px',
+    'padding:1px 6px',
+  ].join(';');
+
+  root.append(wrap, label);
+  if (typeof onClick === 'function') {
+    root.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onClick(member);
+    });
+  }
+  return root;
+};
+
+export const globeMemberPoints = (members = []) =>
+  (members || [])
+    .filter(hasMemberGeoPoint)
+    .map((member) => ({
+      lat: Number(member.lastKnownLocation.latitude),
+      lng: Number(member.lastKnownLocation.longitude),
+      size: member.tier === 1 ? 0.6 : 0.4,
+      color: member.tier === 1 ? '#a855f7' : '#3b82f6',
+      member,
+      name: member.name,
+    }));
+
+/**
+ * Spread people who share a GPS point so each face bubble is visible.
+ */
+export const fanOutSharedGlobePoints = (points = [], { radiusPx = 46 } = {}) => {
+  const groups = new Map();
+  (points || []).forEach((point) => {
+    const key = `${Number(point.lat).toFixed(3)},${Number(point.lng).toFixed(3)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(point);
+  });
+  const next = [];
+  groups.forEach((group) => {
+    if (group.length === 1) {
+      next.push({ ...group[0], dx: 0, dy: 0 });
+      return;
+    }
+    group.forEach((point, index) => {
+      const angle = -Math.PI / 2 + (index / group.length) * Math.PI * 2;
+      next.push({
+        ...point,
+        dx: Math.round(Math.cos(angle) * radiusPx),
+        dy: Math.round(Math.sin(angle) * radiusPx),
+      });
+    });
+  });
+  return next;
+};
+
+export const globeHtmlLayers = ({ members = [], places = [], occupancy = null } = {}) => [
+  ...fanOutSharedGlobePoints(globeMemberPoints(members)),
+  ...globePlacePoints(places, occupancy),
+];
