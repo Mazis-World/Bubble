@@ -3,7 +3,6 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
-import CheckInPopup from './CheckInPopup';
 import { createPlaceHtmlMarker, createMemberHtmlMarker, globeHtmlLayers, globeMemberPoints } from '../../services/places/markers';
 import { assignMembersToPlaces } from '../../services/places/occupancy';
 import { groupPlacesByOwner } from '../../services/places/mapStyle';
@@ -333,12 +332,7 @@ const animateFloatingHeads = (globe) => {
 const GlobeView = ({
   bubbleData,
   onMemberClick,
-  onCheckIn,
-  checkInState = 'idle',
   checkInOpen = false,
-  checkInMember = null,
-  checkInMemo = null,
-  onCloseCheckIn,
   focusTarget = null,
   overlay = null,
   places = [],
@@ -513,17 +507,6 @@ const GlobeView = ({
     );
   }
 
-  const checkInOverlay = (
-    <CheckInPopup
-      open={checkInOpen}
-      state={checkInState}
-      member={checkInMember}
-      memo={checkInMemo}
-      onConfirm={onCheckIn}
-      onClose={onCloseCheckIn}
-    />
-  );
-
   const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
     ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
     : [];
@@ -564,7 +547,6 @@ const GlobeView = ({
           </div>
         )}
         {overlay}
-        {checkInOverlay}
       </div>
     );
   }
@@ -683,7 +665,6 @@ const GlobeView = ({
       />
       
       {overlay}
-      {checkInOverlay}
       
       {/* Hovered member info */}
       {hoveredPoint && (

@@ -2,15 +2,30 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CheckInPopup from './CheckInPopup';
 
 describe('Check in popup', () => {
-  test('stays hidden until opened so it cannot peek over the SOS dock', () => {
-    const { container } = render(
+  test('stays off-screen until opened so it cannot sit under the SOS dock', () => {
+    render(
       <div className="relative">
         <CheckInPopup open={false} state="idle" onConfirm={() => {}} onClose={() => {}} />
       </div>
     );
-    const popup = container.querySelector('section[aria-label="Check in"]');
+    const popup = document.querySelector('section[aria-label="Check in"]');
     expect(popup.getAttribute('aria-hidden')).toBe('true');
-    expect(popup.className).toContain('invisible');
+    expect(popup.className).toContain('fixed');
+    expect(popup.className).toContain('bottom-0');
+    expect(popup.className).toContain('translate-y-full');
+    expect(popup.className).toContain('pointer-events-none');
+  });
+
+  test('opens as a fixed sheet above the mobile chrome', () => {
+    render(
+      <CheckInPopup open state="idle" onConfirm={() => {}} onClose={() => {}} />
+    );
+    const popup = screen.getByRole('dialog', { name: 'Check in' });
+    expect(popup.className).toContain('fixed');
+    expect(popup.className).toContain('bottom-0');
+    expect(popup.className).toContain('translate-y-0');
+    expect(popup.className).toContain('z-[56]');
+    expect(popup.className).toContain('safe-area-inset-bottom');
   });
 
   test('idle overlay matches the demo fragment', () => {
