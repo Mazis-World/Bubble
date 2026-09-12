@@ -3,7 +3,6 @@ import { clampRadiusMeters } from '../../services/places/geofence';
 import {
   detectionRadiusPixels,
   formatDetectionLength,
-  latLngFromMapClick,
   OSM_TILE_SIZE,
   tilesForCenteredMap,
   zoomToFitDetectionRadius,
@@ -15,7 +14,6 @@ const PlaceDetectionRadar = ({
   latitude,
   longitude,
   radiusMeters,
-  onPick,
 }) => {
   const frameRef = useRef(null);
   const [width, setWidth] = useState(320);
@@ -57,27 +55,12 @@ const PlaceDetectionRadar = ({
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
+      <div
         ref={frameRef}
         className="relative w-full overflow-hidden rounded-2xl border border-cyan-400/30 bg-slate-950"
         style={{ height: MAP_HEIGHT }}
-        aria-label={`Detection radar, ${lengthLabel}. Tap the map to move the pin.`}
-        onClick={(event) => {
-          if (!onPick) return;
-          const rect = event.currentTarget.getBoundingClientRect();
-          onPick(latLngFromMapClick({
-            latitude,
-            longitude,
-            zoom,
-            width: rect.width,
-            height: rect.height,
-            clientX: event.clientX,
-            clientY: event.clientY,
-            left: rect.left,
-            top: rect.top,
-          }));
-        }}
+        role="img"
+        aria-label={`Detection radar, ${lengthLabel}`}
       >
         {tiles.map((tile) => (
           <img
@@ -177,7 +160,7 @@ const PlaceDetectionRadar = ({
             {lengthLabel}
           </span>
         </div>
-      </button>
+      </div>
       <p className="text-xs text-gray-500 px-1">© OpenStreetMap contributors</p>
     </div>
   );
