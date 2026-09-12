@@ -231,4 +231,36 @@ describe('geofence engine', () => {
     expect(presence).toEqual([{ placeId: 'home', inside: true }]);
     expect(events[0].eventType).toBe(EVENT_TYPE.ARRIVED);
   });
+
+  test('confirmed location away writes inside:false presence when they leave', () => {
+    const { events, presence, states } = evaluateConfirmedLocation({
+      places: [home],
+      states: {
+        home: {
+          ...emptyGeofenceState(),
+          inside: true,
+          lastEventType: EVENT_TYPE.ARRIVED,
+          lastTransitionAt: 1,
+        },
+      },
+      coords: outside,
+      now: 5_000,
+      userId: 'mom',
+    });
+    expect(states.home.inside).toBe(false);
+    expect(presence).toEqual([{ placeId: 'home', inside: false }]);
+    expect(events[0].eventType).toBe(EVENT_TYPE.LEFT);
+  });
+
+  test('confirmed location already outside still reports not inside', () => {
+    const { events, presence } = evaluateConfirmedLocation({
+      places: [home],
+      states: {},
+      coords: outside,
+      now: 5_000,
+      userId: 'mom',
+    });
+    expect(presence).toEqual([{ placeId: 'home', inside: false }]);
+    expect(events).toEqual([]);
+  });
 });

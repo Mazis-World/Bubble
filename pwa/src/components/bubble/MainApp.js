@@ -514,6 +514,12 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         if (member.id !== memberId) return member;
         const next = { ...member, status };
         if (statusText !== null) next.statusText = statusText;
+        if (location?.latitude != null && location?.longitude != null) {
+          next.lastKnownLocation = {
+            ...(member.lastKnownLocation || {}),
+            ...location,
+          };
+        }
         return next;
       };
       return {
