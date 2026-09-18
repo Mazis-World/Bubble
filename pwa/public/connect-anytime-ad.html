@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>FamilyBubble — Connect with your family at any time</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: #020617;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #fff;
+    }
+    .stage {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      background: #020617;
+    }
+    .shot {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      opacity: 0;
+    }
+    .street {
+      background-image: url("ad-assets/connect-anytime/connect-anytime-street.png");
+      animation: street 16s linear forwards;
+    }
+    .incar {
+      background-image: url("ad-assets/connect-anytime/connect-anytime-incar.png");
+      animation: incar 16s linear forwards;
+    }
+    .phone {
+      background-image: url("ad-assets/connect-anytime/connect-anytime-phone.png");
+      animation: phone 16s linear forwards;
+    }
+    .radar-shot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(900px 520px at 18% 18%, rgba(59,130,246,0.22), transparent 55%),
+        radial-gradient(800px 480px at 88% 82%, rgba(168,85,247,0.18), transparent 50%),
+        #020617;
+      animation: radar 16s linear forwards;
+    }
+    .end {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background:
+        radial-gradient(700px 400px at 50% 40%, rgba(168,85,247,0.22), transparent 60%),
+        #020617;
+      animation: end 16s linear forwards;
+    }
+    @keyframes street {
+      0% { opacity: 0; transform: scale(1.1); }
+      2% { opacity: 1; }
+      18% { opacity: 1; transform: scale(1); }
+      24% { opacity: 0; transform: scale(1); }
+      100% { opacity: 0; }
+    }
+    @keyframes incar {
+      0%, 16% { opacity: 0; transform: scale(1.08); }
+      22% { opacity: 1; }
+      40% { opacity: 1; transform: scale(1); }
+      46% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes phone {
+      0%, 38% { opacity: 0; transform: scale(1.06); }
+      44% { opacity: 1; }
+      52% { opacity: 1; transform: scale(1); }
+      58% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes radar {
+      0%, 50% { opacity: 0; }
+      56% { opacity: 1; }
+      74% { opacity: 1; }
+      82% { opacity: 0; }
+      100% { opacity: 0; }
+    }
+    @keyframes end {
+      0%, 74% { opacity: 0; }
+      80% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+
+    .phone-frame {
+      width: 430px;
+      height: 900px;
+      padding: 12px;
+      background: #0b1220;
+      border-radius: 54px;
+      box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 0 4px #1f2937;
+      position: relative;
+      animation: phonePop 16s linear forwards;
+    }
+    @keyframes phonePop {
+      0%, 50% { transform: scale(0.86); }
+      58% { transform: scale(1); }
+      100% { transform: scale(1); }
+    }
+    .island {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 118px;
+      height: 28px;
+      background: #020617;
+      border-radius: 18px;
+      z-index: 20;
+    }
+    .screen {
+      height: 100%;
+      border-radius: 42px;
+      overflow: hidden;
+      background: #030712;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .status {
+      height: 44px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 0 22px 4px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #e5e7eb;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 14px 10px;
+      background: rgba(15,23,42,0.45);
+    }
+    .brand { display: flex; align-items: center; gap: 8px; }
+    .logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #a855f7, #3b82f6, #ec4899);
+      display: grid;
+      place-items: center;
+    }
+    .logo span {
+      width: 11px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2.5px solid #fff;
+    }
+    .brand-name {
+      font-weight: 800;
+      font-size: 16px;
+      background: linear-gradient(135deg, #c4b5fd, #93c5fd, #f9a8d4);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .radar {
+      flex: 1;
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 0;
+    }
+    .radar-disc {
+      width: 340px;
+      height: 340px;
+      border-radius: 50%;
+      position: relative;
+      background: radial-gradient(circle, rgba(15,23,42,0.95) 0%, rgba(2,6,23,0.98) 100%);
+      box-shadow: 0 0 40px rgba(34,211,238,0.28), inset 0 0 30px rgba(34,211,238,0.08);
+      border: 2px solid rgba(34,211,238,0.35);
+    }
+    .ring {
+      position: absolute;
+      inset: 12%;
+      border-radius: 50%;
+      border: 1px solid rgba(56,189,248,0.28);
+    }
+    .ring.r2 { inset: 24%; }
+    .ring.r3 { inset: 36%; }
+    .ring.r4 { inset: 48%; }
+    .sweep {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, rgba(34,211,238,0.32) 0deg, rgba(59,130,246,0.1) 50deg, transparent 95deg);
+      animation: sweep 3.2s linear infinite;
+    }
+    @keyframes sweep { to { transform: rotate(360deg); } }
+    .face {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      border: 3px solid #fff;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+    }
+    .face small {
+      position: absolute;
+      bottom: -6px;
+      right: -4px;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .you { left: 50%; top: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #a855f7, #3b82f6); }
+    .dad { left: 22%; top: 28%; background: linear-gradient(135deg, #3b82f6, #22d3ee); }
+    .kid { right: 18%; top: 58%; background: linear-gradient(135deg, #f472b6, #a855f7); }
+    .home {
+      left: 18%;
+      top: 62%;
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      background: #0f172a;
+      border: 2px solid #60a5fa;
+      font-size: 22px;
+      display: grid;
+      place-items: center;
+      position: absolute;
+      box-shadow: 0 0 16px rgba(96,165,250,0.4);
+    }
+    .caption {
+      text-align: center;
+      padding: 16px 20px 28px;
+      color: #cbd5e1;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .line {
+      font-size: 54px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      text-align: center;
+      max-width: 1200px;
+      line-height: 1.15;
+    }
+    .mark {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 8px;
+    }
+    .mark img { width: 56px; height: 56px; }
+    .mark-name {
+      font-size: 42px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #c4b5fd, #93c5fd, #f9a8d4);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .url {
+      color: #86efac;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="shot street"></div>
+    <div class="shot incar"></div>
+    <div class="shot phone"></div>
+    <div class="shot radar-shot">
+      <div class="phone-frame">
+        <div class="island"></div>
+        <div class="screen">
+          <div class="status"><span>9:41</span><span>5G 🔋</span></div>
+          <header>
+            <div class="brand">
+              <div class="logo"><span></span></div>
+              <div class="brand-name">FamilyBubble</div>
+            </div>
+          </header>
+          <div class="radar">
+            <div class="radar-disc">
+              <div class="sweep"></div>
+              <div class="ring"></div>
+              <div class="ring r2"></div>
+              <div class="ring r3"></div>
+              <div class="ring r4"></div>
+              <div class="home" title="Home">🏠</div>
+              <div class="face dad">D<small>✅</small></div>
+              <div class="face you">A<small>🚗</small></div>
+              <div class="face kid">L<small>🏠</small></div>
+            </div>
+          </div>
+          <p class="caption">Dad’s at work. Liam’s home.</p>
+        </div>
+      </div>
+    </div>
+    <div class="shot end">
+      <p class="line">Connect with your family at any time.</p>
+      <div class="mark">
+        <img src="familybubble-logo-icon-only-256x256.png" alt="FamilyBubble" />
+        <div class="mark-name">FamilyBubble</div>
+      </div>
+      <p class="url">familybubble.online</p>
+    </div>
+  </div>
+</body>
+</html>
