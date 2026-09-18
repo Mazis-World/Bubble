@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the FamilyBubble "Connect with your family at any time" car ad
-# from Mixkit B-roll (woman gets in on a busy street, then looks at her phone).
+# from Mixkit B-roll (woman gets in on a busy street, stays in that car
+# looking down at her phone, then the FamilyBubble line).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -40,7 +41,6 @@ download() {
 }
 
 download 73 "$WORK/broll/get-in.mp4"
-download 22544 "$WORK/broll/phone.mp4"
 
 cat > "$WORK/captions/line.txt" <<'EOF'
 Connect with your family at any time.
@@ -52,9 +52,12 @@ SCALE="fps=30,scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:108
 ffmpeg -y -ss 1.6 -t 5.2 -i "$WORK/broll/get-in.mp4" \
   -vf "$SCALE" -an -r 30 "$WORK/get-in.mp4"
 
-# Mixkit 22544: she looks down at her phone; the line comes up as we leave the street.
-ffmpeg -y -ss 8.2 -t 4.0 -i "$WORK/broll/phone.mp4" \
-  -vf "${SCALE},drawtext=fontfile=${FONT}:textfile=${WORK}/captions/line.txt:fontsize=52:fontcolor=white:x=(w-text_w)/2:y=h-140:shadowcolor=black@0.75:shadowx=0:shadowy=3:enable='gte(t,1.5)'" \
+# Same clip, same car: after she sits, push in on her at the wheel.
+# She looks down in her lap as she settles (the phone beat), then at the road.
+# Crop keeps the steering wheel, dash, and street through the windshield in frame.
+INCAR="fps=30,crop=1408:792:240:120,scale=1920:1080:flags=lanczos,setsar=1,format=yuv420p,eq=contrast=1.12:saturation=1.08:brightness=0.06,settb=1/30,setpts=PTS-STARTPTS"
+ffmpeg -y -ss 6.7 -t 4.0 -i "$WORK/broll/get-in.mp4" \
+  -vf "${INCAR},drawtext=fontfile=${FONT}:textfile=${WORK}/captions/line.txt:fontsize=52:fontcolor=white:x=(w-text_w)/2:y=h-140:shadowcolor=black@0.75:shadowx=0:shadowy=3:enable='gte(t,1.5)'" \
   -an -r 30 "$WORK/phone.mp4"
 
 cleanup() {
@@ -100,8 +103,12 @@ record_html() {
   wait "$chrome_pid" 2>/dev/null || true
 }
 
-record_html "connect-anytime-radar.html" "$WORK/radar.mp4" 3.6
-record_html "connect-anytime-end.html" "$WORK/end.mp4" 3.4
+if [[ -f "$WORK/radar.mp4" && -f "$WORK/end.mp4" && "${FORCE_RECORD:-}" != "1" ]]; then
+  echo "Reusing recorded radar/end clips"
+else
+  record_html "connect-anytime-radar.html" "$WORK/radar.mp4" 3.6
+  record_html "connect-anytime-end.html" "$WORK/end.mp4" 3.4
+fi
 
 # get-in 5.2 + phone 4.0 - 0.32 = 8.88
 # + radar 3.6 - 0.40 = 12.08
