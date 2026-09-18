@@ -56,7 +56,7 @@ ffmpeg -y -ss 1.6 -t 5.2 -i "$WORK/broll/get-in.mp4" \
 # She looks down in her lap as she settles (the phone beat), then at the road.
 # Crop keeps the steering wheel, dash, and street through the windshield in frame.
 INCAR="fps=30,crop=1408:792:240:120,scale=1920:1080:flags=lanczos,setsar=1,format=yuv420p,eq=contrast=1.12:saturation=1.08:brightness=0.06,settb=1/30,setpts=PTS-STARTPTS"
-ffmpeg -y -ss 6.7 -t 4.0 -i "$WORK/broll/get-in.mp4" \
+ffmpeg -y -ss 7.2 -t 4.0 -i "$WORK/broll/get-in.mp4" \
   -vf "${INCAR},drawtext=fontfile=${FONT}:textfile=${WORK}/captions/line.txt:fontsize=52:fontcolor=white:x=(w-text_w)/2:y=h-140:shadowcolor=black@0.75:shadowx=0:shadowy=3:enable='gte(t,1.5)'" \
   -an -r 30 "$WORK/phone.mp4"
 
@@ -110,9 +110,11 @@ else
   record_html "connect-anytime-end.html" "$WORK/end.mp4" 3.4
 fi
 
-# get-in 5.2 + phone 4.0 - 0.32 = 8.88
-# + radar 3.6 - 0.40 = 12.08
-# + end 3.4 - 0.40 = 15.08
+# Short fadeblack into the closer in-car hold so the two Mixkit 73
+# crops do not double-expose her during the sit-down.
+# get-in 5.2 + phone 4.0 - 0.22 = 8.98
+# + radar 3.6 - 0.40 = 12.18
+# + end 3.4 - 0.40 = 15.18
 ffmpeg -y \
   -i "$WORK/get-in.mp4" \
   -i "$WORK/phone.mp4" \
@@ -123,9 +125,9 @@ ffmpeg -y \
 [1:v] fps=30,format=yuv420p,settb=1/30,setpts=PTS-STARTPTS [v1];
 [2:v] fps=30,scale=1920:1080,format=yuv420p,settb=1/30,setpts=PTS-STARTPTS [v2];
 [3:v] fps=30,scale=1920:1080,format=yuv420p,settb=1/30,setpts=PTS-STARTPTS [v3];
-[v0][v1] xfade=transition=fade:duration=0.32:offset=4.88 [c01];
-[c01][v2] xfade=transition=fade:duration=0.40:offset=8.48 [c02];
-[c02][v3] xfade=transition=fade:duration=0.40:offset=11.68 [out]
+[v0][v1] xfade=transition=fadeblack:duration=0.22:offset=4.98 [c01];
+[c01][v2] xfade=transition=fade:duration=0.40:offset=8.58 [c02];
+[c02][v3] xfade=transition=fade:duration=0.40:offset=11.78 [out]
 " \
   -map "[out]" -an -c:v libx264 -pix_fmt yuv420p -preset medium -crf 18 -movflags +faststart \
   "$OUT"
