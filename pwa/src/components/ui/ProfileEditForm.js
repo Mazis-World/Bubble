@@ -1,23 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import CustomSelect from './CustomSelect';
+import { RELATIONSHIP_ROLE_OPTIONS, isStandardRelationshipRole } from '../../constants/relationshipRoles';
 
-const relationshipOptions = [
-  { value: '', label: 'Select your role', disabled: true },
-  { value: 'Mom', label: 'Mom' },
-  { value: 'Dad', label: 'Dad' },
-  { value: 'Brother', label: 'Brother' },
-  { value: 'Sister', label: 'Sister' },
-  { value: 'Son', label: 'Son' },
-  { value: 'Daughter', label: 'Daughter' },
-  { value: 'Grandma', label: 'Grandma' },
-  { value: 'Grandpa', label: 'Grandpa' },
-  { value: 'Aunt', label: 'Aunt' },
-  { value: 'Uncle', label: 'Uncle' },
-  { value: 'Cousin', label: 'Cousin' },
-  { value: 'Guardian', label: 'Guardian' },
-  { value: 'Friend', label: 'Friend' },
-  { value: 'Custom', label: 'Custom' },
-];
+const relationshipOptions = RELATIONSHIP_ROLE_OPTIONS;
 
 const ProfileEditForm = ({ member, bubbleId, onSave }) => {
   const [name, setName] = useState('');
@@ -30,7 +15,7 @@ const ProfileEditForm = ({ member, bubbleId, onSave }) => {
       setName(member.name || '');
       const memberRole = member.role || '';
       // Check if role is a custom role (not in the standard list)
-      const isCustomRole = memberRole && !relationshipOptions.some(opt => opt.value === memberRole);
+      const isCustomRole = memberRole && !isStandardRelationshipRole(memberRole);
       if (isCustomRole) {
         setRole('Custom');
         setCustomRole(memberRole);
