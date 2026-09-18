@@ -1,6 +1,6 @@
 # FamilyBubble — Connect with your family at any time.
 
-A ~16s 1920×1080 spot: a woman gets into her car on a busy street, looks at her phone, and the chaos falls away into FamilyBubble.
+A ~15s 1920×1080 spot cut from real B-roll: a woman gets into her car on a busy street, looks at her phone, and the line takes over.
 
 File: `familybubble-connect-anytime-ad.mp4`
 
@@ -8,11 +8,11 @@ File: `familybubble-connect-anytime-ad.mp4`
 
 | Time | Shot |
 | --- | --- |
-| 0:00 | Busy street. She opens the car door with her phone in hand. Traffic, a taxi, a bus. |
-| 0:03 | Inside the car. Door shut. She looks down at the phone. City lights through the window. |
-| 0:07 | Close-up of the glowing phone. |
-| 0:09 | Match-cut into FamilyBubble radar: Dad at work, Liam home, she’s on the move. |
-| 0:12 | End card — *Connect with your family at any time.* FamilyBubble · familybubble.online |
+| 0:00 | She opens the car door. Traffic moves past on the street. |
+| 0:05 | Inside. She looks down at her phone. |
+| 0:07 | *Connect with your family at any time.* |
+| 0:08 | FamilyBubble radar. |
+| 0:12 | End card — FamilyBubble · familybubble.online |
 
 ## Title
 FamilyBubble — Connect with your family at any time.
@@ -35,10 +35,15 @@ They’re all right there.
 Connect with your family at any time.
 FamilyBubble.
 
+## Footage credits (Mixkit Free License)
+
+Commercial-use B-roll. Do not re-upload the raw Mixkit files as your own stock.
+
+- Woman getting into driver’s seat of luxury vehicle (busy road): https://mixkit.co/free-stock-video/woman-getting-into-drivers-seat-of-luxury-vehicle-73/
+- Woman holding her phone in the car: https://mixkit.co/free-stock-video/woman-holding-her-phone-in-the-car-22544/
+
 ## Rebuild
 
 ```bash
 bash pwa/scripts/assemble-connect-anytime-ad.sh
 ```
-
-Timed HTML preview (same cut, browser): `pwa/public/connect-anytime-ad.html`
