@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, Circle, Plus } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
 import LocationStep from '../ui/LocationStep';
 import imageCompression from 'browser-image-compression';
+import { RELATIONSHIP_ROLE_OPTIONS } from '../../constants/relationshipRoles';
 
 const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) => {
   const [step, setStep] = useState(1);
@@ -41,15 +42,7 @@ const CreateBubbleFlow = ({ onComplete, onBack, handlePurchase, isSubscribed }) 
   };
 
 
-  const relationshipOptions = [
-    { value: '', label: 'Select your role', disabled: true }, // Placeholder option
-    { value: 'Mom', label: 'Mom' },
-    { value: 'Dad', label: 'Dad' },
-    { value: 'Brother', label: 'Brother' },
-    { value: 'Sister', label: 'Sister' },
-    { value: 'Guardian', label: 'Guardian' },
-    { value: 'Custom', label: 'Custom' },
-  ];
+  const relationshipOptions = RELATIONSHIP_ROLE_OPTIONS;
 
 
 
