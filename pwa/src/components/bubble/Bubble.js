@@ -8,6 +8,7 @@ import ProfileEditForm from '../ui/ProfileEditForm';
 import EmojiPicker from '../ui/EmojiPicker';
 import LocationStep from '../ui/LocationStep';
 import NotificationSettings from '../ui/NotificationSettings';
+import StatusMediaComposer from '../ui/StatusMediaComposer';
 import SosButton from '../sos/SosButton';
 import SosConfirmOverlay from '../sos/SosConfirmOverlay';
 import SosActiveScreen from '../sos/SosActiveScreen';
@@ -50,6 +51,13 @@ const Bubble = ({
   const [statusLocation, setStatusLocation] = useState(null);
   const [statusText, setStatusText] = useState('');
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
+  const [statusMedia, setStatusMedia] = useState({
+    photoFile: null,
+    voiceBlob: null,
+    voiceDurationMs: null,
+    recording: false,
+  });
+  const [statusPosting, setStatusPosting] = useState(false);
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
   const [showOverview, setShowOverview] = useState(false);
   const [showMemos, setShowMemos] = useState(false);
@@ -60,6 +68,33 @@ const Bubble = ({
     [sos?.openEvents]
   );
   const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
+
+  const resetStatusSheet = () => {
+    setShowStatus(false);
+    setStatusLocation(null);
+    setStatusText('');
+    setSelectedStatusEmoji(null);
+    setStatusMedia({
+      photoFile: null,
+      voiceBlob: null,
+      voiceDurationMs: null,
+      recording: false,
+    });
+    setStatusPosting(false);
+  };
+
+  const submitStatus = async () => {
+    if (statusPosting || statusMedia.recording) return;
+    setStatusPosting(true);
+    try {
+      const emoji = selectedStatusEmoji || bubbleData?.currentMember?.status || '😊';
+      await handleStatusChange(emoji, statusLocation, statusText, statusMedia);
+      resetStatusSheet();
+    } catch (error) {
+      setStatusPosting(false);
+      alert(error.message || 'Could not update status.');
+    }
+  };
 
   const handleShare = async () => {
     if (!inviteToken || inviteToken === 'Generating...') return;
@@ -299,12 +334,7 @@ const Bubble = ({
 
       <SlideUpCard 
         isOpen={showStatus} 
-        onClose={() => {
-          setShowStatus(false);
-          setStatusLocation(null);
-          setStatusText('');
-          setSelectedStatusEmoji(null);
-        }}
+        onClose={resetStatusSheet}
         title="Update Your Status"
       >
         <div className="w-full space-y-3">
@@ -328,12 +358,22 @@ const Bubble = ({
                 placeholder="What's on your mind?"
                 maxLength={100}
                 autoComplete="off"
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 pr-16 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base tap-target"
+                disabled={statusPosting}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 pr-16 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base tap-target disabled:opacity-50"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
                 {statusText.length}/100
               </div>
             </div>
+          </div>
+
+          <div className="border-t border-gray-800 pt-2.5">
+            {showStatus && (
+              <StatusMediaComposer
+                disabled={statusPosting}
+                onChange={setStatusMedia}
+              />
+            )}
           </div>
           
           <div className="border-t border-gray-800 pt-4">
@@ -349,22 +389,19 @@ const Bubble = ({
           </div>
           
           <button
-            onClick={() => {
-              const emoji = selectedStatusEmoji || bubbleData?.currentMember?.status || '😊';
-              handleStatusChange(emoji, statusLocation, statusText);
-              setShowStatus(false);
-              setStatusLocation(null);
-              setStatusText('');
-              setSelectedStatusEmoji(null);
-            }}
-            className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-400 hover:via-purple-400 hover:to-pink-400 text-white py-3.5 rounded-2xl font-bold transition-all duration-300 shadow-lg glow-blue hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] tap-target relative overflow-hidden group"
+            type="button"
+            onClick={submitStatus}
+            disabled={statusPosting || statusMedia.recording}
+            className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-400 hover:via-purple-400 hover:to-pink-400 text-white py-3.5 rounded-2xl font-bold transition-all duration-300 shadow-lg glow-blue hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] tap-target relative overflow-hidden group disabled:opacity-60 disabled:hover:scale-100"
           >
-            <span className="relative z-10">Update Status</span>
+            <span className="relative z-10">
+              {statusPosting ? 'Posting…' : statusMedia.recording ? 'Stop recording first' : 'Update Status'}
+            </span>
             <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
         </div>
         <p className="text-gray-400 text-sm mt-3 text-center font-medium">
-          Everyone in your bubble will see your status and location instantly
+          Everyone in your bubble will see your status, photos, and voice memos
         </p>
       </SlideUpCard>
 

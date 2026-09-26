@@ -206,6 +206,7 @@ service cloud.firestore {
       // ============================================================================
       // FAMILY MEMOS Subcollection
       // Status, SOS, and check-in board for this bubble only. Membership is server-checked.
+      // Optional photoUrl / voiceUrl / voiceDurationMs attach status photos and voice notes.
       // ============================================================================
       match /memos/{memoId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);

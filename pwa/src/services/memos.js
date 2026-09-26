@@ -75,13 +75,16 @@ export const createFamilyMemo = async ({
   message = null,
   location = null,
   sosId = null,
+  photoUrl = null,
+  voiceUrl = null,
+  voiceDurationMs = null,
 }) => {
   const uid = auth.currentUser?.uid;
   if (!canCreateMemo({ authUid: uid, userId, isBubbleMember: true, type })) {
     throw new Error('You cannot post a memo to this bubble.');
   }
 
-  const ref = await addDoc(memosCollection(bubbleId), {
+  const payload = {
     bubbleId,
     userId: uid,
     nodeId: nodeId || null,
@@ -91,7 +94,12 @@ export const createFamilyMemo = async ({
     location: compactLocation(location),
     sosId: sosId || null,
     createdAt: serverTimestamp(),
-  });
+  };
+  if (photoUrl) payload.photoUrl = photoUrl;
+  if (voiceUrl) payload.voiceUrl = voiceUrl;
+  if (voiceDurationMs != null) payload.voiceDurationMs = voiceDurationMs;
+
+  const ref = await addDoc(memosCollection(bubbleId), payload);
   return ref.id;
 };
 

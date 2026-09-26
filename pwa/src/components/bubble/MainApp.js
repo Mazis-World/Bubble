@@ -490,14 +490,25 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }
   };
 
-  const handleStatusChange = async (status, location = null, statusText = null) => {
+  const handleStatusChange = async (status, location = null, statusText = null, media = {}) => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.currentMember || !bubbleData.currentMember.id) {
       console.error("Cannot update status: missing bubble or member data");
       return;
     }
     
     // Update status immediately (don't wait for location)
-    const statusPromise = API.updateStatus(bubbleData.bubble.id, bubbleData.currentMember.id, status, statusText);
+    const statusPromise = API.updateStatus(
+      bubbleData.bubble.id,
+      bubbleData.currentMember.id,
+      status,
+      statusText,
+      {
+        location,
+        photoFile: media.photoFile || null,
+        voiceBlob: media.voiceBlob || null,
+        voiceDurationMs: media.voiceDurationMs || null,
+      }
+    );
     
     // Update location in parallel if provided
     const locationPromise = location 

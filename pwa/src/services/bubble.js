@@ -22,6 +22,7 @@ import BubbleEdge from '../models/BubbleEdge';
 import User from '../models/User';
 import { MEMO_TYPE, createFamilyMemo } from './memos';
 import { buildCheckInMemo } from './checkin';
+import { prepareStatusMemoMedia } from './memoMedia';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -948,11 +949,23 @@ export const API = {
     if (statusText !== null) {
       updateData.statusText = statusText;
     }
+
+    const mediaPromise = (!options.skipMemo && (options.photoFile || options.voiceBlob))
+      ? prepareStatusMemoMedia({
+          photoFile: options.photoFile || null,
+          voiceBlob: options.voiceBlob || null,
+          userId: auth.currentUser?.uid,
+        }).catch((error) => {
+          console.warn('Status memo media skipped:', error.message);
+          return { photoUrl: null, voiceUrl: null };
+        })
+      : Promise.resolve({ photoUrl: null, voiceUrl: null });
+
     await updateDoc(nodeRef, updateData);
 
     // Family Memos board: every status update is posted to this bubble only.
     if (!options.skipMemo) {
-      const nodeSnap = await getDoc(nodeRef);
+      const [nodeSnap, media] = await Promise.all([getDoc(nodeRef), mediaPromise]);
       const node = nodeSnap.exists() ? nodeSnap.data() : {};
       await createFamilyMemo({
         bubbleId,
@@ -961,7 +974,10 @@ export const API = {
         type: MEMO_TYPE.STATUS,
         status,
         message: statusText,
-        location: node.lastKnownLocation || null,
+        location: options.location || node.lastKnownLocation || null,
+        photoUrl: media.photoUrl,
+        voiceUrl: media.voiceUrl,
+        voiceDurationMs: options.voiceDurationMs || null,
       }).catch((error) => {
         console.warn('Family memo write skipped:', error.message);
       });

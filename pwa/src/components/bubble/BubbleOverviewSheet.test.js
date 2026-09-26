@@ -1,6 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 
+jest.mock('../../services/memoMedia', () => ({
+  formatVoiceDuration: (ms) => {
+    const total = Math.max(0, Math.round((Number(ms) || 0) / 1000));
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  },
+}));
+
 describe('Bubble overview sheets', () => {
   const members = [
     { id: 'n1', userId: 'u1', name: 'Ada', status: '🏫', statusText: 'At school' },
@@ -52,5 +61,32 @@ describe('Bubble overview sheets', () => {
     );
     expect(screen.getByText(/📍 Checked in/)).toBeTruthy();
     expect(screen.getByText('Checked in')).toBeTruthy();
+  });
+
+  test('status memos can show a photo and a voice note', () => {
+    render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={[
+          {
+            memoId: 'm3',
+            userId: 'u1',
+            nodeId: 'n1',
+            type: 'status',
+            status: '😊',
+            message: 'Made it home',
+            photoUrl: 'https://example.com/home.jpg',
+            voiceUrl: 'https://example.com/home.webm',
+            voiceDurationMs: 4200,
+          },
+        ]}
+        bubbleName="Home"
+        onMemoClick={() => {}}
+      />
+    );
+    expect(screen.getByAltText('Status photo')).toBeTruthy();
+    expect(screen.getByLabelText('Voice memo')).toBeTruthy();
+    expect(screen.getByText('Voice note · 0:04')).toBeTruthy();
   });
 });
