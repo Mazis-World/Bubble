@@ -80,7 +80,7 @@ const MemoRow = ({ memo, member, onClick }) => {
         <button type="button" onClick={onClick} className="mt-2 block w-full">
           <img
             src={memo.photoUrl}
-            alt="Status photo"
+            alt="Attached to this status update"
             className="w-full max-h-48 object-cover rounded-xl border border-white/10"
           />
         </button>

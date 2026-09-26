@@ -187,7 +187,7 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
         <p className="text-gray-300 text-sm mb-2 font-semibold">Add a photo (optional):</p>
         {photoPreviewUrl ? (
           <div className="relative rounded-2xl overflow-hidden border border-white/10">
-            <img src={photoPreviewUrl} alt="Status photo preview" className="w-full max-h-40 object-cover" />
+            <img src={photoPreviewUrl} alt="" className="w-full max-h-40 object-cover" />
             <button
               type="button"
               onClick={clearPhoto}

@@ -85,7 +85,7 @@ describe('Bubble overview sheets', () => {
         onMemoClick={() => {}}
       />
     );
-    expect(screen.getByAltText('Status photo')).toBeTruthy();
+    expect(screen.getByAltText('Attached to this status update')).toBeTruthy();
     expect(screen.getByLabelText('Voice memo')).toBeTruthy();
     expect(screen.getByText('Voice note · 0:04')).toBeTruthy();
   });
