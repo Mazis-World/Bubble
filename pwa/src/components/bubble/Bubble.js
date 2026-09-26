@@ -121,7 +121,12 @@ const Bubble = ({
     setStatusPosting(true);
     try {
       const emoji = selectedStatusEmoji || bubbleData?.currentMember?.status || '😊';
-      await handleStatusChange(emoji, statusLocation, statusText, statusMedia);
+      await handleStatusChange(
+        emoji,
+        statusLocation,
+        statusText,
+        isSubscribed ? statusMedia : {}
+      );
       resetStatusSheet();
     } catch (error) {
       setStatusPosting(false);
@@ -432,6 +437,8 @@ const Bubble = ({
             {showStatus && (
               <StatusMediaComposer
                 disabled={statusPosting}
+                lockedMedia={!isSubscribed}
+                onLockedPress={onUpgrade}
                 onChange={setStatusMedia}
               />
             )}
@@ -671,6 +678,8 @@ const Bubble = ({
           members={bubbleData?.allMembers || []}
           currentMember={bubbleData?.currentMember}
           initialPlaceId={placesFocusId}
+          isPremium={isSubscribed}
+          onUpgrade={onUpgrade}
           onClose={() => {
             setShowPlaces(false);
             setPlacesFocusId(null);

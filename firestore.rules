@@ -49,8 +49,14 @@ service cloud.firestore {
       return !('ownedPlaceIds' in request.resource.data) ||
              (
                request.resource.data.ownedPlaceIds is list &&
-               request.resource.data.ownedPlaceIds.size() <= 3
+               request.resource.data.ownedPlaceIds.size() <= (isPremiumUser() ? 3 : 1)
              );
+    }
+
+    function isPremiumUser() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('premium', false) == true;
     }
 
     function isNumber(value) {
@@ -246,7 +252,14 @@ service cloud.firestore {
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.bubbleId == bubbleId &&
                        request.resource.data.type in ['status', 'sos', 'checkin', 'place'] &&
-                       request.resource.data.userId is string;
+                       request.resource.data.userId is string &&
+                       (
+                         (
+                           !('photoUrl' in request.resource.data) &&
+                           !('voiceUrl' in request.resource.data)
+                         ) ||
+                         isPremiumUser()
+                       );
 
         allow update, delete: if false;
       }
@@ -254,7 +267,8 @@ service cloud.firestore {
       // ============================================================================
       // PLACES Subcollection
       // Owner creates/edits/deletes their own Places. Members may read for status.
-      // The 3-Place cap is enforced with users/{uid}.ownedPlaceIds in the same batch.
+      // The Place cap is 1 on Free and 3 on Premium, enforced with users/{uid}.ownedPlaceIds
+      // and users/{uid}.premium in the same batch.
       // ============================================================================
       match /places/{placeId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
@@ -271,7 +285,7 @@ service cloud.firestore {
                        getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
                          .data.get('ownedPlaceIds', []).hasAny([placeId]) &&
                        getAfter(/databases/$(database)/documents/users/$(request.auth.uid))
-                         .data.get('ownedPlaceIds', []).size() <= 3;
+                         .data.get('ownedPlaceIds', []).size() <= (isPremiumUser() ? 3 : 1);
 
         allow update: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
                        resource.data.ownerId == request.auth.uid &&

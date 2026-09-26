@@ -1,11 +1,17 @@
 import {
   FREE_MEMBER_LIMIT,
   PREMIUM_MEMBER_LIMIT,
+  FREE_PLACE_LIMIT,
+  PREMIUM_PLACE_LIMIT,
+  canCreatePlaceOnPlan,
   canInviteMoreMembers,
   canJoinAtMemberCap,
+  canUseRichStatus,
+  extraPlaceUpgradeMessage,
   hadPremiumEntitlement,
   hasPremiumEntitlement,
   memberLimitForPlan,
+  placeLimitForPlan,
 } from './billing';
 
 describe('billing', () => {
@@ -34,6 +40,20 @@ describe('billing', () => {
     expect(canInviteMoreMembers({ isPremium: false, memberCount: 5 })).toBe(true);
     expect(canInviteMoreMembers({ isPremium: false, memberCount: 6 })).toBe(false);
     expect(canInviteMoreMembers({ isPremium: true, memberCount: 6 })).toBe(true);
+  });
+
+  test('free plan includes one Place; Premium unlocks three', () => {
+    expect(placeLimitForPlan(false)).toBe(FREE_PLACE_LIMIT);
+    expect(placeLimitForPlan(true)).toBe(PREMIUM_PLACE_LIMIT);
+    expect(canCreatePlaceOnPlan({ isPremium: false, ownedCount: 0 })).toBe(true);
+    expect(canCreatePlaceOnPlan({ isPremium: false, ownedCount: 1 })).toBe(false);
+    expect(canCreatePlaceOnPlan({ isPremium: true, ownedCount: 1 })).toBe(true);
+    expect(extraPlaceUpgradeMessage()).toMatch(/Home, School, and Work/);
+  });
+
+  test('voice notes and photos on status are Premium', () => {
+    expect(canUseRichStatus({ isPremium: false })).toBe(false);
+    expect(canUseRichStatus({ isPremium: true })).toBe(true);
   });
 
   test('join respects the bubble member cap stored on the bubble', () => {

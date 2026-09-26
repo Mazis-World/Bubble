@@ -7,7 +7,7 @@ const canUseMicrophone = () =>
   typeof MediaRecorder !== 'undefined' &&
   Boolean(navigator.mediaDevices?.getUserMedia);
 
-const StatusMediaComposer = ({ disabled = false, onChange }) => {
+const StatusMediaComposer = ({ disabled = false, lockedMedia = false, onLockedPress, onChange }) => {
   const fileRef = useRef(null);
   const recorderRef = useRef(null);
   const streamRef = useRef(null);
@@ -99,6 +99,11 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
   const handlePhotoPicked = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (lockedMedia) {
+      onLockedPress?.();
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     revokePhotoPreview();
     const preview = URL.createObjectURL(file);
     photoPreviewRef.current = preview;
@@ -109,6 +114,10 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
 
   const startRecording = async () => {
     if (disabled || recording || !canUseMicrophone()) return;
+    if (lockedMedia) {
+      onLockedPress?.();
+      return;
+    }
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -201,12 +210,18 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
         ) : (
           <button
             type="button"
-            onClick={() => fileRef.current?.click()}
+            onClick={() => {
+              if (lockedMedia) {
+                onLockedPress?.();
+                return;
+              }
+              fileRef.current?.click();
+            }}
             disabled={disabled}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white font-semibold tap-target disabled:opacity-50"
           >
             <ImagePlus size={18} />
-            Add photo
+            {lockedMedia ? 'Add photo · Premium' : 'Add photo'}
           </button>
         )}
       </div>
@@ -259,7 +274,7 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white font-semibold tap-target disabled:opacity-50"
           >
             <Mic size={18} />
-            Record voice memo
+            {lockedMedia ? 'Record voice memo · Premium' : 'Record voice memo'}
           </button>
         )}
       </div>

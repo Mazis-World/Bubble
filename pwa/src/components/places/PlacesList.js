@@ -85,6 +85,7 @@ const PlacesList = ({
   onAdd,
   onSelect,
   addingDisabledReason = null,
+  placeLimit = MAX_PLACES_PER_USER,
 }) => {
   const mine = places.filter((place) => place.ownerId === currentUserId);
   const familyGroups = groupPlacesByOwner(
@@ -92,7 +93,9 @@ const PlacesList = ({
     members
   );
   const used = mine.length;
-  const atLimit = used >= MAX_PLACES_PER_USER;
+  const atHardLimit = used >= MAX_PLACES_PER_USER;
+  const atPlanLimit = used >= placeLimit;
+  const upgradeInstead = atPlanLimit && !atHardLimit;
   const myColor = placeAccentColor({ ownerId: currentUserId }, members);
 
   if (mine.length === 0 && familyGroups.length === 0) {
@@ -119,7 +122,7 @@ const PlacesList = ({
     <div className="space-y-5">
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Places</p>
-        <p className="text-gray-500 text-xs mt-1">{formatPlacesUsed(used)}</p>
+        <p className="text-gray-500 text-xs mt-1">{formatPlacesUsed(used, placeLimit)}</p>
       </div>
       {mine.length > 0 && (
         <PlaceGroup
@@ -152,16 +155,16 @@ const PlacesList = ({
       <button
         type="button"
         onClick={() => {
-          if (atLimit) return;
+          if (atHardLimit) return;
           onAdd?.();
         }}
-        disabled={atLimit}
+        disabled={atHardLimit}
         className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3.5 rounded-2xl font-bold tap-target flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Plus size={18} />
-        Add Place
+        {upgradeInstead ? 'Add Place · Premium' : 'Add Place'}
       </button>
-      {atLimit && (
+      {atPlanLimit && (
         <p className="text-amber-200 text-sm text-center">{addingDisabledReason || PLACE_LIMIT_MESSAGE}</p>
       )}
     </div>

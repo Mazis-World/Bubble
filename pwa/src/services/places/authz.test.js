@@ -31,6 +31,14 @@ describe('Places authorization', () => {
       ownedCount: 3,
     })).toBe(false);
     expect(canCreatePlace({
+      authUid: 'mom',
+      ownerId: 'mom',
+      memberIds: ['mom', 'dad'],
+      ownedCount: 1,
+      placeLimit: 1,
+    })).toBe(false);
+    expect(placeLimitError(3)).toBe(PLACE_LIMIT_MESSAGE);
+    expect(canCreatePlace({
       authUid: 'dad',
       ownerId: 'mom',
       memberIds: ['mom', 'dad'],

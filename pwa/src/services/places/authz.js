@@ -10,14 +10,17 @@ export const canCreatePlace = ({
   ownerId,
   memberIds,
   ownedCount = 0,
+  placeLimit = MAX_PLACES_PER_USER,
 }) => {
   if (!authUid || authUid !== ownerId) return false;
   if (!isBubbleMember({ authUid, memberIds })) return false;
-  return ownedCount < MAX_PLACES_PER_USER;
+  return ownedCount < placeLimit;
 };
 
-export const placeLimitError = (ownedCount) => {
-  if (ownedCount >= MAX_PLACES_PER_USER) return PLACE_LIMIT_MESSAGE;
+export const placeLimitError = (ownedCount, placeLimit = MAX_PLACES_PER_USER, upgradeMessage = null) => {
+  if (ownedCount >= placeLimit) {
+    return upgradeMessage || PLACE_LIMIT_MESSAGE;
+  }
   return null;
 };
 

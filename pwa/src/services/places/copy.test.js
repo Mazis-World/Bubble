@@ -75,6 +75,7 @@ describe('Places copy', () => {
   test('shows how many of 3 places are used', () => {
     expect(formatPlacesUsed(2)).toBe('2 of 3 Places used');
     expect(formatPlacesUsed(3)).toBe('3 of 3 Places used');
+    expect(formatPlacesUsed(1, 1)).toBe('1 of 1 Places used');
     expect(emptyPlacesBody).toMatch(/Home, School, or Work/);
     expect(emptyPlacesBody).toMatch(/they're okay, you're okay/);
     expect(PLACE_ARRIVAL_REASSURANCE).toBe("They're okay.");

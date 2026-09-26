@@ -17,6 +17,7 @@ import { auth, db } from '../../firebase';
 import Place from '../../models/Place';
 import PlaceEvent from '../../models/PlaceEvent';
 import { MEMO_TYPE, createFamilyMemo } from '../memos';
+import { extraPlaceUpgradeMessage, placeLimitForPlan } from '../billing';
 import {
   DEFAULT_RADIUS_METERS,
   EVENT_SOURCE,
@@ -159,13 +160,19 @@ export const createPlace = async ({
   const userSnap = await assertBubbleMembership(bubbleId, uid);
   const memberIds = await loadMemberIds(bubbleId, uid);
   const currentOwned = ownedPlaceIds(userSnap.data());
+  const placeLimit = placeLimitForPlan(userSnap.data()?.premium === true);
   if (!canCreatePlace({
     authUid: uid,
     ownerId: uid,
     memberIds,
     ownedCount: currentOwned.length,
+    placeLimit,
   })) {
-    const limit = placeLimitError(currentOwned.length);
+    const limit = placeLimitError(
+      currentOwned.length,
+      placeLimit,
+      placeLimit < MAX_PLACES_PER_USER ? extraPlaceUpgradeMessage() : PLACE_LIMIT_MESSAGE
+    );
     throw new Error(limit || 'You cannot add this Place.');
   }
 
@@ -192,8 +199,9 @@ export const createPlace = async ({
   await runTransaction(db, async (tx) => {
     const latestUser = await tx.get(userRef);
     const ids = ownedPlaceIds(latestUser.data());
-    if (ids.length >= MAX_PLACES_PER_USER) {
-      throw new Error(PLACE_LIMIT_MESSAGE);
+    const liveLimit = placeLimitForPlan(latestUser.data()?.premium === true);
+    if (ids.length >= liveLimit) {
+      throw new Error(liveLimit < MAX_PLACES_PER_USER ? extraPlaceUpgradeMessage() : PLACE_LIMIT_MESSAGE);
     }
     tx.update(userRef, { [OWNED_PLACE_IDS_FIELD]: [...ids, placeRef.id] });
     tx.set(placeRef, {

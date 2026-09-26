@@ -96,4 +96,28 @@ describe('Places list', () => {
     expect(onAdd).not.toHaveBeenCalled();
     expect(screen.getByText(PLACE_LIMIT_MESSAGE)).toBeTruthy();
   });
+
+  test('free plan offers Premium after the first Place', () => {
+    const onAdd = jest.fn();
+    render(
+      <PlacesList
+        currentUserId="mom"
+        members={members}
+        placeLimit={1}
+        addingDisabledReason="Free includes 1 Place. Upgrade to Premium for Home, School, and Work."
+        onAdd={onAdd}
+        places={[{
+          placeId: 'home',
+          ownerId: 'mom',
+          name: 'Home',
+          icon: '🏠',
+          type: 'home',
+        }]}
+      />
+    );
+    expect(screen.getByText('1 of 1 Places used')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /add place · premium/i }).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: /add place · premium/i }));
+    expect(onAdd).toHaveBeenCalled();
+  });
 });

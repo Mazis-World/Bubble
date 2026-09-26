@@ -106,7 +106,7 @@ export const formatPlaceStatus = ({
   return 'No one here';
 };
 
-export const formatPlacesUsed = (count) => `${count} of 3 Places used`;
+export const formatPlacesUsed = (count, limit = 3) => `${count} of ${limit} Places used`;
 
 export const emptyPlacesTitle = 'Your important places';
 export const emptyPlacesBody =

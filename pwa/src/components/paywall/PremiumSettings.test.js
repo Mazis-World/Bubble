@@ -8,6 +8,7 @@ describe('PremiumSettings', () => {
     render(<PremiumSettings isSubscribed={false} onUpgrade={onUpgrade} />);
     expect(screen.getByText('Free plan')).toBeTruthy();
     expect(screen.getByText(new RegExp(`${FREE_MEMBER_LIMIT}`))).toBeTruthy();
+    expect(screen.getByText(/voice notes and photos/i)).toBeTruthy();
     screen.getByRole('button', { name: /upgrade to premium/i }).click();
     expect(onUpgrade).toHaveBeenCalled();
   });

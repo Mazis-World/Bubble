@@ -1,6 +1,6 @@
 import React from 'react';
 import { Crown, Sparkles } from 'lucide-react';
-import { FREE_MEMBER_LIMIT } from '../../services/billing';
+import { FREE_MEMBER_LIMIT, FREE_PLACE_LIMIT, PREMIUM_PLACE_LIMIT } from '../../services/billing';
 
 const PremiumSettings = ({
   isSubscribed = false,
@@ -18,7 +18,7 @@ const PremiumSettings = ({
             FamilyBubble Premium
           </div>
           <p className="text-sm text-gray-300">
-            SOS and unlimited family members are unlocked.
+            SOS, extra Places, voice and photo memos, and unlimited family members are unlocked.
           </p>
         </div>
       ) : (
@@ -28,8 +28,10 @@ const PremiumSettings = ({
             {isLapsedSubscriber ? 'Premium expired' : 'Free plan'}
           </div>
           <p className="text-sm text-gray-300">
-            The app is free: radar, map, check-in, status, memos, and up to {FREE_MEMBER_LIMIT} family members.
-            Premium unlocks SOS alerts and room for the whole family.
+            Free includes radar, map, check-in, status, memos, {FREE_PLACE_LIMIT} Place, and up to {FREE_MEMBER_LIMIT} family members.
+          </p>
+          <p className="text-sm text-gray-400">
+            Premium adds SOS alerts, {PREMIUM_PLACE_LIMIT} Places, voice notes and photos, and room for the whole family.
           </p>
           {onUpgrade && (
             <button

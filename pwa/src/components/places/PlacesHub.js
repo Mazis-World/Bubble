@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   PLACE_LIMIT_MESSAGE,
-  MAX_PLACES_PER_USER,
 } from '../../services/places/constants';
 import { canCreatePlace } from '../../services/places/authz';
+import { extraPlaceUpgradeMessage, placeLimitForPlan } from '../../services/billing';
 import {
   automaticDetectionAvailable,
   ensurePlaceLocationPermission,
@@ -30,6 +30,8 @@ const PlacesHub = ({
   members = [],
   currentMember,
   initialPlaceId = null,
+  isPremium = false,
+  onUpgrade,
   onClose,
 }) => {
   const { places, presence } = usePlaces(bubbleId);
@@ -77,7 +79,12 @@ const PlacesHub = ({
   };
 
   const handleAdd = () => {
-    if (mine.length >= MAX_PLACES_PER_USER) {
+    const placeLimit = placeLimitForPlan(isPremium);
+    if (mine.length >= placeLimit) {
+      if (!isPremium) {
+        onUpgrade?.();
+        return;
+      }
       setError(PLACE_LIMIT_MESSAGE);
       return;
     }
@@ -86,8 +93,9 @@ const PlacesHub = ({
       ownerId: currentUserId,
       memberIds: members.map((item) => item.userId).filter(Boolean),
       ownedCount: mine.length,
+      placeLimit,
     })) {
-      setError(PLACE_LIMIT_MESSAGE);
+      setError(isPremium ? PLACE_LIMIT_MESSAGE : extraPlaceUpgradeMessage());
       return;
     }
     setError(null);
@@ -183,6 +191,8 @@ const PlacesHub = ({
           currentUserId={currentUserId}
           locationAvailable={automaticDetectionAvailable(permission)}
           onAdd={handleAdd}
+          placeLimit={placeLimitForPlan(isPremium)}
+          addingDisabledReason={isPremium ? PLACE_LIMIT_MESSAGE : extraPlaceUpgradeMessage()}
           onSelect={(place) => {
             setSelectedId(place.placeId);
             setView('detail');
