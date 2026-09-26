@@ -32,13 +32,4 @@ describe('StatusMediaComposer', () => {
     expect(screen.getByText('Voice memo (optional):')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Record voice memo' })).toBeTruthy();
   });
-
-  test('locks photo and voice behind Premium', () => {
-    const onLockedPress = jest.fn();
-    render(<StatusMediaComposer lockedMedia onLockedPress={onLockedPress} onChange={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Add photo · Premium' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Record voice memo · Premium' })).toBeTruthy();
-    screen.getByRole('button', { name: 'Add photo · Premium' }).click();
-    expect(onLockedPress).toHaveBeenCalled();
-  });
 });

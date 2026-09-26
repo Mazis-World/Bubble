@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Check, Sparkles, Users, MapPin, Shield, Mic, Home, Zap, Gift } from 'lucide-react';
+import { X, Check, Sparkles, Users, MapPin, Shield, Home, Zap, Gift } from 'lucide-react';
 import { Purchases } from '@revenuecat/purchases-js';
 import { analyticsService } from '../../services/analytics';
 
@@ -556,12 +556,6 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
       description: "Free includes 1 Place. Premium unlocks Home, School, and Work with arrival alerts"
     },
     { 
-      icon: Mic, 
-      text: "Voice notes and photos",
-      visual: "invite",
-      description: "Share a 30-second voice memo or a picture from Update Status onto Family Memos"
-    },
-    { 
       icon: Users, 
       text: "Unlimited family members",
       visual: "radar",
@@ -650,11 +644,11 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
               Unlock FamilyBubble Premium
             </h1>
             <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl px-4 max-w-3xl mx-auto mb-4 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.4s' }}>
-              The family bubble is free. Premium adds SOS, extra Places, voice and photo memos, and room for your whole family.
+              The family bubble is free. Premium adds SOS, extra Places, and room for your whole family.
             </p>
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/30 rounded-full px-4 py-2 mt-2 animate-fade-in-up" style={{ opacity: 0, animationDelay: '0.5s' }}>
               <Sparkles size={18} className="text-emerald-300 animate-pulse" />
-              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Free to start • Premium for SOS, Places, and rich status</span>
+              <span className="text-emerald-200 font-semibold text-sm sm:text-base">Free to start • Premium for SOS, extra Places, and the whole family</span>
             </div>
           </div>
 
@@ -663,7 +657,7 @@ const CustomPaywall = ({ onClose, onPurchaseSuccess, onPurchaseError }) => {
             {/* Left side - Features with Visuals */}
             <div className="order-2 lg:order-1 animate-slide-in-left" style={{ opacity: 0, animationDelay: '0.6s' }}>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8 text-center lg:text-left">
-                Premium safety, Places, and richer status
+                Premium safety, extra Places, and family room
               </h2>
               <div className="space-y-6 sm:space-y-8">
                 {features.map((feature, index) => {

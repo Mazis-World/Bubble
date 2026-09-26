@@ -2,10 +2,9 @@
  * FamilyBubble is free to create and use.
  * RevenueCat entitlement "FamilyBubble Premium" unlocks paid features.
  *
- * Free: radar, map, check-in, emoji/text status, Family Memos (text),
+ * Free: radar, map, check-in, status (including voice and photo memos),
  *       1 Place, and up to 6 members.
- * Premium: SOS, extra Places (up to 3), voice and photo status memos,
- *          and room for the whole family.
+ * Premium: SOS, extra Places (up to 3), and room for the whole family.
  */
 
 export const PREMIUM_ENTITLEMENT_ID = 'FamilyBubble Premium';
@@ -20,8 +19,6 @@ export const PREMIUM_FEATURE = {
   SOS: 'sos',
   UNLIMITED_MEMBERS: 'unlimited_members',
   EXTRA_PLACES: 'extra_places',
-  VOICE_MEMO: 'voice_memo',
-  PHOTO_MEMO: 'photo_memo',
 };
 
 export function hasPremiumEntitlement(customerInfo) {
@@ -50,10 +47,6 @@ export function canCreatePlaceOnPlan({ isPremium, ownedCount = 0 }) {
   return ownedCount < placeLimitForPlan(isPremium);
 }
 
-export function canUseRichStatus({ isPremium }) {
-  return isPremium === true;
-}
-
 export function canJoinAtMemberCap({ memberCount, maxMembers }) {
   const count = Number(memberCount) || 0;
   const cap = Number(maxMembers);
@@ -71,8 +64,4 @@ export function joinLimitMessage() {
 
 export function extraPlaceUpgradeMessage() {
   return `Free includes ${FREE_PLACE_LIMIT} Place. Upgrade to Premium for Home, School, and Work.`;
-}
-
-export function richStatusUpgradeMessage() {
-  return 'Voice notes and photos on status are Premium. Upgrade to share them with your bubble.';
 }

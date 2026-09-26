@@ -18,7 +18,7 @@ const PremiumSettings = ({
             FamilyBubble Premium
           </div>
           <p className="text-sm text-gray-300">
-            SOS, extra Places, voice and photo memos, and unlimited family members are unlocked.
+            SOS, extra Places, and unlimited family members are unlocked.
           </p>
         </div>
       ) : (
@@ -28,10 +28,10 @@ const PremiumSettings = ({
             {isLapsedSubscriber ? 'Premium expired' : 'Free plan'}
           </div>
           <p className="text-sm text-gray-300">
-            Free includes radar, map, check-in, status, memos, {FREE_PLACE_LIMIT} Place, and up to {FREE_MEMBER_LIMIT} family members.
+            Free includes radar, map, check-in, status, voice and photo memos, {FREE_PLACE_LIMIT} Place, and up to {FREE_MEMBER_LIMIT} family members.
           </p>
           <p className="text-sm text-gray-400">
-            Premium adds SOS alerts, {PREMIUM_PLACE_LIMIT} Places, voice notes and photos, and room for the whole family.
+            Premium adds SOS alerts, {PREMIUM_PLACE_LIMIT} Places, and room for the whole family.
           </p>
           {onUpgrade && (
             <button

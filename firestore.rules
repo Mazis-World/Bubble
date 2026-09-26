@@ -252,14 +252,7 @@ service cloud.firestore {
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.bubbleId == bubbleId &&
                        request.resource.data.type in ['status', 'sos', 'checkin', 'place'] &&
-                       request.resource.data.userId is string &&
-                       (
-                         (
-                           !('photoUrl' in request.resource.data) &&
-                           !('voiceUrl' in request.resource.data)
-                         ) ||
-                         isPremiumUser()
-                       );
+                       request.resource.data.userId is string;
 
         allow update, delete: if false;
       }

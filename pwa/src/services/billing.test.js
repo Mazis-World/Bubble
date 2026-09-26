@@ -6,7 +6,6 @@ import {
   canCreatePlaceOnPlan,
   canInviteMoreMembers,
   canJoinAtMemberCap,
-  canUseRichStatus,
   extraPlaceUpgradeMessage,
   hadPremiumEntitlement,
   hasPremiumEntitlement,
@@ -49,11 +48,6 @@ describe('billing', () => {
     expect(canCreatePlaceOnPlan({ isPremium: false, ownedCount: 1 })).toBe(false);
     expect(canCreatePlaceOnPlan({ isPremium: true, ownedCount: 1 })).toBe(true);
     expect(extraPlaceUpgradeMessage()).toMatch(/Home, School, and Work/);
-  });
-
-  test('voice notes and photos on status are Premium', () => {
-    expect(canUseRichStatus({ isPremium: false })).toBe(false);
-    expect(canUseRichStatus({ isPremium: true })).toBe(true);
   });
 
   test('join respects the bubble member cap stored on the bubble', () => {

@@ -121,12 +121,7 @@ const Bubble = ({
     setStatusPosting(true);
     try {
       const emoji = selectedStatusEmoji || bubbleData?.currentMember?.status || '😊';
-      await handleStatusChange(
-        emoji,
-        statusLocation,
-        statusText,
-        isSubscribed ? statusMedia : {}
-      );
+      await handleStatusChange(emoji, statusLocation, statusText, statusMedia);
       resetStatusSheet();
     } catch (error) {
       setStatusPosting(false);
@@ -437,8 +432,6 @@ const Bubble = ({
             {showStatus && (
               <StatusMediaComposer
                 disabled={statusPosting}
-                lockedMedia={!isSubscribed}
-                onLockedPress={onUpgrade}
                 onChange={setStatusMedia}
               />
             )}
