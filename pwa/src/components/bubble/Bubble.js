@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
@@ -15,15 +15,21 @@ import SosActiveScreen from '../sos/SosActiveScreen';
 import SosAlertScreen from '../sos/SosAlertScreen';
 import SosPermissionSheet from '../sos/SosPermissionSheet';
 import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
+import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
-import { Circle, Plus, Share2, Settings } from 'lucide-react';
+import PlacesHub from '../places/PlacesHub';
+import MapViewBadges from './MapViewBadges';
+import CheckInPopup from './CheckInPopup';
+import { ensurePlaceLocationPermission } from '../../services/places/permissions';
+import usePlaces from '../../hooks/usePlaces';
+import { Circle, Navigation, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
 import { auth } from '../../firebase';
 import { API } from '../../services/bubble';
 import useFamilyMemos from '../../hooks/useFamilyMemos';
 import { MEMO_TYPE } from '../../services/memos';
-import { canCheckIn, readCurrentPosition } from '../../services/checkin';
+import { buildCheckInMemo, canCheckIn, lookupPlaceLabel, readCurrentPosition } from '../../services/checkin';
 
 const Bubble = ({
   bubbleData,
@@ -41,6 +47,10 @@ const Bubble = ({
   onLogout,
   isGeneratingInvite = false,
   sos = null,
+  isSubscribed = false,
+  isLapsedSubscriber = false,
+  onUpgrade,
+  onRestorePurchases,
 }) => {
   const [shareSuccess, setShareSuccess] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -63,11 +73,34 @@ const Bubble = ({
   const [showMemos, setShowMemos] = useState(false);
   const [mapFocus, setMapFocus] = useState(null);
   const [checkInState, setCheckInState] = useState('idle');
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [checkInMemo, setCheckInMemo] = useState(null);
+  const [showPlaces, setShowPlaces] = useState(false);
+  const [placesFocusId, setPlacesFocusId] = useState(null);
   const openSosIds = useMemo(
     () => (sos?.openEvents || []).map((event) => event.sosId),
     [sos?.openEvents]
   );
   const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
+  const { places, presence } = usePlaces(bubbleData?.bubble?.id);
+
+  const openPlaces = useCallback((placeId = null) => {
+    setPlacesFocusId(placeId);
+    setShowPlaces(true);
+    ensurePlaceLocationPermission();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const placeId = params.get('place');
+      if (placeId) {
+        openPlaces(placeId);
+      }
+    } catch (error) {
+      // ignore malformed URLs
+    }
+  }, [openPlaces]);
 
   const resetStatusSheet = () => {
     setShowStatus(false);
@@ -143,8 +176,11 @@ const Bubble = ({
     const bubbleId = bubbleData?.bubble?.id;
     const nodeId = bubbleData?.currentMember?.id;
     const uid = auth.currentUser?.uid;
+    setViewMode('globe');
+    setShowCheckIn(true);
     if (
       checkInState === 'busy'
+      || checkInState === 'done'
       || !bubbleId
       || !nodeId
       || !canCheckIn({ authUid: uid, userId: uid, isBubbleMember: true })
@@ -153,26 +189,33 @@ const Bubble = ({
     }
 
     setCheckInState('busy');
+    setCheckInMemo(null);
     try {
       const location = await readCurrentPosition();
-      await API.checkIn(bubbleId, nodeId, location);
+      const address = await lookupPlaceLabel(location.latitude, location.longitude);
+      const checkInLocation = address ? { ...location, address } : location;
+      await API.checkIn(bubbleId, nodeId, checkInLocation);
       analyticsService.trackCheckIn(bubbleId, true);
       setMapFocus({
         latitude: location.latitude,
         longitude: location.longitude,
       });
+      setCheckInMemo({
+        ...buildCheckInMemo({ location: checkInLocation }),
+        createdAt: Date.now(),
+      });
       setCheckInState('done');
-      window.setTimeout(() => {
-        setCheckInState((current) => (current === 'done' ? 'idle' : current));
-      }, 2500);
     } catch (error) {
       console.error('Check-in failed:', error);
       analyticsService.trackCheckIn(bubbleId, false);
       setCheckInState('error');
-      window.setTimeout(() => {
-        setCheckInState((current) => (current === 'error' ? 'idle' : current));
-      }, 3000);
     }
+  };
+
+  const closeCheckIn = () => {
+    if (checkInState === 'busy') return;
+    setShowCheckIn(false);
+    setCheckInState('idle');
   };
 
   if (!bubbleData || !bubbleData.currentMember) {
@@ -190,6 +233,18 @@ const Bubble = ({
       </div>
     );
   }
+
+  const viewBadges = (
+    <MapViewBadges
+      memberCount={bubbleData.allMembers.length}
+      memoCount={familyMemos.length}
+      checkInState={checkInState}
+      onMemberCountClick={() => setShowOverview(true)}
+      onMemosClick={() => setShowMemos(true)}
+      onCheckIn={handleCheckIn}
+      onPlacesClick={() => openPlaces()}
+    />
+  );
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden flex flex-col safe-area-insets" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
@@ -268,11 +323,11 @@ const Bubble = ({
           <GlobeView
             bubbleData={bubbleData}
             focusTarget={mapFocus}
-            onMemberCountClick={() => setShowOverview(true)}
-            onMemosClick={() => setShowMemos(true)}
-            onCheckIn={handleCheckIn}
-            checkInState={checkInState}
-            memoCount={familyMemos.length}
+            checkInOpen={showCheckIn}
+            overlay={viewBadges}
+            places={places}
+            presence={presence}
+            onPlaceClick={(place) => openPlaces(place?.placeId)}
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
@@ -282,6 +337,10 @@ const Bubble = ({
         ) : (
           <BubbleCluster
             bubbleData={bubbleData}
+            overlay={viewBadges}
+            places={places}
+            presence={presence}
+            onPlaceClick={(place) => openPlaces(place?.placeId)}
             onStatusClick={() => setShowStatus(true)}
             onMemberClick={(member) => {
               setSelectedMember(member);
@@ -300,6 +359,8 @@ const Bubble = ({
             <SosButton
               onHoldComplete={sos.handleHoldComplete}
               disabled={sos.busy || sos.sosActive}
+              locked={!isSubscribed}
+              onLockedPress={onUpgrade}
             />
           )}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -549,9 +610,39 @@ const Bubble = ({
         </div>
         
         <div className="my-6 border-t border-gray-800" />
+
+        <div className="space-y-3 mb-6">
+          <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+            <Navigation size={16} />
+            Places
+          </h4>
+          <p className="text-gray-400 text-sm">
+            Save Home, School, or Work and FamilyBubble can let family know when you arrive or leave.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettings(false);
+              openPlaces();
+            }}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-600/30 transition-all"
+          >
+            Open Places
+          </button>
+        </div>
+        
+        <div className="my-6 border-t border-gray-800" />
         
         {/* Notification Settings */}
         <NotificationSettings />
+        
+        <div className="my-6 border-t border-gray-800" />
+        <PremiumSettings
+          isSubscribed={isSubscribed}
+          isLapsedSubscriber={isLapsedSubscriber}
+          onUpgrade={onUpgrade}
+          onRestorePurchases={onRestorePurchases}
+        />
         
         <div className="my-6 border-t border-gray-800" />
         <EmergencyNumberSettings />
@@ -565,6 +656,26 @@ const Bubble = ({
             Sign Out
           </button>
         </div>
+      </SlideUpCard>
+
+      <SlideUpCard
+        isOpen={showPlaces}
+        onClose={() => {
+          setShowPlaces(false);
+          setPlacesFocusId(null);
+        }}
+        title="Places"
+      >
+        <PlacesHub
+          bubbleId={bubbleData?.bubble?.id}
+          members={bubbleData?.allMembers || []}
+          currentMember={bubbleData?.currentMember}
+          initialPlaceId={placesFocusId}
+          onClose={() => {
+            setShowPlaces(false);
+            setPlacesFocusId(null);
+          }}
+        />
       </SlideUpCard>
 
       {/* Profile View Modal */}
@@ -656,6 +767,18 @@ const Bubble = ({
           }}
         />
       </SlideUpCard>
+
+      <CheckInPopup
+        open={showCheckIn}
+        state={checkInState}
+        member={bubbleData.currentMember}
+        memo={checkInMemo || familyMemos.find((memo) => (
+          memo.type === MEMO_TYPE.CHECKIN
+          && (memo.userId === bubbleData.currentMember.userId || memo.nodeId === bubbleData.currentMember.id)
+        ))}
+        onConfirm={handleCheckIn}
+        onClose={closeCheckIn}
+      />
 
       {sos && (
         <>

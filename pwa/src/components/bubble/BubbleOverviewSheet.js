@@ -45,12 +45,15 @@ const MemberRow = ({ member, onClick }) => (
 const MemoRow = ({ memo, member, onClick }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
+  const isPlace = memo.type === MEMO_TYPE.PLACE;
   const title = isSos
     ? '🚨 SOS ALERT'
     : isCheckin
       ? '📍 Checked in'
-      : getStatusEmoji(memo.status);
-  const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : 'Updated status';
+      : isPlace
+        ? (memo.message || 'Place update')
+        : getStatusEmoji(memo.status);
+  const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : isPlace ? 'Place update' : 'Updated status';
   return (
     <div
       className={`w-full text-left p-3 rounded-2xl border ${
@@ -66,12 +69,18 @@ const MemoRow = ({ memo, member, onClick }) => {
           <MemberAvatar member={member} size={40} />
           <div className="min-w-0 flex-1">
             <p className={`font-bold ${isSos ? 'text-red-200' : 'text-white'}`}>
-              {title}{' '}
-              {member?.name || 'Family member'}
+              {isPlace ? title : (
+                <>
+                  {title}{' '}
+                  {member?.name || 'Family member'}
+                </>
+              )}
             </p>
-            <p className={`text-sm ${isSos ? 'text-red-100' : 'text-gray-300'}`}>
-              {memo.message || fallbackMessage}
-            </p>
+            {!isPlace && (
+              <p className={`text-sm ${isSos ? 'text-red-100' : 'text-gray-300'}`}>
+                {memo.message || fallbackMessage}
+              </p>
+            )}
             <p className="text-xs text-gray-400 mt-1">{formatLastSeen(memo.createdAt)}</p>
           </div>
         </div>

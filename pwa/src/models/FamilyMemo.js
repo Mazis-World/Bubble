@@ -16,6 +16,9 @@ class FamilyMemo {
     photoUrl = null,
     voiceUrl = null,
     voiceDurationMs = null,
+    placeId = null,
+    placeEventType = null,
+    recipientUserIds = null,
     createdAt = null,
   }) {
     this.memoId = memoId;
@@ -30,6 +33,9 @@ class FamilyMemo {
     this.photoUrl = photoUrl;
     this.voiceUrl = voiceUrl;
     this.voiceDurationMs = voiceDurationMs;
+    this.placeId = placeId;
+    this.placeEventType = placeEventType;
+    this.recipientUserIds = recipientUserIds;
     this.createdAt = createdAt;
   }
 
@@ -48,6 +54,9 @@ class FamilyMemo {
       photoUrl: data.photoUrl || null,
       voiceUrl: data.voiceUrl || null,
       voiceDurationMs: data.voiceDurationMs ?? null,
+      placeId: data.placeId || null,
+      placeEventType: data.placeEventType || null,
+      recipientUserIds: Array.isArray(data.recipientUserIds) ? data.recipientUserIds : null,
       createdAt: data.createdAt || null,
     });
   }

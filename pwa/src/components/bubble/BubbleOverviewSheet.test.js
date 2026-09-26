@@ -89,4 +89,19 @@ describe('Bubble overview sheets', () => {
     expect(screen.getByLabelText('Voice memo')).toBeTruthy();
     expect(screen.getByText('Voice note · 0:04')).toBeTruthy();
   });
+
+  test('place memos show the family-friendly message', () => {
+    render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={[
+          { memoId: 'm4', userId: 'u1', nodeId: 'n1', type: 'place', message: '🏠 Ada arrived home' },
+        ]}
+        bubbleName="Home"
+        onMemoClick={() => {}}
+      />
+    );
+    expect(screen.getByText('🏠 Ada arrived home')).toBeTruthy();
+  });
 });

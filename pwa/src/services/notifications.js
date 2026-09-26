@@ -371,6 +371,9 @@ class NotificationService {
             return;
           }
           const data = payload?.data || {};
+          if (String(data.type || '').startsWith('PLACE_') && this.preferences.placeAlerts === false) {
+            return;
+          }
           const title = data.title || payload?.notification?.title || 'FamilyBubble';
           this.show(title, {
             body: data.body || payload?.notification?.body || '',
@@ -434,6 +437,7 @@ class NotificationService {
       newMembers: true,
       locationUpdates: false,
       sosAlerts: true,
+      placeAlerts: true,
     };
   }
 
