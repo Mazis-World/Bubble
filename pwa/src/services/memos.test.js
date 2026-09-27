@@ -112,9 +112,39 @@ describe('Family Memos', () => {
       expect.objectContaining({
         type: MEMO_TYPE.STATUS,
         photoUrl: 'https://example.com/p.jpg',
+        photoUrls: ['https://example.com/p.jpg'],
         voiceUrl: 'https://example.com/v.webm',
         voiceDurationMs: 4200,
         reactions: {},
+      })
+    );
+  });
+
+  test('stores several photos on a status memo', async () => {
+    addDoc.mockResolvedValue({ id: 'memo-10' });
+    await createFamilyMemo({
+      bubbleId: 'b1',
+      userId: 'user-1',
+      nodeId: 'n1',
+      type: MEMO_TYPE.STATUS,
+      status: '😊',
+      message: 'Kitchen',
+      photoUrl: 'https://example.com/1.jpg',
+      photoUrls: [
+        'https://example.com/1.jpg',
+        'https://example.com/2.jpg',
+        'https://example.com/3.jpg',
+      ],
+    });
+    expect(addDoc).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        photoUrl: 'https://example.com/1.jpg',
+        photoUrls: [
+          'https://example.com/1.jpg',
+          'https://example.com/2.jpg',
+          'https://example.com/3.jpg',
+        ],
       })
     );
   });

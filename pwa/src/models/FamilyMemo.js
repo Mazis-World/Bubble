@@ -14,6 +14,7 @@ class FamilyMemo {
     location = null,
     sosId = null,
     photoUrl = null,
+    photoUrls = null,
     voiceUrl = null,
     voiceDurationMs = null,
     placeId = null,
@@ -32,6 +33,13 @@ class FamilyMemo {
     this.location = location;
     this.sosId = sosId;
     this.photoUrl = photoUrl;
+    this.photoUrls = Array.isArray(photoUrls)
+      ? photoUrls.filter((url) => typeof url === 'string' && url).slice(0, 4)
+      : (photoUrl ? [photoUrl] : []);
+    if (this.photoUrl && !this.photoUrls.includes(this.photoUrl)) {
+      this.photoUrls.unshift(this.photoUrl);
+    }
+    if (!this.photoUrl && this.photoUrls[0]) this.photoUrl = this.photoUrls[0];
     this.voiceUrl = voiceUrl;
     this.voiceDurationMs = voiceDurationMs;
     this.placeId = placeId;
@@ -54,6 +62,7 @@ class FamilyMemo {
       location: data.location || null,
       sosId: data.sosId || null,
       photoUrl: data.photoUrl || null,
+      photoUrls: Array.isArray(data.photoUrls) ? data.photoUrls : (data.photoUrl ? [data.photoUrl] : []),
       voiceUrl: data.voiceUrl || null,
       voiceDurationMs: data.voiceDurationMs ?? null,
       placeId: data.placeId || null,

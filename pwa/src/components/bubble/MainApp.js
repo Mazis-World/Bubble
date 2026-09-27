@@ -544,6 +544,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       {
         location,
         photoFile: media.photoFile || null,
+        photoFiles: Array.isArray(media.photoFiles) ? media.photoFiles : (media.photoFile ? [media.photoFile] : []),
         voiceBlob: media.voiceBlob || null,
         voiceDurationMs: media.voiceDurationMs || null,
       }

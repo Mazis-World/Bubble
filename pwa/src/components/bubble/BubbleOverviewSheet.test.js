@@ -1,14 +1,18 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 
-jest.mock('../../services/memoMedia', () => ({
-  formatVoiceDuration: (ms) => {
-    const total = Math.max(0, Math.round((Number(ms) || 0) / 1000));
-    const minutes = Math.floor(total / 60);
-    const seconds = total % 60;
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-  },
-}));
+jest.mock('../../services/memoMedia', () => {
+  const actual = jest.requireActual('../../services/memoMedia');
+  return {
+    ...actual,
+    formatVoiceDuration: (ms) => {
+      const total = Math.max(0, Math.round((Number(ms) || 0) / 1000));
+      const minutes = Math.floor(total / 60);
+      const seconds = total % 60;
+      return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    },
+  };
+});
 
 describe('Bubble overview sheets', () => {
   const members = [
@@ -88,6 +92,36 @@ describe('Bubble overview sheets', () => {
     expect(screen.getByAltText('Attached to this status update')).toBeTruthy();
     expect(screen.getByLabelText('Voice memo')).toBeTruthy();
     expect(screen.getByText('Voice note · 0:04')).toBeTruthy();
+  });
+
+  test('status memos adjust the photo layout for several images', () => {
+    const { container } = render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={[
+          {
+            memoId: 'm3b',
+            userId: 'u1',
+            nodeId: 'n1',
+            type: 'status',
+            status: '😊',
+            message: 'Kitchen pics',
+            photoUrls: [
+              'https://example.com/one.jpg',
+              'https://example.com/two.jpg',
+              'https://example.com/three.jpg',
+            ],
+          },
+        ]}
+        bubbleName="Home"
+        onMemoClick={() => {}}
+      />
+    );
+    expect(container.querySelector('[data-photo-layout="triple"]')).toBeTruthy();
+    expect(screen.getByAltText('Attached to this status update')).toBeTruthy();
+    expect(screen.getByAltText('Attached photo 2')).toBeTruthy();
+    expect(screen.getByAltText('Attached photo 3')).toBeTruthy();
   });
 
   test('place memos show the family-friendly message', () => {

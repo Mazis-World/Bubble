@@ -969,16 +969,20 @@ export const API = {
       updateData.statusText = statusText;
     }
 
-    const mediaPromise = (!options.skipMemo && (options.photoFile || options.voiceBlob))
+    const photoFiles = Array.isArray(options.photoFiles)
+      ? options.photoFiles.filter(Boolean)
+      : (options.photoFile ? [options.photoFile] : []);
+    const mediaPromise = (!options.skipMemo && (photoFiles.length || options.voiceBlob))
       ? prepareStatusMemoMedia({
-          photoFile: options.photoFile || null,
+          photoFile: photoFiles[0] || null,
+          photoFiles,
           voiceBlob: options.voiceBlob || null,
           userId: auth.currentUser?.uid,
         }).catch((error) => {
           console.warn('Status memo media skipped:', error.message);
-          return { photoUrl: null, voiceUrl: null };
+          return { photoUrl: null, photoUrls: [], voiceUrl: null };
         })
-      : Promise.resolve({ photoUrl: null, voiceUrl: null });
+      : Promise.resolve({ photoUrl: null, photoUrls: [], voiceUrl: null });
 
     await updateDoc(nodeRef, updateData);
 
@@ -995,6 +999,7 @@ export const API = {
         message: statusText,
         location: options.location || node.lastKnownLocation || null,
         photoUrl: media.photoUrl,
+        photoUrls: media.photoUrls,
         voiceUrl: media.voiceUrl,
         voiceDurationMs: options.voiceDurationMs || null,
       }).catch((error) => {

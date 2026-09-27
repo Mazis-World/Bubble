@@ -206,6 +206,7 @@ export const createFamilyMemo = async ({
   location = null,
   sosId = null,
   photoUrl = null,
+  photoUrls = null,
   voiceUrl = null,
   voiceDurationMs = null,
   placeId = null,
@@ -228,7 +229,16 @@ export const createFamilyMemo = async ({
     sosId: sosId || null,
     createdAt: serverTimestamp(),
   };
-  if (photoUrl) payload.photoUrl = photoUrl;
+  const photos = [];
+  const addPhoto = (url) => {
+    if (typeof url === 'string' && url && !photos.includes(url)) photos.push(url);
+  };
+  addPhoto(photoUrl);
+  if (Array.isArray(photoUrls)) photoUrls.forEach(addPhoto);
+  if (photos.length) {
+    payload.photoUrls = photos.slice(0, 4);
+    payload.photoUrl = payload.photoUrls[0];
+  }
   if (voiceUrl) payload.voiceUrl = voiceUrl;
   if (voiceDurationMs != null) payload.voiceDurationMs = voiceDurationMs;
   if (type === MEMO_TYPE.PLACE) {

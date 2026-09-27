@@ -63,6 +63,7 @@ const Bubble = ({
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
   const [statusMedia, setStatusMedia] = useState({
     photoFile: null,
+    photoFiles: [],
     voiceBlob: null,
     voiceDurationMs: null,
     recording: false,
@@ -117,6 +118,7 @@ const Bubble = ({
     setSelectedStatusEmoji(null);
     setStatusMedia({
       photoFile: null,
+      photoFiles: [],
       voiceBlob: null,
       voiceDurationMs: null,
       recording: false,
