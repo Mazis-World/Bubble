@@ -5,6 +5,7 @@ const {
   recipientUserIdsFromNodes,
   tokensFromUserData,
   buildMemoPush,
+  filterPlaceMemoRecipients,
   isInvalidTokenError,
 } = require('./push');
 
@@ -13,14 +14,11 @@ admin.initializeApp();
 const firestore = admin.firestore();
 const messaging = admin.messaging();
 
-async function tokensForBubbleExcept(bubbleId, exceptUserId) {
-  const nodesSnap = await firestore.collection('bubbles').doc(bubbleId).collection('nodes').get();
-  const nodes = nodesSnap.docs.map((snap) => snap.data());
-  const userIds = recipientUserIdsFromNodes(nodes, exceptUserId);
+async function tokensForUserIds(userIds) {
   const tokens = [];
   const tokenOwners = new Map();
 
-  await Promise.all(userIds.map(async (uid) => {
+  await Promise.all((userIds || []).map(async (uid) => {
     const userSnap = await firestore.collection('users').doc(uid).get();
     const userTokens = tokensFromUserData(userSnap.data());
     userTokens.forEach((token) => {
@@ -30,6 +28,37 @@ async function tokensForBubbleExcept(bubbleId, exceptUserId) {
   }));
 
   return { tokens, tokenOwners };
+}
+
+async function tokensForBubbleExcept(bubbleId, exceptUserId) {
+  const nodesSnap = await firestore.collection('bubbles').doc(bubbleId).collection('nodes').get();
+  const nodes = nodesSnap.docs.map((snap) => snap.data());
+  const userIds = recipientUserIdsFromNodes(nodes, exceptUserId);
+  return tokensForUserIds(userIds);
+}
+
+async function tokensForPlaceMemo(bubbleId, memo) {
+  const nodesSnap = await firestore.collection('bubbles').doc(bubbleId).collection('nodes').get();
+  const memberUserIds = recipientUserIdsFromNodes(nodesSnap.docs.map((snap) => snap.data()), null);
+  let placeRecipientUserIds = Array.isArray(memo.recipientUserIds) ? memo.recipientUserIds : null;
+  if (memo.placeId) {
+    const placeSnap = await firestore
+      .collection('bubbles')
+      .doc(bubbleId)
+      .collection('places')
+      .doc(memo.placeId)
+      .get();
+    if (!placeSnap.exists) {
+      return { tokens: [], tokenOwners: new Map() };
+    }
+    placeRecipientUserIds = placeSnap.data().recipientUserIds || [];
+  }
+  const userIds = filterPlaceMemoRecipients({
+    memberUserIds,
+    actorUserId: memo.userId,
+    placeRecipientUserIds,
+  });
+  return tokensForUserIds(userIds);
 }
 
 async function removeInvalidTokens(tokenOwners, failedTokens) {
@@ -83,7 +112,9 @@ exports.onFamilyMemoCreated = onDocumentCreated(
     const bubbleId = event.params.bubbleId;
     if (!memo || !memo.userId) return;
 
-    const { tokens, tokenOwners } = await tokensForBubbleExcept(bubbleId, memo.userId);
+    const { tokens, tokenOwners } = memo.type === 'place'
+      ? await tokensForPlaceMemo(bubbleId, memo)
+      : await tokensForBubbleExcept(bubbleId, memo.userId);
     if (!tokens.length) {
       logger.info('No FCM tokens for bubble members', { bubbleId });
       return;

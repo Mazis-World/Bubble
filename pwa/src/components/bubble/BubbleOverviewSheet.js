@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import { MEMO_TYPE, formatMemberLocation } from '../../services/memos';
+import { formatVoiceDuration } from '../../services/memoMedia';
 
 const MemberAvatar = ({ member, size = 44 }) => {
   const photo = member?.photoUrl || member?.photoURL;
@@ -44,34 +45,73 @@ const MemberRow = ({ member, onClick }) => (
 const MemoRow = ({ memo, member, onClick }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
+  const isPlace = memo.type === MEMO_TYPE.PLACE;
   const title = isSos
     ? '🚨 SOS ALERT'
     : isCheckin
       ? '📍 Checked in'
-      : getStatusEmoji(memo.status);
-  const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : 'Updated status';
+      : isPlace
+        ? (memo.message || 'Place update')
+        : getStatusEmoji(memo.status);
+  const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : isPlace ? 'Place update' : 'Updated status';
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left p-3 rounded-2xl border tap-target ${
+    <div
+      className={`w-full text-left p-3 rounded-2xl border ${
         isSos ? 'bg-red-950/70 border-red-500/50' : 'glass-light border-white/10'
       }`}
     >
-      <div className="flex items-start gap-3">
-        <MemberAvatar member={member} size={40} />
-        <div className="min-w-0 flex-1">
-          <p className={`font-bold ${isSos ? 'text-red-200' : 'text-white'}`}>
-            {title}{' '}
-            {member?.name || 'Family member'}
-          </p>
-          <p className={`text-sm ${isSos ? 'text-red-100' : 'text-gray-300'}`}>
-            {memo.message || fallbackMessage}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">{formatLastSeen(memo.createdAt)}</p>
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full text-left tap-target"
+      >
+        <div className="flex items-start gap-3">
+          <MemberAvatar member={member} size={40} />
+          <div className="min-w-0 flex-1">
+            <p className={`font-bold ${isSos ? 'text-red-200' : 'text-white'}`}>
+              {isPlace ? title : (
+                <>
+                  {title}{' '}
+                  {member?.name || 'Family member'}
+                </>
+              )}
+            </p>
+            {!isPlace && (
+              <p className={`text-sm ${isSos ? 'text-red-100' : 'text-gray-300'}`}>
+                {memo.message || fallbackMessage}
+              </p>
+            )}
+            <p className="text-xs text-gray-400 mt-1">{formatLastSeen(memo.createdAt)}</p>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {memo.photoUrl && (
+        <button type="button" onClick={onClick} className="mt-2 block w-full">
+          <img
+            src={memo.photoUrl}
+            alt="Attached to this status update"
+            className="w-full max-h-48 object-cover rounded-xl border border-white/10"
+          />
+        </button>
+      )}
+      {memo.voiceUrl && (
+        <div className="mt-2">
+          <audio
+            className="w-full"
+            controls
+            preload="none"
+            src={memo.voiceUrl}
+            aria-label="Voice memo"
+            onClick={(event) => event.stopPropagation()}
+          />
+          {memo.voiceDurationMs != null && (
+            <p className="text-xs text-gray-400 mt-1">
+              Voice note · {formatVoiceDuration(memo.voiceDurationMs)}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

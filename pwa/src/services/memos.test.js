@@ -1,7 +1,9 @@
+import { addDoc } from 'firebase/firestore';
 import {
   MEMO_TYPE,
   canCreateMemo,
   canViewMemos,
+  createFamilyMemo,
   formatMemberLocation,
   sortFamilyMemos,
 } from './memos';
@@ -53,6 +55,12 @@ describe('Family Memos', () => {
       isBubbleMember: true,
       type: MEMO_TYPE.CHECKIN,
     })).toBe(true);
+    expect(canCreateMemo({
+      authUid: 'user-1',
+      userId: 'user-1',
+      isBubbleMember: true,
+      type: MEMO_TYPE.PLACE,
+    })).toBe(true);
   });
 
   test('sorts newest first and pins active SOS memos', () => {
@@ -69,6 +77,31 @@ describe('Family Memos', () => {
     expect(formatMemberLocation(null)).toBe('Location unavailable');
     expect(formatMemberLocation({ latitude: 1.23456, longitude: 2.34567 })).toContain('1.235');
     expect(formatMemberLocation({ latitude: 1, longitude: 2, address: 'Home' })).toBe('Home');
+  });
+
+  test('stores photo and voice on a status memo', async () => {
+    addDoc.mockResolvedValue({ id: 'memo-9' });
+    const id = await createFamilyMemo({
+      bubbleId: 'b1',
+      userId: 'user-1',
+      nodeId: 'n1',
+      type: MEMO_TYPE.STATUS,
+      status: '😊',
+      message: 'On my way',
+      photoUrl: 'https://example.com/p.jpg',
+      voiceUrl: 'https://example.com/v.webm',
+      voiceDurationMs: 4200,
+    });
+    expect(id).toBe('memo-9');
+    expect(addDoc).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        type: MEMO_TYPE.STATUS,
+        photoUrl: 'https://example.com/p.jpg',
+        voiceUrl: 'https://example.com/v.webm',
+        voiceDurationMs: 4200,
+      })
+    );
   });
 });
 

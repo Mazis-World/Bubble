@@ -11,6 +11,7 @@ describe('Map view badges', () => {
           onMemberCountClick={() => {}}
           onMemosClick={() => {}}
           onCheckIn={() => {}}
+          onPlacesClick={() => {}}
         />
       </div>
     );
@@ -22,7 +23,12 @@ describe('Map view badges', () => {
     expect(checkIn.querySelector('svg').getAttribute('class')).toContain('text-blue-400');
     expect(checkIn.querySelector('svg').getAttribute('class')).toContain('text-blue-400');
     expect(members.compareDocumentPosition(checkIn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole('button', { name: /2 Memos/ })).toBeTruthy();
+    const memos = screen.getByRole('button', { name: /2 Memos/ });
+    const places = screen.getByRole('button', { name: /Open Places/ });
+    expect(places.querySelector('svg')).toBeTruthy();
+    expect(places.textContent).toContain('Places');
+    expect(places.textContent).not.toContain('📍');
+    expect(memos.compareDocumentPosition(places) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   test('disables check-in while a location read is in progress', () => {

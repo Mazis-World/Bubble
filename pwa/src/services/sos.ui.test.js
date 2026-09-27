@@ -12,6 +12,22 @@ describe('SOS hold button', () => {
     fireEvent.pointerUp(button);
     expect(onHoldComplete).not.toHaveBeenCalled();
   });
+
+  test('opens upgrade instead of holding when SOS is a premium lock', () => {
+    const onHoldComplete = jest.fn();
+    const onLockedPress = jest.fn();
+    render(
+      <SosButton
+        onHoldComplete={onHoldComplete}
+        locked
+        onLockedPress={onLockedPress}
+      />
+    );
+    const button = screen.getByRole('button', { name: /premium/i });
+    fireEvent.pointerDown(button);
+    expect(onLockedPress).toHaveBeenCalledTimes(1);
+    expect(onHoldComplete).not.toHaveBeenCalled();
+  });
 });
 
 describe('SOS notification delivery', () => {

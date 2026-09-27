@@ -6,8 +6,11 @@ import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'fi
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
 import useSos from '../../hooks/useSos';
+import usePlaceWatcher from '../../hooks/usePlaceWatcher';
+import { getPlaceWatcher } from '../../services/places/watcher';
+import { canInviteMoreMembers, inviteLimitMessage } from '../../services/billing';
 
-const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
+const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, isLapsedSubscriber = false, onUpgrade, onRestorePurchases, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
   const [bubbleData, setBubbleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
@@ -21,7 +24,16 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const currentBubbleIdRef = useRef(null);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
   const joinAttemptedRef = useRef(null);
+  const isSubscribedRef = useRef(isSubscribed);
+  isSubscribedRef.current = isSubscribed;
   const sos = useSos({ userId, bubbleData, initialSosLink: sosLink });
+  usePlaceWatcher({
+    bubbleId: bubbleData?.bubble?.id,
+    userId: bubbleData?.currentMember?.userId || userId,
+    nodeId: bubbleData?.currentMember?.id,
+    displayName: bubbleData?.currentMember?.name,
+    enabled: Boolean(bubbleData?.bubble?.id && bubbleData?.currentMember && !sos.sosActive),
+  });
 
   const setupRealtimeListener = React.useCallback((bubbleId, memberId) => {
     // Clean up previous listener
@@ -169,7 +181,9 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       const { bubbleName, firstName, lastName, imageFile, relationshipRole, location } = bubbleCreationData;
       console.log("Creating bubble for user:", userId, "with data:", { bubbleName, firstName, lastName, location });
       
-      API.createBubble(userId, firstName, lastName, bubbleName, imageFile, relationshipRole, location)
+      API.createBubble(userId, firstName, lastName, bubbleName, imageFile, relationshipRole, location, {
+        isPremium: Boolean(isSubscribedRef.current),
+      })
         .then(async (result) => {
           console.log("Bubble created successfully:", result);
           onBubbleCreated(); // Clear the creation data from App.js
@@ -414,6 +428,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
     try {
       const location = await getCurrentLocation();
+      getPlaceWatcher().ingest(location).catch(() => {});
       await API.updateLocation(
         bubbleData.bubble.id,
         bubbleData.currentMember.id,
@@ -490,14 +505,49 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }
   };
 
-  const handleStatusChange = async (status, location = null, statusText = null) => {
+  const handleStatusChange = async (status, location = null, statusText = null, media = {}) => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.currentMember || !bubbleData.currentMember.id) {
       console.error("Cannot update status: missing bubble or member data");
       return;
     }
     
+    // Show the new status on radar immediately; the nodes listener confirms it.
+    const memberId = bubbleData.currentMember.id;
+    const previousBubbleData = bubbleData;
+    setBubbleData((prev) => {
+      if (!prev?.currentMember) return prev;
+      const patchMember = (member) => {
+        if (member.id !== memberId) return member;
+        const next = { ...member, status };
+        if (statusText !== null) next.statusText = statusText;
+        if (location?.latitude != null && location?.longitude != null) {
+          next.lastKnownLocation = {
+            ...(member.lastKnownLocation || {}),
+            ...location,
+          };
+        }
+        return next;
+      };
+      return {
+        ...prev,
+        allMembers: (prev.allMembers || []).map(patchMember),
+        currentMember: patchMember(prev.currentMember),
+      };
+    });
+
     // Update status immediately (don't wait for location)
-    const statusPromise = API.updateStatus(bubbleData.bubble.id, bubbleData.currentMember.id, status, statusText);
+    const statusPromise = API.updateStatus(
+      bubbleData.bubble.id,
+      bubbleData.currentMember.id,
+      status,
+      statusText,
+      {
+        location,
+        photoFile: media.photoFile || null,
+        voiceBlob: media.voiceBlob || null,
+        voiceDurationMs: media.voiceDurationMs || null,
+      }
+    );
     
     // Update location in parallel if provided
     const locationPromise = location 
@@ -506,8 +556,13 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         })
       : Promise.resolve();
     
-    // Wait for both, but don't block on location
-    await Promise.all([statusPromise, locationPromise]);
+    try {
+      await Promise.all([statusPromise, locationPromise]);
+    } catch (error) {
+      console.error('Status update failed:', error);
+      setBubbleData(previousBubbleData);
+      return;
+    }
     
     // Track status update
     analyticsService.trackStatusUpdate(
@@ -583,6 +638,18 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }
     if (!bubbleData.currentMember || !bubbleData.currentMember.id) {
       console.error("Cannot generate invite: currentMember or nodeId is missing.", { bubbleData });
+      return;
+    }
+
+    const memberCount = Array.isArray(bubbleData.allMembers)
+      ? bubbleData.allMembers.length
+      : (bubbleData.bubble.members || []).length;
+    if (!canInviteMoreMembers({ isPremium: Boolean(isSubscribed), memberCount })) {
+      if (onUpgrade) {
+        onUpgrade();
+      } else {
+        alert(inviteLimitMessage());
+      }
       return;
     }
     
@@ -678,6 +745,10 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       handleProfileUpdate={handleProfileUpdate}
       onLogout={onLogout}
       sos={sos}
+      isSubscribed={Boolean(isSubscribed)}
+      isLapsedSubscriber={Boolean(isLapsedSubscriber)}
+      onUpgrade={onUpgrade}
+      onRestorePurchases={onRestorePurchases}
     />
   );
 };
