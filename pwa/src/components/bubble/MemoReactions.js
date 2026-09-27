@@ -107,13 +107,16 @@ const MemoReactions = ({
       shareTimerRef.current = window.setTimeout(() => setShareStatus(null), 2000);
     } catch (error) {
       console.warn('Memo share failed:', error);
+      setShareStatus('Retry');
+      if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
+      shareTimerRef.current = window.setTimeout(() => setShareStatus(null), 2000);
     }
   };
 
   return (
     <div className="mt-2 space-y-2">
       <MemoReactionChips chips={chips} mine={mine} onReact={onReact} />
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
         <div className="relative" ref={pickerRef}>
           {pickerOpen && (
             <div
@@ -161,14 +164,16 @@ const MemoReactions = ({
         </div>
         <button
           type="button"
-          aria-label={shareStatus ? shareStatus : 'Share memo'}
+          aria-label="Share this memo"
           onClick={handleShare}
-          className={`${iconButtonClass(Boolean(shareStatus))} ${shareStatus ? 'w-auto px-3 gap-1.5' : ''}`}
+          className={`tap-target inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors ${
+            shareStatus
+              ? 'bg-white/20 border-white/40 text-white'
+              : 'bg-black/25 border-white/10 text-white hover:border-white/30'
+          }`}
         >
           <Share2 size={15} strokeWidth={2.2} />
-          {shareStatus && (
-            <span className="text-[11px] font-semibold">{shareStatus}</span>
-          )}
+          <span>{shareStatus || 'Share'}</span>
         </button>
       </div>
     </div>

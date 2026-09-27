@@ -14,6 +14,7 @@ import {
   sortFamilyMemos,
   toggleMemoReaction,
   usedReactionChips,
+  parseMemoDeepLink,
   viewerMemoReaction,
 } from './memos';
 import { shouldPlaySosSound } from './sosSound';
@@ -160,20 +161,30 @@ describe('Memo reactions', () => {
     ]);
   });
 
-  test('builds a share payload without invite links or data URLs', () => {
+  test('builds a share payload for that individual memo', () => {
+    expect(parseMemoDeepLink('?join=abc&memo=m5')).toBe('m5');
+    expect(parseMemoDeepLink('')).toBe(null);
     expect(buildMemoSharePayload({
-      memo: { type: MEMO_TYPE.STATUS, status: '😊', message: 'Made it home', photoUrl: 'https://example.com/home.jpg' },
+      memo: {
+        memoId: 'm5',
+        type: MEMO_TYPE.STATUS,
+        status: '😊',
+        message: 'Made it home',
+        photoUrl: 'https://example.com/home.jpg',
+      },
       memberName: 'Ada',
       bubbleName: 'Home',
+      originHref: 'https://familybubble.app/',
     })).toEqual({
       title: 'Ada · Home',
       text: '😊 Ada: Made it home',
-      url: 'https://example.com/home.jpg',
+      url: 'https://familybubble.app/?memo=m5',
     });
     expect(buildMemoSharePayload({
-      memo: { type: MEMO_TYPE.STATUS, message: 'Hi', photoUrl: 'data:image/jpeg;base64,abc' },
+      memo: { memoId: 'm5', type: MEMO_TYPE.STATUS, message: 'Hi', photoUrl: 'data:image/jpeg;base64,abc' },
       memberName: 'Ada',
-    }).url).toBeUndefined();
+      originHref: 'https://familybubble.app/',
+    }).url).toBe('https://familybubble.app/?memo=m5');
   });
 
   test('copies memo text when the share sheet is unavailable', async () => {

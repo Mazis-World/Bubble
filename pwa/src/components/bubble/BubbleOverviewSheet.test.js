@@ -143,15 +143,20 @@ describe('Bubble overview sheets', () => {
     expect(screen.queryByRole('button', { name: 'React with wow' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'React with sad' })).toBeNull();
 
+    expect(screen.getByRole('button', { name: 'Share this memo' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Share this memo' }).textContent).toContain('Share');
+
     fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }));
     expect(screen.getByRole('listbox', { name: 'Choose a reaction' })).toBeTruthy();
     fireEvent.click(screen.getByRole('option', { name: 'React with laugh' }));
     expect(onMemoReact).toHaveBeenCalledWith(expect.objectContaining({ memoId: 'm5' }), '😂');
     expect(onMemoClick).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share memo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share this memo' }));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy());
+    expect(writeText.mock.calls[0][0]).toContain('Made it home');
+    expect(writeText.mock.calls[0][0]).toContain('memo=m5');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share this memo' }).textContent).toContain('Copied'));
     expect(onMemoClick).not.toHaveBeenCalled();
 
     Object.defineProperty(navigator, 'share', { configurable: true, value: originalShare });

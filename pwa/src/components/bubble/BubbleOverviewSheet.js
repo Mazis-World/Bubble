@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import { MEMO_TYPE, formatMemberLocation } from '../../services/memos';
 import { formatVoiceDuration } from '../../services/memoMedia';
@@ -43,10 +43,11 @@ const MemberRow = ({ member, onClick }) => (
   </button>
 );
 
-const MemoRow = ({ memo, member, currentUserId, bubbleName, onClick, onReact }) => {
+const MemoRow = ({ memo, member, currentUserId, bubbleName, focused, onClick, onReact }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
   const isPlace = memo.type === MEMO_TYPE.PLACE;
+  const rowRef = useRef(null);
   const title = isSos
     ? '🚨 SOS ALERT'
     : isCheckin
@@ -55,11 +56,19 @@ const MemoRow = ({ memo, member, currentUserId, bubbleName, onClick, onReact }) 
         ? (memo.message || 'Place update')
         : getStatusEmoji(memo.status);
   const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : isPlace ? 'Place update' : 'Updated status';
+
+  useEffect(() => {
+    if (focused && rowRef.current?.scrollIntoView) {
+      rowRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focused]);
+
   return (
     <div
+      ref={rowRef}
       className={`w-full text-left p-3 rounded-2xl border ${
         isSos ? 'bg-red-950/70 border-red-500/50' : 'glass-light border-white/10'
-      }`}
+      } ${focused ? 'ring-2 ring-blue-400/80' : ''}`}
     >
       <button
         type="button"
@@ -133,6 +142,7 @@ const BubbleOverviewSheet = ({
   onMemberClick,
   onMemoClick,
   onMemoReact,
+  focusedMemoId = null,
 }) => {
   const count = members.length;
 
@@ -153,6 +163,7 @@ const BubbleOverviewSheet = ({
                 member={members.find((item) => item.userId === memo.userId || item.id === memo.nodeId)}
                 currentUserId={currentUserId}
                 bubbleName={bubbleName}
+                focused={focusedMemoId === memo.memoId}
                 onClick={() => onMemoClick?.(memo)}
                 onReact={onMemoReact}
               />

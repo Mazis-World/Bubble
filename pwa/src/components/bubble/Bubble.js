@@ -28,7 +28,7 @@ import { analyticsService } from '../../services/analytics';
 import { auth } from '../../firebase';
 import { API } from '../../services/bubble';
 import useFamilyMemos from '../../hooks/useFamilyMemos';
-import { MEMO_TYPE, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
+import { MEMO_TYPE, parseMemoDeepLink, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
 import { buildCheckInMemo, canCheckIn, lookupPlaceLabel, readCurrentPosition } from '../../services/checkin';
 
 const Bubble = ({
@@ -71,6 +71,7 @@ const Bubble = ({
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
   const [showOverview, setShowOverview] = useState(false);
   const [showMemos, setShowMemos] = useState(false);
+  const [focusedMemoId, setFocusedMemoId] = useState(null);
   const [mapFocus, setMapFocus] = useState(null);
   const [checkInState, setCheckInState] = useState('idle');
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -96,6 +97,11 @@ const Bubble = ({
       const placeId = params.get('place');
       if (placeId) {
         openPlaces(placeId);
+      }
+      const memoId = parseMemoDeepLink(window.location.search);
+      if (memoId) {
+        setFocusedMemoId(memoId);
+        setShowMemos(true);
       }
     } catch (error) {
       // ignore malformed URLs
@@ -758,7 +764,10 @@ const Bubble = ({
 
       <SlideUpCard
         isOpen={showMemos}
-        onClose={() => setShowMemos(false)}
+        onClose={() => {
+          setShowMemos(false);
+          setFocusedMemoId(null);
+        }}
         title="Family Memos"
       >
         <BubbleOverviewSheet
@@ -767,6 +776,7 @@ const Bubble = ({
           memos={familyMemos}
           bubbleName={bubbleData?.bubble?.name}
           currentUserId={auth.currentUser?.uid || bubbleData.currentMember.userId}
+          focusedMemoId={focusedMemoId}
           onMemoReact={handleMemoReact}
           onMemoClick={(memo) => {
             setShowMemos(false);

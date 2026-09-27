@@ -88,7 +88,32 @@ export const usedReactionChips = (reactions) => {
     }));
 };
 
-export const buildMemoSharePayload = ({ memo, memberName, bubbleName }) => {
+export const parseMemoDeepLink = (search = '') => {
+  try {
+    const params = new URLSearchParams(search.includes('?') ? search.slice(search.indexOf('?')) : search);
+    const memoId = params.get('memo');
+    return memoId || null;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const memoShareUrl = (memoId, originHref) => {
+  if (!memoId) return null;
+  const href = originHref || (typeof window !== 'undefined' ? window.location.href : '');
+  if (!href) return null;
+  try {
+    const url = new URL(href, typeof window !== 'undefined' ? window.location.origin : 'https://familybubble.app');
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('memo', memoId);
+    return url.toString();
+  } catch (error) {
+    return null;
+  }
+};
+
+export const buildMemoSharePayload = ({ memo, memberName, bubbleName, originHref } = {}) => {
   const name = memberName || 'Family member';
   const family = bubbleName || 'FamilyBubble';
   let text = `${name} updated status`;
@@ -111,9 +136,8 @@ export const buildMemoSharePayload = ({ memo, memberName, bubbleName }) => {
     title: `${name} · ${family}`,
     text,
   };
-  if (typeof memo?.photoUrl === 'string' && /^https?:\/\//i.test(memo.photoUrl)) {
-    payload.url = memo.photoUrl;
-  }
+  const link = memoShareUrl(memo?.memoId, originHref);
+  if (link) payload.url = link;
   return payload;
 };
 
