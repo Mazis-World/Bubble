@@ -19,6 +19,7 @@ class FamilyMemo {
     placeId = null,
     placeEventType = null,
     recipientUserIds = null,
+    reactions = null,
     createdAt = null,
   }) {
     this.memoId = memoId;
@@ -36,6 +37,7 @@ class FamilyMemo {
     this.placeId = placeId;
     this.placeEventType = placeEventType;
     this.recipientUserIds = recipientUserIds;
+    this.reactions = reactions && typeof reactions === 'object' ? reactions : {};
     this.createdAt = createdAt;
   }
 
@@ -57,6 +59,7 @@ class FamilyMemo {
       placeId: data.placeId || null,
       placeEventType: data.placeEventType || null,
       recipientUserIds: Array.isArray(data.recipientUserIds) ? data.recipientUserIds : null,
+      reactions: data.reactions && typeof data.reactions === 'object' ? data.reactions : {},
       createdAt: data.createdAt || null,
     });
   }

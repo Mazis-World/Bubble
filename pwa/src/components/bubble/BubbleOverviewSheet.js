@@ -2,6 +2,7 @@ import React from 'react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import { MEMO_TYPE, formatMemberLocation } from '../../services/memos';
 import { formatVoiceDuration } from '../../services/memoMedia';
+import MemoReactions from './MemoReactions';
 
 const MemberAvatar = ({ member, size = 44 }) => {
   const photo = member?.photoUrl || member?.photoURL;
@@ -42,7 +43,7 @@ const MemberRow = ({ member, onClick }) => (
   </button>
 );
 
-const MemoRow = ({ memo, member, onClick }) => {
+const MemoRow = ({ memo, member, currentUserId, onClick, onReact }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
   const isPlace = memo.type === MEMO_TYPE.PLACE;
@@ -111,6 +112,11 @@ const MemoRow = ({ memo, member, onClick }) => {
           )}
         </div>
       )}
+      <MemoReactions
+        reactions={memo.reactions}
+        currentUserId={currentUserId}
+        onReact={(emoji) => onReact?.(memo, emoji)}
+      />
     </div>
   );
 };
@@ -120,8 +126,10 @@ const BubbleOverviewSheet = ({
   memos = [],
   bubbleName,
   section = 'members',
+  currentUserId = null,
   onMemberClick,
   onMemoClick,
+  onMemoReact,
 }) => {
   const count = members.length;
 
@@ -140,7 +148,9 @@ const BubbleOverviewSheet = ({
                 key={memo.memoId}
                 memo={memo}
                 member={members.find((item) => item.userId === memo.userId || item.id === memo.nodeId)}
+                currentUserId={currentUserId}
                 onClick={() => onMemoClick?.(memo)}
+                onReact={onMemoReact}
               />
             ))}
           </div>

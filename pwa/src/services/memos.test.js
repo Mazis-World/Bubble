@@ -1,11 +1,17 @@
-import { addDoc } from 'firebase/firestore';
+import { addDoc, deleteField, doc, updateDoc } from 'firebase/firestore';
 import {
+  MEMO_REACTION_EMOJIS,
   MEMO_TYPE,
   canCreateMemo,
+  canReactToMemo,
   canViewMemos,
   createFamilyMemo,
   formatMemberLocation,
+  nextMemoReaction,
+  reactionCountByEmoji,
   sortFamilyMemos,
+  toggleMemoReaction,
+  viewerMemoReaction,
 } from './memos';
 import { shouldPlaySosSound } from './sosSound';
 
@@ -17,11 +23,14 @@ jest.mock('../firebase', () => ({
 jest.mock('firebase/firestore', () => ({
   addDoc: jest.fn(),
   collection: jest.fn(),
+  deleteField: jest.fn(() => ({ _delete: true })),
+  doc: jest.fn(() => 'memo-ref'),
   limit: jest.fn(),
   onSnapshot: jest.fn(),
   orderBy: jest.fn(),
   query: jest.fn(),
   serverTimestamp: jest.fn(),
+  updateDoc: jest.fn(),
 }));
 
 describe('Family Memos', () => {
@@ -100,8 +109,70 @@ describe('Family Memos', () => {
         photoUrl: 'https://example.com/p.jpg',
         voiceUrl: 'https://example.com/v.webm',
         voiceDurationMs: 4200,
+        reactions: {},
       })
     );
+  });
+});
+
+describe('Memo reactions', () => {
+  beforeEach(() => {
+    doc.mockReturnValue('memo-ref');
+    deleteField.mockReturnValue({ _delete: true });
+    updateDoc.mockReset();
+    updateDoc.mockResolvedValue(undefined);
+  });
+
+  test('uses the classic five-emoji set', () => {
+    expect(MEMO_REACTION_EMOJIS).toEqual(['👍', '❤️', '😂', '😮', '😢']);
+  });
+
+  test('only bubble members can react', () => {
+    expect(canReactToMemo({ authUid: 'user-1', isBubbleMember: true })).toBe(true);
+    expect(canReactToMemo({ authUid: 'user-1', isBubbleMember: false })).toBe(false);
+    expect(canReactToMemo({ authUid: null, isBubbleMember: true })).toBe(false);
+  });
+
+  test('tapping the same emoji clears it and a new emoji replaces it', () => {
+    expect(nextMemoReaction(null, '❤️')).toBe('❤️');
+    expect(nextMemoReaction('❤️', '❤️')).toBe(null);
+    expect(nextMemoReaction('❤️', '👍')).toBe('👍');
+    expect(nextMemoReaction('👍', '🔥')).toBe('👍');
+  });
+
+  test('counts reactions per emoji and finds the viewer reaction', () => {
+    const reactions = { 'user-1': '❤️', 'user-2': '❤️', 'user-3': '👍' };
+    expect(reactionCountByEmoji(reactions)).toEqual({
+      '👍': 1,
+      '❤️': 2,
+      '😂': 0,
+      '😮': 0,
+      '😢': 0,
+    });
+    expect(viewerMemoReaction(reactions, 'user-1')).toBe('❤️');
+    expect(viewerMemoReaction(reactions, 'user-9')).toBe(null);
+  });
+
+  test('writes the viewer reaction onto the memo', async () => {
+    const next = await toggleMemoReaction({
+      bubbleId: 'b1',
+      memoId: 'm1',
+      emoji: '😂',
+      currentEmoji: '👍',
+    });
+    expect(next).toBe('😂');
+    expect(updateDoc).toHaveBeenCalledWith('memo-ref', { 'reactions.user-1': '😂' });
+  });
+
+  test('clears the viewer reaction when the same emoji is tapped again', async () => {
+    const next = await toggleMemoReaction({
+      bubbleId: 'b1',
+      memoId: 'm1',
+      emoji: '👍',
+      currentEmoji: '👍',
+    });
+    expect(next).toBe(null);
+    expect(updateDoc).toHaveBeenCalledWith('memo-ref', { 'reactions.user-1': { _delete: true } });
   });
 });
 

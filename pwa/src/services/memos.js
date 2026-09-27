@@ -1,11 +1,14 @@
 import {
   addDoc,
   collection,
+  deleteField,
+  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import FamilyMemo from '../models/FamilyMemo';
@@ -15,6 +18,17 @@ export const MEMO_TYPE = {
   SOS: 'sos',
   CHECKIN: 'checkin',
   PLACE: 'place',
+};
+
+/** Classic five-emoji reaction set (thumbs up, heart, laugh, wow, sad). */
+export const MEMO_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢'];
+
+export const MEMO_REACTION_LABELS = {
+  '👍': 'thumbs up',
+  '❤️': 'heart',
+  '😂': 'laugh',
+  '😮': 'wow',
+  '😢': 'sad',
 };
 
 const MEMO_LIMIT = 50;
@@ -36,6 +50,37 @@ export const canCreateMemo = ({ authUid, userId, isBubbleMember, type }) => {
     || type === MEMO_TYPE.SOS
     || type === MEMO_TYPE.CHECKIN
     || type === MEMO_TYPE.PLACE;
+};
+
+export const canReactToMemo = ({ authUid, isBubbleMember }) =>
+  Boolean(authUid && isBubbleMember);
+
+export const normalizeMemoReactions = (reactions) => {
+  if (!reactions || typeof reactions !== 'object' || Array.isArray(reactions)) return {};
+  const next = {};
+  Object.entries(reactions).forEach(([userId, emoji]) => {
+    if (userId && MEMO_REACTION_EMOJIS.includes(emoji)) next[userId] = emoji;
+  });
+  return next;
+};
+
+export const viewerMemoReaction = (reactions, userId) => {
+  if (!userId) return null;
+  return normalizeMemoReactions(reactions)[userId] || null;
+};
+
+export const reactionCountByEmoji = (reactions) => {
+  const counts = Object.fromEntries(MEMO_REACTION_EMOJIS.map((emoji) => [emoji, 0]));
+  Object.values(normalizeMemoReactions(reactions)).forEach((emoji) => {
+    counts[emoji] += 1;
+  });
+  return counts;
+};
+
+/** Same emoji again clears it. A different emoji replaces the previous one. */
+export const nextMemoReaction = (currentEmoji, tappedEmoji) => {
+  if (!MEMO_REACTION_EMOJIS.includes(tappedEmoji)) return currentEmoji || null;
+  return currentEmoji === tappedEmoji ? null : tappedEmoji;
 };
 
 export const formatMemberLocation = (location) => {
@@ -110,9 +155,35 @@ export const createFamilyMemo = async ({
     payload.placeEventType = placeEventType || null;
     payload.recipientUserIds = Array.isArray(recipientUserIds) ? recipientUserIds : [];
   }
+  payload.reactions = {};
 
   const ref = await addDoc(memosCollection(bubbleId), payload);
   return ref.id;
+};
+
+export const toggleMemoReaction = async ({
+  bubbleId,
+  memoId,
+  emoji,
+  currentEmoji = null,
+}) => {
+  const uid = auth.currentUser?.uid;
+  if (!canReactToMemo({ authUid: uid, isBubbleMember: true })) {
+    throw new Error('You cannot react to this memo.');
+  }
+  if (!bubbleId || !memoId) {
+    throw new Error('Missing memo.');
+  }
+  if (!MEMO_REACTION_EMOJIS.includes(emoji)) {
+    throw new Error('Choose one of the five memo reactions.');
+  }
+
+  const next = nextMemoReaction(currentEmoji, emoji);
+  const ref = doc(db, 'bubbles', bubbleId, 'memos', memoId);
+  await updateDoc(ref, {
+    [`reactions.${uid}`]: next == null ? deleteField() : next,
+  });
+  return next;
 };
 
 export const listenToFamilyMemos = (bubbleId, onChange) => {

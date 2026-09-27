@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 
 jest.mock('../../services/memoMedia', () => ({
@@ -103,5 +103,42 @@ describe('Bubble overview sheets', () => {
       />
     );
     expect(screen.getByText('🏠 Ada arrived home')).toBeTruthy();
+  });
+
+  test('status memos show the classic five reactions', () => {
+    const onMemoReact = jest.fn();
+    const onMemoClick = jest.fn();
+    render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={[
+          {
+            memoId: 'm5',
+            userId: 'u1',
+            nodeId: 'n1',
+            type: 'status',
+            status: '😊',
+            message: 'Made it home',
+            reactions: { u2: '❤️', u1: '👍' },
+          },
+        ]}
+        bubbleName="Home"
+        currentUserId="u1"
+        onMemoClick={onMemoClick}
+        onMemoReact={onMemoReact}
+      />
+    );
+
+    expect(screen.getByRole('group', { name: 'Memo reactions' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'React with thumbs up, 1' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'React with heart, 1' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'React with laugh' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'React with wow' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'React with sad' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'React with heart, 1' }));
+    expect(onMemoReact).toHaveBeenCalledWith(expect.objectContaining({ memoId: 'm5' }), '❤️');
+    expect(onMemoClick).not.toHaveBeenCalled();
   });
 });

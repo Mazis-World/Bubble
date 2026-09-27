@@ -28,7 +28,7 @@ import { analyticsService } from '../../services/analytics';
 import { auth } from '../../firebase';
 import { API } from '../../services/bubble';
 import useFamilyMemos from '../../hooks/useFamilyMemos';
-import { MEMO_TYPE } from '../../services/memos';
+import { MEMO_TYPE, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
 import { buildCheckInMemo, canCheckIn, lookupPlaceLabel, readCurrentPosition } from '../../services/checkin';
 
 const Bubble = ({
@@ -217,6 +217,22 @@ const Bubble = ({
     setShowCheckIn(false);
     setCheckInState('idle');
   };
+
+  const handleMemoReact = useCallback(async (memo, emoji) => {
+    const bubbleId = bubbleData?.bubble?.id;
+    const uid = auth.currentUser?.uid;
+    if (!bubbleId || !memo?.memoId || !uid) return;
+    try {
+      await toggleMemoReaction({
+        bubbleId,
+        memoId: memo.memoId,
+        emoji,
+        currentEmoji: viewerMemoReaction(memo.reactions, uid),
+      });
+    } catch (error) {
+      console.warn('Memo reaction failed:', error);
+    }
+  }, [bubbleData?.bubble?.id]);
 
   if (!bubbleData || !bubbleData.currentMember) {
     return (
@@ -750,6 +766,8 @@ const Bubble = ({
           members={bubbleData.allMembers}
           memos={familyMemos}
           bubbleName={bubbleData?.bubble?.name}
+          currentUserId={auth.currentUser?.uid || bubbleData.currentMember.userId}
+          onMemoReact={handleMemoReact}
           onMemoClick={(memo) => {
             setShowMemos(false);
             const member = bubbleData.allMembers.find(
