@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 
 jest.mock('../../services/memoMedia', () => ({
@@ -105,9 +105,15 @@ describe('Bubble overview sheets', () => {
     expect(screen.getByText('🏠 Ada arrived home')).toBeTruthy();
   });
 
-  test('status memos show the classic five reactions', () => {
+  test('status memos hide the emoji tray until plus is tapped and can share', async () => {
     const onMemoReact = jest.fn();
     const onMemoClick = jest.fn();
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    const originalShare = navigator.share;
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+
     render(
       <BubbleOverviewSheet
         section="memos"
@@ -130,15 +136,25 @@ describe('Bubble overview sheets', () => {
       />
     );
 
-    expect(screen.getByRole('group', { name: 'Memo reactions' })).toBeTruthy();
+    expect(screen.getByLabelText('Reactions on this memo')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'React with thumbs up, 1' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'React with heart, 1' }).getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByRole('button', { name: 'React with laugh' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'React with wow' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'React with sad' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'React with laugh' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'React with wow' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'React with sad' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'React with heart, 1' }));
-    expect(onMemoReact).toHaveBeenCalledWith(expect.objectContaining({ memoId: 'm5' }), '❤️');
+    fireEvent.click(screen.getByRole('button', { name: 'Add reaction' }));
+    expect(screen.getByRole('listbox', { name: 'Choose a reaction' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('option', { name: 'React with laugh' }));
+    expect(onMemoReact).toHaveBeenCalledWith(expect.objectContaining({ memoId: 'm5' }), '😂');
     expect(onMemoClick).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share memo' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Copied' })).toBeTruthy());
+    expect(onMemoClick).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, 'share', { configurable: true, value: originalShare });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: originalClipboard });
   });
 });

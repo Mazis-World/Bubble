@@ -1,53 +1,176 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Plus, Share2 } from 'lucide-react';
 import {
   MEMO_REACTION_EMOJIS,
   MEMO_REACTION_LABELS,
-  reactionCountByEmoji,
+  buildMemoSharePayload,
+  shareMemo,
+  usedReactionChips,
   viewerMemoReaction,
 } from '../../services/memos';
 
-const MemoReactions = ({
-  reactions = {},
-  currentUserId = null,
-  onReact,
-}) => {
-  const counts = reactionCountByEmoji(reactions);
-  const mine = viewerMemoReaction(reactions, currentUserId);
+const chipClass = (selected) =>
+  `tap-target inline-flex items-center gap-1 rounded-full border px-2 py-1 text-sm leading-none transition-colors ${
+    selected
+      ? 'bg-white/20 border-white/40 text-white'
+      : 'bg-black/30 border-white/15 text-gray-100 hover:border-white/30'
+  }`;
 
+const iconButtonClass = (active) =>
+  `tap-target inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
+    active
+      ? 'bg-white/20 border-white/40 text-white'
+      : 'bg-black/25 border-white/10 text-gray-200 hover:border-white/30'
+  }`;
+
+const MemoReactionChips = ({ chips, mine, onReact }) => {
+  if (!chips.length) return null;
   return (
     <div
-      className="mt-2 flex flex-wrap items-center gap-1.5"
-      role="group"
-      aria-label="Memo reactions"
+      className="flex flex-wrap items-center gap-1.5"
+      aria-label="Reactions on this memo"
     >
-      {MEMO_REACTION_EMOJIS.map((emoji) => {
-        const count = counts[emoji];
+      {chips.map(({ emoji, count, label }) => {
         const selected = mine === emoji;
-        const label = MEMO_REACTION_LABELS[emoji];
-        const countSuffix = count > 0 ? `, ${count}` : '';
         return (
           <button
             key={emoji}
             type="button"
             aria-pressed={selected}
-            aria-label={`React with ${label}${countSuffix}`}
+            aria-label={`React with ${label}, ${count}`}
             onClick={(event) => {
               event.stopPropagation();
               onReact?.(emoji);
             }}
-            className={`tap-target inline-flex items-center gap-1 rounded-full border px-2 py-1 text-sm leading-none transition-colors ${
-              selected
-                ? 'bg-white/20 border-white/40 text-white'
-                : 'bg-black/25 border-white/10 text-gray-200 hover:border-white/30'
-            }`}
+            className={chipClass(selected)}
           >
             <span aria-hidden="true">{emoji}</span>
-            {count > 0 && (
-              <span className="text-[11px] font-semibold tabular-nums">{count}</span>
-            )}
+            <span className="text-[11px] font-semibold tabular-nums">{count}</span>
           </button>
         );
       })}
+    </div>
+  );
+};
+
+const MemoReactions = ({
+  reactions = {},
+  currentUserId = null,
+  memo = null,
+  memberName = null,
+  bubbleName = null,
+  onReact,
+}) => {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState(null);
+  const pickerRef = useRef(null);
+  const shareTimerRef = useRef(null);
+  const chips = usedReactionChips(reactions);
+  const mine = viewerMemoReaction(reactions, currentUserId);
+
+  useEffect(() => () => {
+    if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!pickerOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (!pickerRef.current?.contains(event.target)) setPickerOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setPickerOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [pickerOpen]);
+
+  const pickEmoji = (emoji) => {
+    setPickerOpen(false);
+    onReact?.(emoji);
+  };
+
+  const handleShare = async (event) => {
+    event.stopPropagation();
+    try {
+      const result = await shareMemo(buildMemoSharePayload({
+        memo,
+        memberName,
+        bubbleName,
+      }));
+      if (result === 'cancelled') return;
+      setShareStatus(result === 'shared' ? 'Shared' : 'Copied');
+      if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
+      shareTimerRef.current = window.setTimeout(() => setShareStatus(null), 2000);
+    } catch (error) {
+      console.warn('Memo share failed:', error);
+    }
+  };
+
+  return (
+    <div className="mt-2 space-y-2">
+      <MemoReactionChips chips={chips} mine={mine} onReact={onReact} />
+      <div className="flex items-center justify-between gap-3">
+        <div className="relative" ref={pickerRef}>
+          {pickerOpen && (
+            <div
+              className="absolute bottom-full left-0 mb-2 flex items-center gap-1 rounded-full border border-white/15 bg-gray-950/95 px-1.5 py-1 shadow-xl"
+              role="listbox"
+              aria-label="Choose a reaction"
+            >
+              {MEMO_REACTION_EMOJIS.map((emoji) => {
+                const selected = mine === emoji;
+                const label = MEMO_REACTION_LABELS[emoji];
+                return (
+                  <button
+                    key={emoji}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    aria-label={`React with ${label}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      pickEmoji(emoji);
+                    }}
+                    className={`tap-target inline-flex h-9 w-9 items-center justify-center rounded-full text-lg leading-none ${
+                      selected ? 'bg-white/20' : 'hover:bg-white/10'
+                    }`}
+                  >
+                    <span aria-hidden="true">{emoji}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <button
+            type="button"
+            aria-label="Add reaction"
+            aria-expanded={pickerOpen}
+            aria-haspopup="listbox"
+            onClick={(event) => {
+              event.stopPropagation();
+              setPickerOpen((open) => !open);
+            }}
+            className={iconButtonClass(pickerOpen)}
+          >
+            <Plus size={16} strokeWidth={2.4} />
+          </button>
+        </div>
+        <button
+          type="button"
+          aria-label={shareStatus ? shareStatus : 'Share memo'}
+          onClick={handleShare}
+          className={`${iconButtonClass(Boolean(shareStatus))} ${shareStatus ? 'w-auto px-3 gap-1.5' : ''}`}
+        >
+          <Share2 size={15} strokeWidth={2.2} />
+          {shareStatus && (
+            <span className="text-[11px] font-semibold">{shareStatus}</span>
+          )}
+        </button>
+      </div>
     </div>
   );
 };

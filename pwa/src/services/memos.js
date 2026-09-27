@@ -77,6 +77,63 @@ export const reactionCountByEmoji = (reactions) => {
   return counts;
 };
 
+export const usedReactionChips = (reactions) => {
+  const counts = reactionCountByEmoji(reactions);
+  return MEMO_REACTION_EMOJIS
+    .filter((emoji) => counts[emoji] > 0)
+    .map((emoji) => ({
+      emoji,
+      count: counts[emoji],
+      label: MEMO_REACTION_LABELS[emoji],
+    }));
+};
+
+export const buildMemoSharePayload = ({ memo, memberName, bubbleName }) => {
+  const name = memberName || 'Family member';
+  const family = bubbleName || 'FamilyBubble';
+  let text = `${name} updated status`;
+  if (memo?.type === MEMO_TYPE.SOS) {
+    text = memo.message ? `${name} sent an SOS: ${memo.message}` : `${name} sent an SOS`;
+  } else if (memo?.type === MEMO_TYPE.CHECKIN) {
+    text = memo.message || `${name} checked in`;
+  } else if (memo?.type === MEMO_TYPE.PLACE) {
+    text = memo.message || `${name} updated a place`;
+  } else if (memo?.message) {
+    const status = memo.status ? `${memo.status} ` : '';
+    text = `${status}${name}: ${memo.message}`;
+  } else if (memo?.status) {
+    text = `${memo.status} ${name} updated status`;
+  }
+  if (memo?.voiceUrl && !memo?.message) {
+    text = `${name} sent a voice memo`;
+  }
+  const payload = {
+    title: `${name} · ${family}`,
+    text,
+  };
+  if (typeof memo?.photoUrl === 'string' && /^https?:\/\//i.test(memo.photoUrl)) {
+    payload.url = memo.photoUrl;
+  }
+  return payload;
+};
+
+export const shareMemo = async (payload) => {
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      await navigator.share(payload);
+      return 'shared';
+    } catch (error) {
+      if (error?.name === 'AbortError') return 'cancelled';
+    }
+  }
+  const copied = [payload?.title, payload?.text, payload?.url].filter(Boolean).join('\n');
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(copied);
+    return 'copied';
+  }
+  throw new Error('Sharing is not available.');
+};
+
 /** Same emoji again clears it. A different emoji replaces the previous one. */
 export const nextMemoReaction = (currentEmoji, tappedEmoji) => {
   if (!MEMO_REACTION_EMOJIS.includes(tappedEmoji)) return currentEmoji || null;

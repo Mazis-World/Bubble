@@ -2,6 +2,7 @@ import { addDoc, deleteField, doc, updateDoc } from 'firebase/firestore';
 import {
   MEMO_REACTION_EMOJIS,
   MEMO_TYPE,
+  buildMemoSharePayload,
   canCreateMemo,
   canReactToMemo,
   canViewMemos,
@@ -9,8 +10,10 @@ import {
   formatMemberLocation,
   nextMemoReaction,
   reactionCountByEmoji,
+  shareMemo,
   sortFamilyMemos,
   toggleMemoReaction,
+  usedReactionChips,
   viewerMemoReaction,
 } from './memos';
 import { shouldPlaySosSound } from './sosSound';
@@ -151,6 +154,39 @@ describe('Memo reactions', () => {
     });
     expect(viewerMemoReaction(reactions, 'user-1')).toBe('❤️');
     expect(viewerMemoReaction(reactions, 'user-9')).toBe(null);
+    expect(usedReactionChips(reactions)).toEqual([
+      { emoji: '👍', count: 1, label: 'thumbs up' },
+      { emoji: '❤️', count: 2, label: 'heart' },
+    ]);
+  });
+
+  test('builds a share payload without invite links or data URLs', () => {
+    expect(buildMemoSharePayload({
+      memo: { type: MEMO_TYPE.STATUS, status: '😊', message: 'Made it home', photoUrl: 'https://example.com/home.jpg' },
+      memberName: 'Ada',
+      bubbleName: 'Home',
+    })).toEqual({
+      title: 'Ada · Home',
+      text: '😊 Ada: Made it home',
+      url: 'https://example.com/home.jpg',
+    });
+    expect(buildMemoSharePayload({
+      memo: { type: MEMO_TYPE.STATUS, message: 'Hi', photoUrl: 'data:image/jpeg;base64,abc' },
+      memberName: 'Ada',
+    }).url).toBeUndefined();
+  });
+
+  test('copies memo text when the share sheet is unavailable', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    const originalShare = navigator.share;
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const result = await shareMemo({ title: 'Ada · Home', text: 'Made it home' });
+    expect(result).toBe('copied');
+    expect(writeText).toHaveBeenCalledWith('Ada · Home\nMade it home');
+    Object.defineProperty(navigator, 'share', { configurable: true, value: originalShare });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: originalClipboard });
   });
 
   test('writes the viewer reaction onto the memo', async () => {
