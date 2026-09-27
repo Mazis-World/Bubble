@@ -15,6 +15,7 @@ import {
   toggleMemoReaction,
   usedReactionChips,
   parseMemoDeepLink,
+  recordMemoShare,
   viewerMemoReaction,
 } from './memos';
 import { shouldPlaySosSound } from './sosSound';
@@ -220,6 +221,14 @@ describe('Memo reactions', () => {
     });
     expect(next).toBe(null);
     expect(updateDoc).toHaveBeenCalledWith('memo-ref', { 'reactions.user-1': { _delete: true } });
+  });
+
+  test('records a share so the family can be notified', async () => {
+    await recordMemoShare({ bubbleId: 'b1', memoId: 'm1' });
+    expect(updateDoc).toHaveBeenCalledWith(
+      'memo-ref',
+      expect.objectContaining({ 'shares.user-1': undefined })
+    );
   });
 });
 

@@ -43,7 +43,7 @@ const MemberRow = ({ member, onClick }) => (
   </button>
 );
 
-const MemoRow = ({ memo, member, currentUserId, bubbleName, focused, onClick, onReact }) => {
+const MemoRow = ({ memo, member, currentUserId, bubbleId, bubbleName, focused, onClick, onReact }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
   const isPlace = memo.type === MEMO_TYPE.PLACE;
@@ -124,7 +124,7 @@ const MemoRow = ({ memo, member, currentUserId, bubbleName, focused, onClick, on
       <MemoReactions
         reactions={memo.reactions}
         currentUserId={currentUserId}
-        memo={memo}
+        memo={{ ...memo, bubbleId: memo.bubbleId || bubbleId }}
         memberName={member?.name}
         bubbleName={bubbleName}
         onReact={(emoji) => onReact?.(memo, emoji)}
@@ -137,6 +137,7 @@ const BubbleOverviewSheet = ({
   members = [],
   memos = [],
   bubbleName,
+  bubbleId = null,
   section = 'members',
   currentUserId = null,
   onMemberClick,
@@ -162,6 +163,7 @@ const BubbleOverviewSheet = ({
                 memo={memo}
                 member={members.find((item) => item.userId === memo.userId || item.id === memo.nodeId)}
                 currentUserId={currentUserId}
+                bubbleId={bubbleId}
                 bubbleName={bubbleName}
                 focused={focusedMemoId === memo.memoId}
                 onClick={() => onMemoClick?.(memo)}

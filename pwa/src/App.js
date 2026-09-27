@@ -90,6 +90,10 @@ export default function FamilyBubbleApp() {
       if (clickSos && clickBubble) {
         persistPendingSos({ sosId: clickSos, bubbleId: clickBubble });
       }
+      const clickMemo = params.get('memo');
+      if (clickMemo) {
+        localStorage.setItem('familyBubble_pendingMemo', clickMemo);
+      }
     };
     navigator.serviceWorker.addEventListener('message', onPushClick);
     return () => navigator.serviceWorker.removeEventListener('message', onPushClick);

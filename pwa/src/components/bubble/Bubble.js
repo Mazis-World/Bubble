@@ -98,10 +98,12 @@ const Bubble = ({
       if (placeId) {
         openPlaces(placeId);
       }
-      const memoId = parseMemoDeepLink(window.location.search);
+      const memoId = parseMemoDeepLink(window.location.search)
+        || localStorage.getItem('familyBubble_pendingMemo');
       if (memoId) {
         setFocusedMemoId(memoId);
         setShowMemos(true);
+        localStorage.removeItem('familyBubble_pendingMemo');
       }
     } catch (error) {
       // ignore malformed URLs
@@ -775,6 +777,7 @@ const Bubble = ({
           members={bubbleData.allMembers}
           memos={familyMemos}
           bubbleName={bubbleData?.bubble?.name}
+          bubbleId={bubbleData?.bubble?.id}
           currentUserId={auth.currentUser?.uid || bubbleData.currentMember.userId}
           focusedMemoId={focusedMemoId}
           onMemoReact={handleMemoReact}

@@ -7,6 +7,7 @@ import {
   shareMemo,
   usedReactionChips,
   viewerMemoReaction,
+  recordMemoShare,
 } from '../../services/memos';
 
 const chipClass = (selected) =>
@@ -105,6 +106,11 @@ const MemoReactions = ({
       setShareStatus(result === 'shared' ? 'Shared' : 'Copied');
       if (shareTimerRef.current) window.clearTimeout(shareTimerRef.current);
       shareTimerRef.current = window.setTimeout(() => setShareStatus(null), 2000);
+      if (memo?.bubbleId && memo?.memoId) {
+        recordMemoShare({ bubbleId: memo.bubbleId, memoId: memo.memoId }).catch((error) => {
+          console.warn('Memo share notify failed:', error);
+        });
+      }
     } catch (error) {
       console.warn('Memo share failed:', error);
       setShareStatus('Retry');

@@ -244,7 +244,8 @@ service cloud.firestore {
       // FAMILY MEMOS Subcollection
       // Status, SOS, and check-in board for this bubble only. Membership is server-checked.
       // Optional photoUrl / voiceUrl / voiceDurationMs attach status photos and voice notes.
-      // Members may only update their own key in reactions (classic 5-emoji set).
+      // Members may only update their own key in reactions (classic 5-emoji set)
+      // or their own key in shares (so the family can be notified).
       // ============================================================================
       match /memos/{memoId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
@@ -256,15 +257,27 @@ service cloud.firestore {
                        request.resource.data.userId is string;
 
         allow update: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']) &&
-                       request.resource.data.get('reactions', {}) is map &&
-                       request.resource.data.get('reactions', {})
-                         .diff(resource.data.get('reactions', {}))
-                         .affectedKeys()
-                         .hasOnly([request.auth.uid]) &&
                        (
-                         !(request.auth.uid in request.resource.data.get('reactions', {})) ||
-                         request.resource.data.reactions[request.auth.uid] in ['👍', '❤️', '😂', '😮', '😢']
+                         (
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']) &&
+                           request.resource.data.get('reactions', {}) is map &&
+                           request.resource.data.get('reactions', {})
+                             .diff(resource.data.get('reactions', {}))
+                             .affectedKeys()
+                             .hasOnly([request.auth.uid]) &&
+                           (
+                             !(request.auth.uid in request.resource.data.get('reactions', {})) ||
+                             request.resource.data.reactions[request.auth.uid] in ['👍', '❤️', '😂', '😮', '😢']
+                           )
+                         ) ||
+                         (
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shares']) &&
+                           request.resource.data.get('shares', {}) is map &&
+                           request.resource.data.get('shares', {})
+                             .diff(resource.data.get('shares', {}))
+                             .affectedKeys()
+                             .hasOnly([request.auth.uid])
+                         )
                        );
 
         allow delete: if false;

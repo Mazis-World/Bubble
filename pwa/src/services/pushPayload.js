@@ -34,6 +34,47 @@ export const clickUrlFromPushData = (data = {}) => {
   if (data.placeId && data.bubbleId) {
     return `/?place=${encodeURIComponent(data.placeId)}&bubble=${encodeURIComponent(data.bubbleId)}`;
   }
+  if (data.memoId) {
+    const bubble = data.bubbleId ? `&bubble=${encodeURIComponent(data.bubbleId)}` : '';
+    return `/?memo=${encodeURIComponent(data.memoId)}${bubble}`;
+  }
+  return '/';
+};
+
+const asMap = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {});
+
+export const mapKeyDelta = (before, after) => {
+  const prev = asMap(before);
+  const next = asMap(after);
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  for (const key of keys) {
+    if (prev[key] === next[key]) continue;
+    if (next[key] == null || next[key] === '') {
+      return { userId: key, value: prev[key], action: 'remove' };
+    }
+    return { userId: key, value: next[key], action: prev[key] ? 'change' : 'add' };
+  }
+  return null;
+};
+
+export const displayNameFromNodes = (nodes, userId) => {
+  const node = (nodes || []).find((item) => item && item.userId === userId);
+  return node?.name || node?.fullName || 'A family member';
+};
+
+const memoClickUrl = (memo, bubbleId, memoId) => {
+  const sosId = memo?.sosId || '';
+  const placeId = memo?.placeId || '';
+  const id = memoId || memo?.memoId || '';
+  if (memo?.type === 'sos' && sosId) {
+    return `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`;
+  }
+  if (memo?.type === 'place' && placeId) {
+    return `/?place=${encodeURIComponent(placeId)}&bubble=${encodeURIComponent(bubbleId)}`;
+  }
+  if (id) {
+    return `/?memo=${encodeURIComponent(id)}&bubble=${encodeURIComponent(bubbleId || '')}`;
+  }
   return '/';
 };
 
@@ -67,6 +108,7 @@ export const buildMemoPush = (memo, bubbleId) => {
             : 'A family member updated their status');
   const sosId = memo?.sosId || '';
   const placeId = memo?.placeId || '';
+  const memoId = memo?.memoId || '';
   const notifyType = isSos
     ? 'sos'
     : isPlace
@@ -74,11 +116,7 @@ export const buildMemoPush = (memo, bubbleId) => {
       : isCheckin
         ? 'checkin'
         : 'status';
-  const url = isSos && sosId
-    ? `/?sos=${encodeURIComponent(sosId)}&bubble=${encodeURIComponent(bubbleId)}`
-    : isPlace && placeId
-      ? `/?place=${encodeURIComponent(placeId)}&bubble=${encodeURIComponent(bubbleId)}`
-      : '/';
+  const url = memoClickUrl(memo, bubbleId, memoId);
   const tag = isSos
     ? `sos-${sosId || 'alert'}`
     : isPlace
@@ -96,6 +134,67 @@ export const buildMemoPush = (memo, bubbleId) => {
       bubbleId: String(bubbleId || ''),
       sosId: String(sosId),
       placeId: String(placeId),
+      memoId: String(memoId),
+      actorUserId: String(memo?.userId || ''),
+      url,
+      tag,
+    },
+  };
+};
+
+export const buildMemoReactionPush = ({
+  bubbleId,
+  memoId,
+  actorUserId,
+  actorName,
+  emoji,
+} = {}) => {
+  const name = actorName || 'A family member';
+  const title = 'FamilyBubble';
+  const body = `${name} reacted ${emoji || ''}`.trim();
+  const url = memoId
+    ? `/?memo=${encodeURIComponent(memoId)}&bubble=${encodeURIComponent(bubbleId || '')}`
+    : '/';
+  const tag = `memo-react-${memoId || 'update'}`;
+  return {
+    title,
+    body,
+    data: {
+      title,
+      body,
+      type: 'memo_react',
+      bubbleId: String(bubbleId || ''),
+      memoId: String(memoId || ''),
+      actorUserId: String(actorUserId || ''),
+      url,
+      tag,
+    },
+  };
+};
+
+export const buildMemoSharePush = ({
+  bubbleId,
+  memoId,
+  actorUserId,
+  actorName,
+} = {}) => {
+  const name = actorName || 'A family member';
+  const title = 'FamilyBubble';
+  const body = `${name} shared a memo`;
+  const url = memoId
+    ? `/?memo=${encodeURIComponent(memoId)}&bubble=${encodeURIComponent(bubbleId || '')}`
+    : '/';
+  const tag = `memo-share-${memoId || 'update'}-${actorUserId || 'member'}`;
+  return {
+    title,
+    body,
+    data: {
+      title,
+      body,
+      type: 'memo_share',
+      bubbleId: String(bubbleId || ''),
+      memoId: String(memoId || ''),
+      actorUserId: String(actorUserId || ''),
       url,
       tag,
     },

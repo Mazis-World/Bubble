@@ -267,6 +267,20 @@ export const toggleMemoReaction = async ({
   return next;
 };
 
+export const recordMemoShare = async ({ bubbleId, memoId }) => {
+  const uid = auth.currentUser?.uid;
+  if (!canReactToMemo({ authUid: uid, isBubbleMember: true })) {
+    throw new Error('You cannot share this memo.');
+  }
+  if (!bubbleId || !memoId) {
+    throw new Error('Missing memo.');
+  }
+  const ref = doc(db, 'bubbles', bubbleId, 'memos', memoId);
+  await updateDoc(ref, {
+    [`shares.${uid}`]: serverTimestamp(),
+  });
+};
+
 export const listenToFamilyMemos = (bubbleId, onChange) => {
   if (!bubbleId) return () => {};
   const memosQuery = query(memosCollection(bubbleId), orderBy('createdAt', 'desc'), limit(MEMO_LIMIT));

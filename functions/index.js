@@ -1,10 +1,14 @@
 const admin = require('firebase-admin');
-const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions');
 const {
   recipientUserIdsFromNodes,
   tokensFromUserData,
+  mapKeyDelta,
+  displayNameFromNodes,
   buildMemoPush,
+  buildMemoReactionPush,
+  buildMemoSharePush,
   filterPlaceMemoRecipients,
   isInvalidTokenError,
 } = require('./push');
@@ -120,7 +124,54 @@ exports.onFamilyMemoCreated = onDocumentCreated(
       return;
     }
 
-    const payload = buildMemoPush(memo, bubbleId);
+    const payload = buildMemoPush({ ...memo, memoId: event.params.memoId }, bubbleId);
     await sendPushToTokens(tokens, tokenOwners, payload);
+  }
+);
+
+exports.onFamilyMemoUpdated = onDocumentUpdated(
+  'bubbles/{bubbleId}/memos/{memoId}',
+  async (event) => {
+    const before = event.data && event.data.before && event.data.before.data();
+    const after = event.data && event.data.after && event.data.after.data();
+    const bubbleId = event.params.bubbleId;
+    const memoId = event.params.memoId;
+    if (!after) return;
+
+    const reaction = mapKeyDelta(before && before.reactions, after.reactions);
+    const share = mapKeyDelta(before && before.shares, after.shares);
+
+    if (reaction && (reaction.action === 'add' || reaction.action === 'change')) {
+      if (reaction.userId && reaction.userId === after.userId) return;
+      const nodesSnap = await firestore.collection('bubbles').doc(bubbleId).collection('nodes').get();
+      const nodes = nodesSnap.docs.map((snap) => snap.data());
+      const { tokens, tokenOwners } = await tokensForUserIds(
+        [after.userId].filter((uid) => uid && uid !== reaction.userId)
+      );
+      if (!tokens.length) return;
+      const payload = buildMemoReactionPush({
+        bubbleId,
+        memoId,
+        actorUserId: reaction.userId,
+        actorName: displayNameFromNodes(nodes, reaction.userId),
+        emoji: reaction.value,
+      });
+      await sendPushToTokens(tokens, tokenOwners, payload);
+      return;
+    }
+
+    if (share && share.action === 'add') {
+      const nodesSnap = await firestore.collection('bubbles').doc(bubbleId).collection('nodes').get();
+      const nodes = nodesSnap.docs.map((snap) => snap.data());
+      const { tokens, tokenOwners } = await tokensForBubbleExcept(bubbleId, share.userId);
+      if (!tokens.length) return;
+      const payload = buildMemoSharePush({
+        bubbleId,
+        memoId,
+        actorUserId: share.userId,
+        actorName: displayNameFromNodes(nodes, share.userId),
+      });
+      await sendPushToTokens(tokens, tokenOwners, payload);
+    }
   }
 );
