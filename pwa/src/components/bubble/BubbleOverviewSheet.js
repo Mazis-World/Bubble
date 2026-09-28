@@ -129,7 +129,11 @@ const MemoRow = ({ memo, member, currentUserId, bubbleId, bubbleName, focused, o
         memberName={member?.name}
         bubbleName={bubbleName}
         onReact={(emoji) => onReact?.(memo, emoji)}
-        onDelete={onDelete ? () => onDelete(memo) : undefined}
+        onDelete={
+          onDelete && currentUserId && memo.userId === currentUserId
+            ? () => onDelete(memo)
+            : undefined
+        }
       />
     </div>
   );

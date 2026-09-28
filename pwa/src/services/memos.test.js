@@ -159,6 +159,8 @@ describe('Memo reactions', () => {
     deleteField.mockReturnValue({ _delete: true });
     updateDoc.mockReset();
     updateDoc.mockResolvedValue(undefined);
+    deleteDoc.mockReset();
+    deleteDoc.mockResolvedValue(undefined);
   });
 
   test('uses the classic five-emoji set', () => {
@@ -171,11 +173,27 @@ describe('Memo reactions', () => {
     expect(canReactToMemo({ authUid: null, isBubbleMember: true })).toBe(false);
   });
 
-  test('bubble members can delete a memo they do not want', () => {
-    expect(canDeleteMemo({ authUid: 'user-1', isBubbleMember: true })).toBe(true);
-    expect(canDeleteMemo({ authUid: 'user-1', isBubbleOwner: true })).toBe(true);
-    expect(canDeleteMemo({ authUid: 'user-1', isBubbleMember: false })).toBe(false);
-    expect(canDeleteMemo({ authUid: null, isBubbleMember: true })).toBe(false);
+  test('bubble members can only delete their own memos', () => {
+    expect(canDeleteMemo({
+      authUid: 'user-1',
+      memoUserId: 'user-1',
+      isBubbleMember: true,
+    })).toBe(true);
+    expect(canDeleteMemo({
+      authUid: 'user-1',
+      memoUserId: 'user-2',
+      isBubbleMember: true,
+    })).toBe(false);
+    expect(canDeleteMemo({
+      authUid: 'user-1',
+      memoUserId: 'user-1',
+      isBubbleMember: false,
+    })).toBe(false);
+    expect(canDeleteMemo({
+      authUid: null,
+      memoUserId: 'user-1',
+      isBubbleMember: true,
+    })).toBe(false);
   });
 
   test('tapping the same emoji clears it and a new emoji replaces it', () => {
@@ -273,8 +291,17 @@ describe('Memo reactions', () => {
 
   test('deletes a memo from the family board', async () => {
     deleteDoc.mockResolvedValue(undefined);
-    await deleteFamilyMemo({ bubbleId: 'b1', memoId: 'm1' });
+    await deleteFamilyMemo({ bubbleId: 'b1', memoId: 'm1', userId: 'user-1' });
     expect(deleteDoc).toHaveBeenCalledWith('memo-ref');
+  });
+
+  test('refuses to delete another member’s memo', async () => {
+    await expect(deleteFamilyMemo({
+      bubbleId: 'b1',
+      memoId: 'm1',
+      userId: 'user-2',
+    })).rejects.toThrow('You can only delete your own memos.');
+    expect(deleteDoc).not.toHaveBeenCalled();
   });
 });
 

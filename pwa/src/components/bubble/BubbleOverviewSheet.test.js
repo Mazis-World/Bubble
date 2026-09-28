@@ -218,4 +218,18 @@ describe('Bubble overview sheets', () => {
     expect(onMemoDelete).toHaveBeenCalledWith(expect.objectContaining({ memoId: 'm1' }));
     expect(onMemoClick).not.toHaveBeenCalled();
   });
+
+  test('does not show delete on someone else’s memo', () => {
+    render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={memos}
+        bubbleName="Home"
+        currentUserId="u2"
+        onMemoDelete={() => {}}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Delete this memo' })).toBeNull();
+  });
 });

@@ -248,7 +248,11 @@ const Bubble = ({
     const bubbleId = bubbleData?.bubble?.id;
     if (!bubbleId || !memo?.memoId) return;
     try {
-      await deleteFamilyMemo({ bubbleId, memoId: memo.memoId });
+      await deleteFamilyMemo({
+        bubbleId,
+        memoId: memo.memoId,
+        userId: memo.userId,
+      });
     } catch (error) {
       console.warn('Memo delete failed:', error);
       alert(error.message || 'Could not delete that memo.');

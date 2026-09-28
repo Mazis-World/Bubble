@@ -56,8 +56,13 @@ export const canCreateMemo = ({ authUid, userId, isBubbleMember, type }) => {
 export const canReactToMemo = ({ authUid, isBubbleMember }) =>
   Boolean(authUid && isBubbleMember);
 
-export const canDeleteMemo = ({ authUid, isBubbleMember, isBubbleOwner = false }) =>
-  Boolean(authUid && (isBubbleMember || isBubbleOwner));
+export const canDeleteMemo = ({ authUid, memoUserId, isBubbleMember, isBubbleOwner = false }) =>
+  Boolean(
+    authUid &&
+    memoUserId &&
+    authUid === memoUserId &&
+    (isBubbleMember || isBubbleOwner)
+  );
 
 export const normalizeMemoReactions = (reactions) => {
   if (!reactions || typeof reactions !== 'object' || Array.isArray(reactions)) return {};
@@ -295,10 +300,14 @@ export const recordMemoShare = async ({ bubbleId, memoId }) => {
   });
 };
 
-export const deleteFamilyMemo = async ({ bubbleId, memoId }) => {
+export const deleteFamilyMemo = async ({ bubbleId, memoId, userId = null }) => {
   const uid = auth.currentUser?.uid;
-  if (!canDeleteMemo({ authUid: uid, isBubbleMember: true })) {
-    throw new Error('You cannot delete this memo.');
+  if (!canDeleteMemo({
+    authUid: uid,
+    memoUserId: userId || uid,
+    isBubbleMember: true,
+  })) {
+    throw new Error('You can only delete your own memos.');
   }
   if (!bubbleId || !memoId) {
     throw new Error('Missing memo.');
