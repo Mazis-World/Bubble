@@ -268,12 +268,27 @@ export const API = {
       return null; // No bubbles for this user
     }
     
-    // For now, return the first bubble (can be enhanced to show bubble selector)
-    // In multi-universe mode, user can switch between their bubbles
-    const bubbleId = user.bubbles[0];
-    console.log("Loading bubble for user:", userId, "bubbleId:", bubbleId);
+    const bubbleIds = [...new Set((user.bubbles || []).filter(Boolean))];
+    let preferredId = null;
+    try {
+      preferredId = localStorage.getItem('familyBubble_bubbleId');
+    } catch (error) {
+      preferredId = null;
+    }
+    const orderedIds = preferredId && bubbleIds.includes(preferredId)
+      ? [preferredId, ...bubbleIds.filter((id) => id !== preferredId)]
+      : bubbleIds;
 
-    return API.getBubbleById(bubbleId, userId);
+    for (const bubbleId of orderedIds) {
+      const data = await API.getBubbleById(bubbleId, userId);
+      if (data?.bubble) {
+        console.log("Loading bubble for user:", userId, "bubbleId:", bubbleId);
+        return data;
+      }
+      console.warn("Skipping missing or unreadable bubble:", bubbleId);
+    }
+
+    return null;
   },
 
   getUserBubbles: async (userId) => {

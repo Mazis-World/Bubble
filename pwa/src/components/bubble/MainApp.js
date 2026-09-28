@@ -1,12 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API } from '../../services/bubble';
 import Bubble from './Bubble';
+import CreateAnotherBubble from './CreateAnotherBubble';
 import { db } from '../../firebase';
 import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
+import {
+  listBubbleSummaries,
+  locationPayload,
+  persistCurrentBubble,
+  splitPersonName,
+} from '../../services/bubbleSwitcher';
 
-const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onInitiateJoin, onJoinProcessed }) => {
+const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onJoinProcessed }) => {
   const [bubbleData, setBubbleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
@@ -16,8 +23,12 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const [manualInviteCode, setManualInviteCode] = useState('');
   const [joiningManual, setJoiningManual] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [userBubbles, setUserBubbles] = useState([]);
+  const [showCreateBubble, setShowCreateBubble] = useState(false);
+  const [creatingBubble, setCreatingBubble] = useState(false);
   const unsubscribeRef = useRef(null);
   const currentBubbleIdRef = useRef(null);
+  const switchInFlightRef = useRef(false);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
   const joinAttemptedRef = useRef(null);
 
@@ -108,6 +119,98 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }, { includeMetadataChanges: true });
   }, [userId]);
 
+  const refreshUserBubbles = React.useCallback(async () => {
+    if (!userId) {
+      setUserBubbles([]);
+      return [];
+    }
+    try {
+      const all = await API.getUserBubbles(userId);
+      const summaries = listBubbleSummaries(all);
+      setUserBubbles(summaries);
+      return summaries;
+    } catch (error) {
+      console.warn('Could not load bubble list:', error);
+      return [];
+    }
+  }, [userId]);
+
+  const activateBubble = React.useCallback(async (bubbleId) => {
+    if (!bubbleId || bubbleId === currentBubbleIdRef.current || switchInFlightRef.current) {
+      return;
+    }
+    switchInFlightRef.current = true;
+    previousMembersRef.current = new Map();
+    try {
+      persistCurrentBubble(bubbleId);
+      const data = await API.getBubbleById(bubbleId, userId);
+      if (data?.bubble) {
+        setBubbleData(data);
+        currentBubbleIdRef.current = data.bubble.id;
+        setupRealtimeListener(data.bubble.id, userId);
+      }
+    } catch (error) {
+      console.error('Could not switch bubbles:', error);
+    } finally {
+      switchInFlightRef.current = false;
+    }
+  }, [userId, setupRealtimeListener]);
+
+  const handleCreateAnotherBubble = React.useCallback(async (form) => {
+    if (!userId || creatingBubble) return;
+    setCreatingBubble(true);
+    try {
+      const member = bubbleData?.currentMember;
+      let { firstName, lastName } = splitPersonName(member?.name, form.firstName, form.lastName);
+      if (!form.firstName || !form.lastName) {
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userRef);
+        const fromUser = splitPersonName(userDoc.exists() ? userDoc.data()?.fullName : '');
+        if (!form.firstName) firstName = firstName || fromUser.firstName;
+        if (!form.lastName) lastName = lastName || fromUser.lastName;
+      }
+
+      const result = await API.createBubble(
+        userId,
+        firstName,
+        lastName,
+        form.bubbleName,
+        null,
+        form.relationshipRole,
+        locationPayload(member?.lastKnownLocation)
+      );
+
+      if (!result?.bubbleId) {
+        throw new Error('Bubble was created without an id');
+      }
+
+      analyticsService.trackBubbleCreate(result.bubbleId, (userBubbles.length || 0) + 1);
+      persistCurrentBubble(result.bubbleId);
+      currentBubbleIdRef.current = result.bubbleId;
+      previousMembersRef.current = new Map();
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const next = await API.getBubbleById(result.bubbleId, userId);
+      if (next?.bubble) {
+        setBubbleData(next);
+        setupRealtimeListener(result.bubbleId, userId);
+      }
+      await refreshUserBubbles();
+      setShowCreateBubble(false);
+    } catch (error) {
+      console.error('Error creating another bubble:', error);
+      alert(`Failed to create bubble: ${error.message}`);
+    } finally {
+      setCreatingBubble(false);
+    }
+  }, [
+    userId,
+    creatingBubble,
+    bubbleData,
+    userBubbles.length,
+    refreshUserBubbles,
+    setupRealtimeListener,
+  ]);
+
   const loadBubble = React.useCallback(async () => {
     // Support both authenticated users and anonymous users
     const nodeUserId = userId || localStorage.getItem('familyBubble_nodeUserId');
@@ -117,19 +220,24 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     let data = null;
 
     // Try to load bubble data
-    if (bubbleId) {
-      console.log("Loading bubble from localStorage:", bubbleId);
-      data = await API.getBubbleById(bubbleId, nodeUserId || userId);
-    } else if (userId) {
-      console.log("Loading bubble from user document for userId:", userId);
+    if (userId) {
+      console.log("Loading bubble from user memberships for userId:", userId);
       data = await API.getUserBubble(userId);
-      if (data) {
+      if (data?.bubble) {
         bubbleId = data.bubble.id;
-        localStorage.setItem('familyBubble_bubbleId', bubbleId);
+        persistCurrentBubble(bubbleId);
         console.log("Found bubble from user document:", bubbleId);
+      } else if (storedBubbleId) {
+        console.log("Loading bubble from localStorage:", storedBubbleId);
+        data = await API.getBubbleById(storedBubbleId, nodeUserId || userId);
+        bubbleId = data?.bubble?.id || null;
       } else {
-        console.log("No bubble found in user document - user may not have created/joined a bubble yet");
+        console.log("No readable bubble in user document");
       }
+    } else if (storedBubbleId) {
+      console.log("Loading bubble from localStorage:", storedBubbleId);
+      data = await API.getBubbleById(storedBubbleId, nodeUserId);
+      bubbleId = data?.bubble?.id || null;
     }
 
     if (data && data.bubble) {
@@ -141,7 +249,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       setLoading(false);
       console.log("No bubble data available");
     }
-  }, [userId, setupRealtimeListener]);
+    await refreshUserBubbles();
+  }, [userId, setupRealtimeListener, refreshUserBubbles]);
 
   useEffect(() => {
     return () => {
@@ -184,6 +293,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
                 
                 // Setup real-time listener
                 setupRealtimeListener(result.bubbleId, userId);
+                refreshUserBubbles();
               } else {
                 console.error("Bubble data is invalid:", bubbleData);
                 setLoading(false);
@@ -298,6 +408,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
                     
                     // Setup real-time listener for the joined bubble
                     setupRealtimeListener(result.bubbleId, userId);
+                    refreshUserBubbles();
                     return; // Success, exit retry loop
                   } else {
                     console.warn("Bubble loaded but current member not found. Retrying...");
@@ -360,7 +471,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     } else {
       setLoading(false);
     }
-  }, [userId, bubbleCreationData, initialJoinToken, onBubbleCreated, onJoinProcessed, loadBubble, setupRealtimeListener]);
+  }, [userId, bubbleCreationData, initialJoinToken, onBubbleCreated, onJoinProcessed, loadBubble, setupRealtimeListener, refreshUserBubbles]);
 
   // Get current location
   const getCurrentLocation = () => {
@@ -463,6 +574,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           setBubbleData(data);
           setupRealtimeListener(result.bubbleId, userId);
         }
+        await refreshUserBubbles();
       }
     } catch (error) {
       console.error("Error joining bubble:", error);
@@ -625,9 +737,19 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           >
             {joiningManual ? 'Joining…' : 'Join bubble'}
           </button>
+          {showCreateBubble ? (
+            <div className="text-left mb-4">
+              <CreateAnotherBubble
+                needProfileNames
+                submitting={creatingBubble}
+                onSubmit={handleCreateAnotherBubble}
+                onCancel={() => setShowCreateBubble(false)}
+              />
+            </div>
+          ) : null}
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => onInitiateCreate ? onInitiateCreate() : loadBubble()}
+              onClick={() => setShowCreateBubble(true)}
               className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 tap-target"
             >
               Create a bubble
@@ -660,6 +782,12 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       handlePhotoUpdate={handlePhotoUpdate}
       handleProfileUpdate={handleProfileUpdate}
       onLogout={onLogout}
+      userBubbles={userBubbles}
+      onSwitchBubble={activateBubble}
+      showCreateBubble={showCreateBubble}
+      setShowCreateBubble={setShowCreateBubble}
+      creatingBubble={creatingBubble}
+      onCreateAnotherBubble={handleCreateAnotherBubble}
     />
   );
 };

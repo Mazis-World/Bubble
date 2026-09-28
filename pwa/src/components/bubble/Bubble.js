@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
@@ -8,6 +8,8 @@ import ProfileEditForm from '../ui/ProfileEditForm';
 import EmojiPicker from '../ui/EmojiPicker';
 import LocationStep from '../ui/LocationStep';
 import NotificationSettings from '../ui/NotificationSettings';
+import BubbleSwitcher, { useBubbleSwipe } from './BubbleSwitcher';
+import CreateAnotherBubble from './CreateAnotherBubble';
 import { Circle, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
@@ -27,6 +29,12 @@ const Bubble = ({
   handleProfileUpdate,
   onLogout,
   isGeneratingInvite = false,
+  userBubbles = [],
+  onSwitchBubble,
+  showCreateBubble = false,
+  setShowCreateBubble,
+  creatingBubble = false,
+  onCreateAnotherBubble,
 }) => {
   const [shareSuccess, setShareSuccess] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -38,6 +46,19 @@ const Bubble = ({
   const [statusText, setStatusText] = useState('');
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
+  const currentBubbleId = bubbleData?.bubble?.id;
+  const clusterSwipe = useBubbleSwipe({
+    bubbles: userBubbles,
+    currentId: currentBubbleId,
+    onSwitch: onSwitchBubble,
+    enabled: userBubbles.length > 1,
+  });
+
+  useEffect(() => {
+    setSelectedMember(null);
+    setShowProfile(false);
+    setShowProfileEdit(false);
+  }, [currentBubbleId]);
 
   const handleShare = async () => {
     if (!inviteToken || inviteToken === 'Generating...') return;
@@ -157,7 +178,6 @@ const Bubble = ({
                 <span className="hidden sm:inline">Map</span>
               </button>
             </div>
-          )}
           <button
             onClick={() => {
               setShowSettings(true);
@@ -169,9 +189,30 @@ const Bubble = ({
           </button>
           </div>
         </div>
+        <div style={{
+          background: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}>
+          <BubbleSwitcher
+            bubbles={userBubbles.length ? userBubbles : [{
+              id: currentBubbleId,
+              name: bubbleData?.bubble?.name || 'FamilyBubble',
+            }]}
+            currentId={currentBubbleId}
+            onSwitch={onSwitchBubble}
+            onCreate={setShowCreateBubble ? () => setShowCreateBubble(true) : undefined}
+          />
+        </div>
       </div>
 
-      <div className="flex-1 w-full overflow-hidden relative flex items-center justify-center" style={{ minHeight: 0 }}>
+      <div
+        className="flex-1 w-full overflow-hidden relative flex items-center justify-center"
+        style={{ minHeight: 0, touchAction: viewMode === 'cluster' ? 'pan-y' : undefined }}
+        onPointerDown={viewMode === 'cluster' ? clusterSwipe.onPointerDown : undefined}
+        onPointerUp={viewMode === 'cluster' ? clusterSwipe.onPointerUp : undefined}
+        onPointerCancel={viewMode === 'cluster' ? clusterSwipe.onPointerCancel : undefined}
+      >
         {viewMode === 'globe' ? (
           <GlobeView
             bubbleData={bubbleData}
@@ -443,6 +484,49 @@ const Bubble = ({
         </div>
         
         <div className="my-6 border-t border-gray-800" />
+
+        <div className="space-y-3 mb-6">
+          <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Your bubbles</h4>
+          <p className="text-gray-400 text-sm">
+            Swipe the family name at the top to move between bubbles, or pick one here.
+          </p>
+          <div className="space-y-2">
+            {(userBubbles.length ? userBubbles : [{
+              id: currentBubbleId,
+              name: bubbleData?.bubble?.name || 'Family bubble',
+            }]).map((bubble) => (
+              <button
+                key={bubble.id}
+                type="button"
+                onClick={() => {
+                  if (bubble.id !== currentBubbleId && onSwitchBubble) {
+                    onSwitchBubble(bubble.id);
+                    setShowSettings(false);
+                  }
+                }}
+                className={`w-full text-left px-4 py-3 rounded-xl font-semibold transition-all ${
+                  bubble.id === currentBubbleId
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                    : 'bg-gray-800 border border-gray-700 text-white hover:bg-gray-700'
+                }`}
+              >
+                {bubble.name}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettings(false);
+              if (setShowCreateBubble) setShowCreateBubble(true);
+            }}
+            className="w-full bg-white/10 text-white py-3 rounded-xl font-semibold hover:bg-white/20"
+          >
+            Create another bubble
+          </button>
+        </div>
+        
+        <div className="my-6 border-t border-gray-800" />
         
         {/* Notification Settings */}
         <NotificationSettings />
@@ -456,6 +540,19 @@ const Bubble = ({
             Sign Out
           </button>
         </div>
+      </SlideUpCard>
+
+      <SlideUpCard
+        isOpen={showCreateBubble}
+        onClose={() => setShowCreateBubble && setShowCreateBubble(false)}
+        title="Create another bubble"
+      >
+        <CreateAnotherBubble
+          needProfileNames={!bubbleData?.currentMember?.name}
+          submitting={creatingBubble}
+          onSubmit={onCreateAnotherBubble}
+          onCancel={() => setShowCreateBubble && setShowCreateBubble(false)}
+        />
       </SlideUpCard>
 
       {/* Profile View Modal */}
