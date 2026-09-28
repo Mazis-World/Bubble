@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
 import { MEMO_TYPE, formatMemberLocation } from '../../services/memos';
-import { formatVoiceDuration } from '../../services/memoMedia';
+import { formatVoiceDuration, normalizeMemoPhotoUrls } from '../../services/memoMedia';
+import MemoReactions from './MemoReactions';
+import MemoPhotoGrid from '../ui/MemoPhotoGrid';
 
 const MemberAvatar = ({ member, size = 44 }) => {
   const photo = member?.photoUrl || member?.photoURL;
@@ -42,10 +44,11 @@ const MemberRow = ({ member, onClick }) => (
   </button>
 );
 
-const MemoRow = ({ memo, member, onClick }) => {
+const MemoRow = ({ memo, member, currentUserId, bubbleId, bubbleName, focused, onClick, onReact, onDelete }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
   const isPlace = memo.type === MEMO_TYPE.PLACE;
+  const rowRef = useRef(null);
   const title = isSos
     ? '🚨 SOS ALERT'
     : isCheckin
@@ -54,11 +57,20 @@ const MemoRow = ({ memo, member, onClick }) => {
         ? (memo.message || 'Place update')
         : getStatusEmoji(memo.status);
   const fallbackMessage = isSos ? 'Needs assistance' : isCheckin ? 'Checked in' : isPlace ? 'Place update' : 'Updated status';
+  const memoPhotos = normalizeMemoPhotoUrls(memo);
+
+  useEffect(() => {
+    if (focused && rowRef.current?.scrollIntoView) {
+      rowRef.current.scrollIntoView({ block: 'nearest' });
+    }
+  }, [focused]);
+
   return (
     <div
+      ref={rowRef}
       className={`w-full text-left p-3 rounded-2xl border ${
         isSos ? 'bg-red-950/70 border-red-500/50' : 'glass-light border-white/10'
-      }`}
+      } ${focused ? 'ring-2 ring-blue-400/80' : ''}`}
     >
       <button
         type="button"
@@ -85,14 +97,13 @@ const MemoRow = ({ memo, member, onClick }) => {
           </div>
         </div>
       </button>
-      {memo.photoUrl && (
-        <button type="button" onClick={onClick} className="mt-2 block w-full">
-          <img
-            src={memo.photoUrl}
-            alt="Attached to this status update"
-            className="w-full max-h-48 object-cover rounded-xl border border-white/10"
+      {memoPhotos.length > 0 && (
+        <div className="mt-2">
+          <MemoPhotoGrid
+            urls={memoPhotos}
+            onClick={onClick}
           />
-        </button>
+        </div>
       )}
       {memo.voiceUrl && (
         <div className="mt-2">
@@ -111,6 +122,19 @@ const MemoRow = ({ memo, member, onClick }) => {
           )}
         </div>
       )}
+      <MemoReactions
+        reactions={memo.reactions}
+        currentUserId={currentUserId}
+        memo={{ ...memo, bubbleId: memo.bubbleId || bubbleId }}
+        memberName={member?.name}
+        bubbleName={bubbleName}
+        onReact={(emoji) => onReact?.(memo, emoji)}
+        onDelete={
+          onDelete && currentUserId && memo.userId === currentUserId
+            ? () => onDelete(memo)
+            : undefined
+        }
+      />
     </div>
   );
 };
@@ -119,9 +143,14 @@ const BubbleOverviewSheet = ({
   members = [],
   memos = [],
   bubbleName,
+  bubbleId = null,
   section = 'members',
+  currentUserId = null,
   onMemberClick,
   onMemoClick,
+  onMemoReact,
+  onMemoDelete,
+  focusedMemoId = null,
 }) => {
   const count = members.length;
 
@@ -140,7 +169,13 @@ const BubbleOverviewSheet = ({
                 key={memo.memoId}
                 memo={memo}
                 member={members.find((item) => item.userId === memo.userId || item.id === memo.nodeId)}
+                currentUserId={currentUserId}
+                bubbleId={bubbleId}
+                bubbleName={bubbleName}
+                focused={focusedMemoId === memo.memoId}
                 onClick={() => onMemoClick?.(memo)}
+                onReact={onMemoReact}
+                onDelete={onMemoDelete}
               />
             ))}
           </div>

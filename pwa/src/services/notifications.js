@@ -366,20 +366,29 @@ class NotificationService {
       }
 
       if (!this.foregroundUnsub) {
-        this.foregroundUnsub = onMessage(messaging, (payload) => {
-          if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        this.foregroundUnsub = onMessage(messaging, async (payload) => {
+          const data = payload?.data || {};
+          const uid = await this.currentUserId();
+          if (data.actorUserId && uid && data.actorUserId === uid) {
             return;
           }
-          const data = payload?.data || {};
-          if (String(data.type || '').startsWith('PLACE_') && this.preferences.placeAlerts === false) {
+          const type = String(data.type || '');
+          const memoActivity = type === 'memo_react' || type === 'memo_share';
+          if (typeof document !== 'undefined' && document.visibilityState === 'visible' && !memoActivity && type !== 'sos') {
+            return;
+          }
+          if (type.startsWith('PLACE_') && this.preferences.placeAlerts === false) {
+            return;
+          }
+          if (memoActivity && this.preferences.statusUpdates === false) {
             return;
           }
           const title = data.title || payload?.notification?.title || 'FamilyBubble';
           this.show(title, {
             body: data.body || payload?.notification?.body || '',
             tag: data.tag || 'familybubble',
-            requireInteraction: data.type === 'sos',
-            force: data.type === 'sos',
+            requireInteraction: type === 'sos',
+            force: type === 'sos',
             data,
           });
         });

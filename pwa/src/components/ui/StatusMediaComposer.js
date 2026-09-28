@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ImagePlus, Mic, Square, Trash2, X } from 'lucide-react';
-import { chooseRecorderMimeType, formatVoiceDuration, MAX_VOICE_DURATION_MS } from '../../services/memoMedia';
+import { ImagePlus, Mic, Square, Trash2 } from 'lucide-react';
+import {
+  chooseRecorderMimeType,
+  formatVoiceDuration,
+  MAX_STATUS_PHOTOS,
+  MAX_VOICE_DURATION_MS,
+} from '../../services/memoMedia';
+import MemoPhotoGrid from './MemoPhotoGrid';
 
 const canUseMicrophone = () =>
   typeof window !== 'undefined' &&
@@ -14,11 +20,10 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
   const chunksRef = useRef([]);
   const tickRef = useRef(null);
   const startedAtRef = useRef(0);
-  const photoPreviewRef = useRef(null);
+  const photoPreviewUrlsRef = useRef([]);
   const voicePreviewRef = useRef(null);
 
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
+  const [photos, setPhotos] = useState([]);
   const [voiceBlob, setVoiceBlob] = useState(null);
   const [voicePreviewUrl, setVoicePreviewUrl] = useState(null);
   const [voiceDurationMs, setVoiceDurationMs] = useState(null);
@@ -26,11 +31,10 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [error, setError] = useState(null);
 
-  const revokePhotoPreview = () => {
-    if (photoPreviewRef.current) {
-      URL.revokeObjectURL(photoPreviewRef.current);
-      photoPreviewRef.current = null;
-    }
+  const revokePhotoPreviews = (urls = photoPreviewUrlsRef.current) => {
+    urls.forEach((url) => {
+      if (url) URL.revokeObjectURL(url);
+    });
   };
 
   const revokeVoicePreview = () => {
@@ -64,28 +68,40 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
   };
 
   useEffect(() => {
+    const photoFiles = photos.map((item) => item.file);
     onChange?.({
-      photoFile,
+      photoFile: photoFiles[0] || null,
+      photoFiles,
       voiceBlob,
       voiceDurationMs,
       recording,
     });
-  }, [photoFile, voiceBlob, voiceDurationMs, recording, onChange]);
+  }, [photos, voiceBlob, voiceDurationMs, recording, onChange]);
 
   useEffect(() => () => {
     stopTicker();
     finishRecorder();
     stopStream();
-    revokePhotoPreview();
+    revokePhotoPreviews();
     revokeVoicePreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const clearPhoto = () => {
-    revokePhotoPreview();
-    setPhotoFile(null);
-    setPhotoPreviewUrl(null);
+  const clearPhotos = () => {
+    revokePhotoPreviews();
+    photoPreviewUrlsRef.current = [];
+    setPhotos([]);
     if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const removePhotoAt = (index) => {
+    setPhotos((current) => {
+      const removed = current[index];
+      if (removed?.preview) URL.revokeObjectURL(removed.preview);
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      photoPreviewUrlsRef.current = next.map((item) => item.preview);
+      return next;
+    });
   };
 
   const clearVoice = () => {
@@ -97,14 +113,27 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
   };
 
   const handlePhotoPicked = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    revokePhotoPreview();
-    const preview = URL.createObjectURL(file);
-    photoPreviewRef.current = preview;
-    setPhotoFile(file);
-    setPhotoPreviewUrl(preview);
-    setError(null);
+    const picked = Array.from(event.target.files || []).filter((file) => (
+      !file.type || file.type.startsWith('image/')
+    ));
+    if (!picked.length) return;
+    const room = Math.max(0, MAX_STATUS_PHOTOS - photos.length);
+    if (!room) {
+      setError(`You can add up to ${MAX_STATUS_PHOTOS} photos.`);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    const accepted = picked.slice(0, room).map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setError(picked.length > room ? `You can add up to ${MAX_STATUS_PHOTOS} photos.` : null);
+    setPhotos((current) => {
+      const next = [...current, ...accepted];
+      photoPreviewUrlsRef.current = next.map((item) => item.preview);
+      return next;
+    });
+    if (fileRef.current) fileRef.current.value = '';
   };
 
   const startRecording = async () => {
@@ -172,31 +201,55 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
     finishRecorder();
   };
 
+  const remainingSlots = MAX_STATUS_PHOTOS - photos.length;
+
   return (
     <div className="space-y-3">
       <input
         ref={fileRef}
         type="file"
         accept="image/*"
+        multiple
         className="sr-only"
         onChange={handlePhotoPicked}
         disabled={disabled}
+        tabIndex={-1}
       />
 
       <div>
-        <p className="text-gray-300 text-sm mb-2 font-semibold">Add a photo (optional):</p>
-        {photoPreviewUrl ? (
-          <div className="relative rounded-2xl overflow-hidden border border-white/10">
-            <img src={photoPreviewUrl} alt="" className="w-full max-h-40 object-cover" />
-            <button
-              type="button"
-              onClick={clearPhoto}
+        <p className="text-gray-300 text-sm mb-2 font-semibold">Add photos (optional):</p>
+        {photos.length ? (
+          <div className="space-y-2">
+            <MemoPhotoGrid
+              urls={photos.map((item) => item.preview)}
+              preview
               disabled={disabled}
-              className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white tap-target"
-              aria-label="Remove photo"
-            >
-              <X size={16} />
-            </button>
+              onRemove={removePhotoAt}
+            />
+            <div className="flex items-center justify-between gap-2">
+              {remainingSlots > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={disabled}
+                  className="flex items-center gap-1 text-sm text-gray-300 tap-target disabled:opacity-50"
+                >
+                  <ImagePlus size={14} />
+                  Add more
+                </button>
+              ) : (
+                <span className="text-xs text-gray-500">{MAX_STATUS_PHOTOS} photos</span>
+              )}
+              <button
+                type="button"
+                onClick={clearPhotos}
+                disabled={disabled}
+                className="flex items-center gap-1 text-sm text-gray-300 tap-target disabled:opacity-50"
+              >
+                <Trash2 size={14} />
+                Remove photos
+              </button>
+            </div>
           </div>
         ) : (
           <button
@@ -206,7 +259,7 @@ const StatusMediaComposer = ({ disabled = false, onChange }) => {
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white font-semibold tap-target disabled:opacity-50"
           >
             <ImagePlus size={18} />
-            Add photo
+            Add photos
           </button>
         )}
       </div>

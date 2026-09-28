@@ -28,7 +28,7 @@ import { analyticsService } from '../../services/analytics';
 import { auth } from '../../firebase';
 import { API } from '../../services/bubble';
 import useFamilyMemos from '../../hooks/useFamilyMemos';
-import { MEMO_TYPE } from '../../services/memos';
+import { MEMO_TYPE, deleteFamilyMemo, parseMemoDeepLink, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
 import { buildCheckInMemo, canCheckIn, lookupPlaceLabel, readCurrentPosition } from '../../services/checkin';
 
 const Bubble = ({
@@ -63,6 +63,7 @@ const Bubble = ({
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
   const [statusMedia, setStatusMedia] = useState({
     photoFile: null,
+    photoFiles: [],
     voiceBlob: null,
     voiceDurationMs: null,
     recording: false,
@@ -71,6 +72,7 @@ const Bubble = ({
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
   const [showOverview, setShowOverview] = useState(false);
   const [showMemos, setShowMemos] = useState(false);
+  const [focusedMemoId, setFocusedMemoId] = useState(null);
   const [mapFocus, setMapFocus] = useState(null);
   const [checkInState, setCheckInState] = useState('idle');
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -97,6 +99,13 @@ const Bubble = ({
       if (placeId) {
         openPlaces(placeId);
       }
+      const memoId = parseMemoDeepLink(window.location.search)
+        || localStorage.getItem('familyBubble_pendingMemo');
+      if (memoId) {
+        setFocusedMemoId(memoId);
+        setShowMemos(true);
+        localStorage.removeItem('familyBubble_pendingMemo');
+      }
     } catch (error) {
       // ignore malformed URLs
     }
@@ -109,6 +118,7 @@ const Bubble = ({
     setSelectedStatusEmoji(null);
     setStatusMedia({
       photoFile: null,
+      photoFiles: [],
       voiceBlob: null,
       voiceDurationMs: null,
       recording: false,
@@ -217,6 +227,37 @@ const Bubble = ({
     setShowCheckIn(false);
     setCheckInState('idle');
   };
+
+  const handleMemoReact = useCallback(async (memo, emoji) => {
+    const bubbleId = bubbleData?.bubble?.id;
+    const uid = auth.currentUser?.uid;
+    if (!bubbleId || !memo?.memoId || !uid) return;
+    try {
+      await toggleMemoReaction({
+        bubbleId,
+        memoId: memo.memoId,
+        emoji,
+        currentEmoji: viewerMemoReaction(memo.reactions, uid),
+      });
+    } catch (error) {
+      console.warn('Memo reaction failed:', error);
+    }
+  }, [bubbleData?.bubble?.id]);
+
+  const handleMemoDelete = useCallback(async (memo) => {
+    const bubbleId = bubbleData?.bubble?.id;
+    if (!bubbleId || !memo?.memoId) return;
+    try {
+      await deleteFamilyMemo({
+        bubbleId,
+        memoId: memo.memoId,
+        userId: memo.userId,
+      });
+    } catch (error) {
+      console.warn('Memo delete failed:', error);
+      alert(error.message || 'Could not delete that memo.');
+    }
+  }, [bubbleData?.bubble?.id]);
 
   if (!bubbleData || !bubbleData.currentMember) {
     return (
@@ -742,7 +783,10 @@ const Bubble = ({
 
       <SlideUpCard
         isOpen={showMemos}
-        onClose={() => setShowMemos(false)}
+        onClose={() => {
+          setShowMemos(false);
+          setFocusedMemoId(null);
+        }}
         title="Family Memos"
       >
         <BubbleOverviewSheet
@@ -750,6 +794,11 @@ const Bubble = ({
           members={bubbleData.allMembers}
           memos={familyMemos}
           bubbleName={bubbleData?.bubble?.name}
+          bubbleId={bubbleData?.bubble?.id}
+          currentUserId={auth.currentUser?.uid || bubbleData.currentMember.userId}
+          focusedMemoId={focusedMemoId}
+          onMemoReact={handleMemoReact}
+          onMemoDelete={handleMemoDelete}
           onMemoClick={(memo) => {
             setShowMemos(false);
             const member = bubbleData.allMembers.find(

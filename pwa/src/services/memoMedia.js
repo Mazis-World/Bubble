@@ -2,6 +2,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { app } from '../firebase';
 
 export const MAX_VOICE_DURATION_MS = 30000;
+export const MAX_STATUS_PHOTOS = 4;
 export const MEMO_PHOTO_MAX_DIM = 480;
 export const MAX_FALLBACK_PHOTO_CHARS = 250000;
 export const MAX_FALLBACK_VOICE_CHARS = 400000;
@@ -68,24 +69,54 @@ export const blobToDataUrl = (blob) =>
     reader.readAsDataURL(blob);
   });
 
-export const pickFallbackMedia = ({ photoDataUrl = null, voiceDataUrl = null } = {}) => {
-  const photoUrl = isDataUrl(photoDataUrl) ? photoDataUrl : null;
-  const voiceUrl = isDataUrl(voiceDataUrl) ? voiceDataUrl : null;
-  const photoChars = photoUrl ? photoUrl.length : 0;
+export const collectStatusPhotoFiles = ({ photoFile = null, photoFiles = null } = {}) => {
+  const list = Array.isArray(photoFiles) ? photoFiles.filter(Boolean) : [];
+  if (photoFile && !list.includes(photoFile)) list.unshift(photoFile);
+  return list.slice(0, MAX_STATUS_PHOTOS);
+};
+
+export const normalizeMemoPhotoUrls = ({ photoUrl = null, photoUrls = null } = {}) => {
+  const list = [];
+  const add = (url) => {
+    if (typeof url === 'string' && url && !list.includes(url) && list.length < MAX_STATUS_PHOTOS) {
+      list.push(url);
+    }
+  };
+  if (Array.isArray(photoUrls)) photoUrls.forEach(add);
+  if (photoUrl && !list.includes(photoUrl)) list.unshift(photoUrl);
+  return list.slice(0, MAX_STATUS_PHOTOS);
+};
+
+export const pickFallbackMedia = ({ photoDataUrl = null, photoDataUrls = null, voiceDataUrl = null } = {}) => {
+  const photos = [];
+  const addPhoto = (url) => {
+    if (isDataUrl(url) && !photos.includes(url) && photos.length < MAX_STATUS_PHOTOS) photos.push(url);
+  };
+  if (Array.isArray(photoDataUrls)) photoDataUrls.forEach(addPhoto);
+  if (photoDataUrl && !photos.includes(photoDataUrl)) photos.unshift(photoDataUrl);
+  const sized = photos.filter((url) => isDataUrl(url) && url.length <= MAX_FALLBACK_PHOTO_CHARS);
+  const voiceUrl = isDataUrl(voiceDataUrl) && voiceDataUrl.length <= MAX_FALLBACK_VOICE_CHARS
+    ? voiceDataUrl
+    : null;
   const voiceChars = voiceUrl ? voiceUrl.length : 0;
 
-  if (photoChars && photoChars > MAX_FALLBACK_PHOTO_CHARS) {
-    return pickFallbackMedia({ photoDataUrl: null, voiceDataUrl: voiceUrl });
+  const kept = [];
+  let used = 0;
+  sized.forEach((url) => {
+    if (used + url.length + voiceChars <= MAX_FALLBACK_COMBINED_CHARS) {
+      kept.push(url);
+      used += url.length;
+    }
+  });
+
+  if (!kept.length && sized.length) {
+    return { photoUrl: sized[0], photoUrls: [sized[0]], voiceUrl: null };
   }
-  if (voiceChars && voiceChars > MAX_FALLBACK_VOICE_CHARS) {
-    return pickFallbackMedia({ photoDataUrl: photoUrl, voiceDataUrl: null });
-  }
-  if (photoChars + voiceChars <= MAX_FALLBACK_COMBINED_CHARS) {
-    return { photoUrl, voiceUrl };
-  }
-  if (photoChars) return { photoUrl, voiceUrl: null };
-  if (voiceChars) return { photoUrl: null, voiceUrl };
-  return { photoUrl: null, voiceUrl: null };
+  return {
+    photoUrl: kept[0] || null,
+    photoUrls: kept,
+    voiceUrl,
+  };
 };
 
 const canvasToJpegBlob = (canvas, quality) =>
@@ -162,33 +193,45 @@ export const uploadMemoBlob = async (blob, userId, kind, timeoutMs = 12000) => {
   );
 };
 
-export const prepareStatusMemoMedia = async ({ photoFile = null, voiceBlob = null, userId } = {}) => {
-  let photoUrl = null;
-  let voiceUrl = null;
+const prepareOneMemoPhoto = async (photoFile, userId, index) => {
+  let photoBlob = photoFile;
   let photoDataUrl = null;
-  let voiceDataUrl = null;
-
-  if (photoFile) {
-    let photoBlob = photoFile;
-    try {
-      const compressed = await compressMemoPhotoFile(photoFile);
-      photoBlob = compressed.blob;
-      photoDataUrl = compressed.dataUrl;
-    } catch (error) {
-      console.warn('Memo photo compression skipped:', error.message);
-    }
-    try {
-      photoUrl = await uploadMemoBlob(photoBlob, userId, 'photo');
-    } catch (error) {
-      console.warn('Memo photo storage upload failed:', error?.errors?.[0]?.message || error.message);
-      if (!photoDataUrl) {
-        try {
-          photoDataUrl = await blobToDataUrl(photoBlob);
-        } catch (readError) {
-          console.warn('Memo photo fallback failed:', readError.message);
-        }
+  try {
+    const compressed = await compressMemoPhotoFile(photoFile);
+    photoBlob = compressed.blob;
+    photoDataUrl = compressed.dataUrl;
+  } catch (error) {
+    console.warn('Memo photo compression skipped:', error.message);
+  }
+  try {
+    return await uploadMemoBlob(photoBlob, userId, `photo${index}`);
+  } catch (error) {
+    console.warn('Memo photo storage upload failed:', error?.errors?.[0]?.message || error.message);
+    if (!photoDataUrl) {
+      try {
+        photoDataUrl = await blobToDataUrl(photoBlob);
+      } catch (readError) {
+        console.warn('Memo photo fallback failed:', readError.message);
       }
     }
+    return photoDataUrl || null;
+  }
+};
+
+export const prepareStatusMemoMedia = async ({
+  photoFile = null,
+  photoFiles = null,
+  voiceBlob = null,
+  userId,
+} = {}) => {
+  const files = collectStatusPhotoFiles({ photoFile, photoFiles });
+  let photoUrls = [];
+  let voiceUrl = null;
+  let voiceDataUrl = null;
+
+  for (let index = 0; index < files.length; index += 1) {
+    const url = await prepareOneMemoPhoto(files[index], userId, index);
+    if (url) photoUrls.push(url);
   }
 
   if (voiceBlob && voiceBlob.size > 0) {
@@ -204,20 +247,29 @@ export const prepareStatusMemoMedia = async ({ photoFile = null, voiceBlob = nul
     }
   }
 
-  if (!photoUrl && photoDataUrl) photoUrl = photoDataUrl;
   if (!voiceUrl && voiceDataUrl) voiceUrl = voiceDataUrl;
 
-  if (isDataUrl(photoUrl) || isDataUrl(voiceUrl)) {
+  if (photoUrls.some(isDataUrl) || isDataUrl(voiceUrl)) {
     const picked = pickFallbackMedia({
-      photoDataUrl: isDataUrl(photoUrl) ? photoUrl : null,
+      photoDataUrls: photoUrls.filter(isDataUrl),
       voiceDataUrl: isDataUrl(voiceUrl) ? voiceUrl : null,
     });
-    if (isDataUrl(photoUrl)) photoUrl = picked.photoUrl;
+    const remainingData = [...(picked.photoUrls || [])];
+    photoUrls = photoUrls
+      .map((url) => {
+        if (!isDataUrl(url)) return url;
+        const match = remainingData.indexOf(url);
+        if (match === -1) return null;
+        remainingData.splice(match, 1);
+        return url;
+      })
+      .filter(Boolean);
     if (isDataUrl(voiceUrl)) voiceUrl = picked.voiceUrl;
   }
 
   return {
-    photoUrl: photoUrl || null,
+    photoUrl: photoUrls[0] || null,
+    photoUrls,
     voiceUrl: voiceUrl || null,
   };
 };

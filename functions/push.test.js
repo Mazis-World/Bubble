@@ -31,14 +31,14 @@ describe('push helpers', () => {
     );
   });
 
-  it('builds a check-in payload without an SOS deep link', () => {
+  it('builds a check-in payload with a memo deep link', () => {
     const payload = buildMemoPush(
-      { type: 'checkin', userId: 'user-2', message: 'Checked in' },
+      { type: 'checkin', userId: 'user-2', memoId: 'm2', message: 'Checked in' },
       'bubble-1'
     );
     assert.equal(payload.data.type, 'checkin');
     assert.equal(payload.body, 'Checked in');
-    assert.equal(payload.data.url, '/');
+    assert.equal(payload.data.url, '/?memo=m2&bubble=bubble-1');
     assert.equal(payload.data.tag, 'checkin-user-2');
   });
 
@@ -85,5 +85,27 @@ describe('push helpers', () => {
   it('detects stale FCM tokens', () => {
     assert.equal(isInvalidTokenError({ code: 'messaging/registration-token-not-registered' }), true);
     assert.equal(isInvalidTokenError({ code: 'messaging/internal-error' }), false);
+  });
+
+  it('builds reaction and share payloads for a specific memo', () => {
+    const { mapKeyDelta, buildMemoReactionPush, buildMemoSharePush } = require('./push');
+    assert.deepEqual(mapKeyDelta({}, { u2: '😂' }), { userId: 'u2', value: '😂', action: 'add' });
+    const reacted = buildMemoReactionPush({
+      bubbleId: 'bubble-1',
+      memoId: 'm5',
+      actorUserId: 'u2',
+      actorName: 'Ada',
+      emoji: '😂',
+    });
+    assert.equal(reacted.body, 'Ada reacted 😂');
+    assert.equal(reacted.data.url, '/?memo=m5&bubble=bubble-1');
+    const shared = buildMemoSharePush({
+      bubbleId: 'bubble-1',
+      memoId: 'm5',
+      actorUserId: 'u2',
+      actorName: 'Ada',
+    });
+    assert.equal(shared.body, 'Ada shared a memo');
+    assert.equal(shared.data.type, 'memo_share');
   });
 });

@@ -11,12 +11,15 @@ jest.mock('firebase/storage', () => ({
 
 import {
   chooseRecorderMimeType,
+  collectStatusPhotoFiles,
   extForMime,
   formatVoiceDuration,
   isDataUrl,
+  normalizeMemoPhotoUrls,
   pickFallbackMedia,
   MAX_FALLBACK_COMBINED_CHARS,
   MAX_FALLBACK_PHOTO_CHARS,
+  MAX_STATUS_PHOTOS,
 } from './memoMedia';
 
 describe('memo media helpers', () => {
@@ -44,8 +47,29 @@ describe('memo media helpers', () => {
     const voiceDataUrl = `data:audio/webm;base64,${'b'.repeat(100)}`;
     expect(pickFallbackMedia({ photoDataUrl, voiceDataUrl })).toEqual({
       photoUrl: photoDataUrl,
+      photoUrls: [photoDataUrl],
       voiceUrl: voiceDataUrl,
     });
+  });
+
+  test('keeps several photos that fit in a Firestore doc', () => {
+    const photoA = `data:image/jpeg;base64,${'a'.repeat(100)}`;
+    const photoB = `data:image/jpeg;base64,${'b'.repeat(100)}`;
+    const photoC = `data:image/jpeg;base64,${'c'.repeat(100)}`;
+    expect(pickFallbackMedia({ photoDataUrls: [photoA, photoB, photoC] })).toEqual({
+      photoUrl: photoA,
+      photoUrls: [photoA, photoB, photoC],
+      voiceUrl: null,
+    });
+  });
+
+  test('collects a capped list of status photo files', () => {
+    const files = [{ name: '1' }, { name: '2' }, { name: '3' }, { name: '4' }, { name: '5' }];
+    expect(collectStatusPhotoFiles({ photoFiles: files })).toEqual(files.slice(0, MAX_STATUS_PHOTOS));
+    expect(normalizeMemoPhotoUrls({
+      photoUrl: 'https://example.com/1.jpg',
+      photoUrls: ['https://example.com/1.jpg', 'https://example.com/2.jpg'],
+    })).toEqual(['https://example.com/1.jpg', 'https://example.com/2.jpg']);
   });
 
   test('drops voice when combined data URLs would overflow Firestore', () => {

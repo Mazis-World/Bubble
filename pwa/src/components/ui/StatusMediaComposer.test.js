@@ -25,10 +25,13 @@ describe('StatusMediaComposer', () => {
     });
   });
 
-  test('lets a status update add a photo and a voice memo', () => {
+  test('lets a status update add photos and a voice memo', () => {
     render(<StatusMediaComposer onChange={() => {}} />);
-    expect(screen.getByText('Add a photo (optional):')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Add photo' })).toBeTruthy();
+    expect(screen.getByText('Add photos (optional):')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add photos' })).toBeTruthy();
+    const input = document.querySelector('input[type="file"]');
+    expect(input).toBeTruthy();
+    expect(input.multiple).toBe(true);
     expect(screen.getByText('Voice memo (optional):')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Record voice memo' })).toBeTruthy();
   });

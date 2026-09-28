@@ -46,7 +46,9 @@ self.addEventListener('notificationclick', (event) => {
   const url = data.url
     || (data.sosId && data.bubbleId
       ? `/?sos=${encodeURIComponent(data.sosId)}&bubble=${encodeURIComponent(data.bubbleId)}`
-      : '/');
+      : data.memoId
+        ? `/?memo=${encodeURIComponent(data.memoId)}${data.bubbleId ? `&bubble=${encodeURIComponent(data.bubbleId)}` : ''}`
+        : '/');
 
   event.waitUntil((async () => {
     const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });

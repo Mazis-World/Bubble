@@ -186,7 +186,7 @@ const NotificationSettings = () => {
           <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
             <div className="flex-1">
               <p className="text-sm font-medium text-white">Status updates</p>
-              <p className="text-xs text-gray-400">When family members update their status</p>
+              <p className="text-xs text-gray-400">When family members post, react to, or share a memo</p>
             </div>
             <button
               onClick={() => handleTogglePreference('statusUpdates')}

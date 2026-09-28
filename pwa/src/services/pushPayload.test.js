@@ -1,6 +1,9 @@
 import {
   buildMemoPush,
+  buildMemoReactionPush,
+  buildMemoSharePush,
   clickUrlFromPushData,
+  mapKeyDelta,
   mergeFcmTokens,
   recipientUserIdsFromNodes,
   tokensFromUserData,
@@ -25,26 +28,28 @@ describe('push payload helpers', () => {
     expect(tokensFromUserData({ fcmTokens: ['abc', { token: 'def' }] })).toEqual(['abc', 'def']);
   });
 
-  test('status memos do not include an SOS deep link', () => {
+  test('status memos deep-link to the memo board', () => {
     const payload = buildMemoPush({
       type: 'status',
       userId: 'user-2',
+      memoId: 'm5',
       message: 'At school',
     }, 'bubble-1');
     expect(payload.data.type).toBe('status');
-    expect(payload.data.url).toBe('/');
+    expect(payload.data.url).toBe('/?memo=m5&bubble=bubble-1');
     expect(payload.data.tag).toBe('status-user-2');
   });
 
-  test('check-in memos use a check-in tag without an SOS deep link', () => {
+  test('check-in memos use a check-in tag and memo deep link', () => {
     const payload = buildMemoPush({
       type: 'checkin',
       userId: 'user-2',
+      memoId: 'm2',
       message: 'Checked in',
     }, 'bubble-1');
     expect(payload.data.type).toBe('checkin');
     expect(payload.body).toBe('Checked in');
-    expect(payload.data.url).toBe('/');
+    expect(payload.data.url).toBe('/?memo=m2&bubble=bubble-1');
     expect(payload.data.tag).toBe('checkin-user-2');
   });
 
@@ -72,5 +77,32 @@ describe('push payload helpers', () => {
     }, 'bubble-1');
     expect(payload.data.url).toBe('/?sos=sos-9&bubble=bubble-1');
     expect(clickUrlFromPushData(payload.data)).toBe('/?sos=sos-9&bubble=bubble-1');
+  });
+
+  test('reaction and share pushes name the actor and open that memo', () => {
+    expect(mapKeyDelta({ u1: '👍' }, { u1: '👍', u2: '❤️' })).toEqual({
+      userId: 'u2',
+      value: '❤️',
+      action: 'add',
+    });
+    const reacted = buildMemoReactionPush({
+      bubbleId: 'bubble-1',
+      memoId: 'm5',
+      actorUserId: 'u2',
+      actorName: 'Ada',
+      emoji: '❤️',
+    });
+    expect(reacted.body).toBe('Ada reacted ❤️');
+    expect(reacted.data.type).toBe('memo_react');
+    expect(reacted.data.url).toBe('/?memo=m5&bubble=bubble-1');
+    const shared = buildMemoSharePush({
+      bubbleId: 'bubble-1',
+      memoId: 'm5',
+      actorUserId: 'u2',
+      actorName: 'Ada',
+    });
+    expect(shared.body).toBe('Ada shared a memo');
+    expect(shared.data.type).toBe('memo_share');
+    expect(shared.data.url).toBe('/?memo=m5&bubble=bubble-1');
   });
 });
