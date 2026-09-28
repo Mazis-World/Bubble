@@ -1,12 +1,14 @@
-import { addDoc, deleteField, doc, updateDoc } from 'firebase/firestore';
+import { addDoc, deleteDoc, deleteField, doc, updateDoc } from 'firebase/firestore';
 import {
   MEMO_REACTION_EMOJIS,
   MEMO_TYPE,
   buildMemoSharePayload,
   canCreateMemo,
+  canDeleteMemo,
   canReactToMemo,
   canViewMemos,
   createFamilyMemo,
+  deleteFamilyMemo,
   formatMemberLocation,
   nextMemoReaction,
   reactionCountByEmoji,
@@ -28,6 +30,7 @@ jest.mock('../firebase', () => ({
 jest.mock('firebase/firestore', () => ({
   addDoc: jest.fn(),
   collection: jest.fn(),
+  deleteDoc: jest.fn(),
   deleteField: jest.fn(() => ({ _delete: true })),
   doc: jest.fn(() => 'memo-ref'),
   limit: jest.fn(),
@@ -168,6 +171,13 @@ describe('Memo reactions', () => {
     expect(canReactToMemo({ authUid: null, isBubbleMember: true })).toBe(false);
   });
 
+  test('bubble members can delete a memo they do not want', () => {
+    expect(canDeleteMemo({ authUid: 'user-1', isBubbleMember: true })).toBe(true);
+    expect(canDeleteMemo({ authUid: 'user-1', isBubbleOwner: true })).toBe(true);
+    expect(canDeleteMemo({ authUid: 'user-1', isBubbleMember: false })).toBe(false);
+    expect(canDeleteMemo({ authUid: null, isBubbleMember: true })).toBe(false);
+  });
+
   test('tapping the same emoji clears it and a new emoji replaces it', () => {
     expect(nextMemoReaction(null, '❤️')).toBe('❤️');
     expect(nextMemoReaction('❤️', '❤️')).toBe(null);
@@ -259,6 +269,12 @@ describe('Memo reactions', () => {
       'memo-ref',
       expect.objectContaining({ 'shares.user-1': undefined })
     );
+  });
+
+  test('deletes a memo from the family board', async () => {
+    deleteDoc.mockResolvedValue(undefined);
+    await deleteFamilyMemo({ bubbleId: 'b1', memoId: 'm1' });
+    expect(deleteDoc).toHaveBeenCalledWith('memo-ref');
   });
 });
 

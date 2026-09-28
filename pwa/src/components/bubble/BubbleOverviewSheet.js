@@ -44,7 +44,7 @@ const MemberRow = ({ member, onClick }) => (
   </button>
 );
 
-const MemoRow = ({ memo, member, currentUserId, bubbleId, bubbleName, focused, onClick, onReact }) => {
+const MemoRow = ({ memo, member, currentUserId, bubbleId, bubbleName, focused, onClick, onReact, onDelete }) => {
   const isSos = memo.type === MEMO_TYPE.SOS;
   const isCheckin = memo.type === MEMO_TYPE.CHECKIN;
   const isPlace = memo.type === MEMO_TYPE.PLACE;
@@ -129,6 +129,7 @@ const MemoRow = ({ memo, member, currentUserId, bubbleId, bubbleName, focused, o
         memberName={member?.name}
         bubbleName={bubbleName}
         onReact={(emoji) => onReact?.(memo, emoji)}
+        onDelete={onDelete ? () => onDelete(memo) : undefined}
       />
     </div>
   );
@@ -144,6 +145,7 @@ const BubbleOverviewSheet = ({
   onMemberClick,
   onMemoClick,
   onMemoReact,
+  onMemoDelete,
   focusedMemoId = null,
 }) => {
   const count = members.length;
@@ -169,6 +171,7 @@ const BubbleOverviewSheet = ({
                 focused={focusedMemoId === memo.memoId}
                 onClick={() => onMemoClick?.(memo)}
                 onReact={onMemoReact}
+                onDelete={onMemoDelete}
               />
             ))}
           </div>

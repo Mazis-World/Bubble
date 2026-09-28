@@ -268,6 +268,7 @@ service cloud.firestore {
       // Optional photoUrl / photoUrls / voiceUrl / voiceDurationMs attach status photos and voice notes.
       // Members may only update their own key in reactions (classic 5-emoji set)
       // or their own key in shares (so the family can be notified).
+      // Any bubble member or owner may delete a memo they do not want on the board.
       // ============================================================================
       match /memos/{memoId} {
         allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
@@ -281,7 +282,7 @@ service cloud.firestore {
         allow update: if canAccessBubble(bubbleId) &&
                        (isMemoReactionUpdate() || isMemoShareUpdate());
 
-        allow delete: if false;
+        allow delete: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
       }
 
       // ============================================================================

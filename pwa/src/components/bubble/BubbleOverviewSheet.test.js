@@ -196,4 +196,26 @@ describe('Bubble overview sheets', () => {
     Object.defineProperty(navigator, 'share', { configurable: true, value: originalShare });
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: originalClipboard });
   });
+
+  test('asks once more before deleting a memo', () => {
+    const onMemoDelete = jest.fn();
+    const onMemoClick = jest.fn();
+    render(
+      <BubbleOverviewSheet
+        section="memos"
+        members={members}
+        memos={memos}
+        bubbleName="Home"
+        currentUserId="u1"
+        onMemoClick={onMemoClick}
+        onMemoDelete={onMemoDelete}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete this memo' }));
+    expect(onMemoDelete).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete memo' }));
+    expect(onMemoDelete).toHaveBeenCalledWith(expect.objectContaining({ memoId: 'm1' }));
+    expect(onMemoClick).not.toHaveBeenCalled();
+  });
 });

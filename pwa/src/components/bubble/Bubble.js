@@ -28,7 +28,7 @@ import { analyticsService } from '../../services/analytics';
 import { auth } from '../../firebase';
 import { API } from '../../services/bubble';
 import useFamilyMemos from '../../hooks/useFamilyMemos';
-import { MEMO_TYPE, parseMemoDeepLink, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
+import { MEMO_TYPE, deleteFamilyMemo, parseMemoDeepLink, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
 import { buildCheckInMemo, canCheckIn, lookupPlaceLabel, readCurrentPosition } from '../../services/checkin';
 
 const Bubble = ({
@@ -241,6 +241,17 @@ const Bubble = ({
       });
     } catch (error) {
       console.warn('Memo reaction failed:', error);
+    }
+  }, [bubbleData?.bubble?.id]);
+
+  const handleMemoDelete = useCallback(async (memo) => {
+    const bubbleId = bubbleData?.bubble?.id;
+    if (!bubbleId || !memo?.memoId) return;
+    try {
+      await deleteFamilyMemo({ bubbleId, memoId: memo.memoId });
+    } catch (error) {
+      console.warn('Memo delete failed:', error);
+      alert(error.message || 'Could not delete that memo.');
     }
   }, [bubbleData?.bubble?.id]);
 
@@ -783,6 +794,7 @@ const Bubble = ({
           currentUserId={auth.currentUser?.uid || bubbleData.currentMember.userId}
           focusedMemoId={focusedMemoId}
           onMemoReact={handleMemoReact}
+          onMemoDelete={handleMemoDelete}
           onMemoClick={(memo) => {
             setShowMemos(false);
             const member = bubbleData.allMembers.find(

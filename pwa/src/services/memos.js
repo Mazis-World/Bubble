@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   deleteField,
   doc,
   limit,
@@ -54,6 +55,9 @@ export const canCreateMemo = ({ authUid, userId, isBubbleMember, type }) => {
 
 export const canReactToMemo = ({ authUid, isBubbleMember }) =>
   Boolean(authUid && isBubbleMember);
+
+export const canDeleteMemo = ({ authUid, isBubbleMember, isBubbleOwner = false }) =>
+  Boolean(authUid && (isBubbleMember || isBubbleOwner));
 
 export const normalizeMemoReactions = (reactions) => {
   if (!reactions || typeof reactions !== 'object' || Array.isArray(reactions)) return {};
@@ -289,6 +293,17 @@ export const recordMemoShare = async ({ bubbleId, memoId }) => {
   await updateDoc(ref, {
     [`shares.${uid}`]: serverTimestamp(),
   });
+};
+
+export const deleteFamilyMemo = async ({ bubbleId, memoId }) => {
+  const uid = auth.currentUser?.uid;
+  if (!canDeleteMemo({ authUid: uid, isBubbleMember: true })) {
+    throw new Error('You cannot delete this memo.');
+  }
+  if (!bubbleId || !memoId) {
+    throw new Error('Missing memo.');
+  }
+  await deleteDoc(doc(db, 'bubbles', bubbleId, 'memos', memoId));
 };
 
 export const listenToFamilyMemos = (bubbleId, onChange) => {

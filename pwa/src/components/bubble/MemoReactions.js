@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Share2 } from 'lucide-react';
+import { Plus, Share2, Trash2 } from 'lucide-react';
 import {
   MEMO_REACTION_EMOJIS,
   MEMO_REACTION_LABELS,
@@ -61,10 +61,13 @@ const MemoReactions = ({
   memberName = null,
   bubbleName = null,
   onReact,
+  onDelete,
 }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const pickerRef = useRef(null);
+  const actionsRef = useRef(null);
   const shareTimerRef = useRef(null);
   const chips = usedReactionChips(reactions);
   const mine = viewerMemoReaction(reactions, currentUserId);
@@ -74,12 +77,20 @@ const MemoReactions = ({
   }, []);
 
   useEffect(() => {
-    if (!pickerOpen) return undefined;
+    if (!pickerOpen && !confirmDelete) return undefined;
     const onPointerDown = (event) => {
-      if (!pickerRef.current?.contains(event.target)) setPickerOpen(false);
+      if (pickerRef.current && !pickerRef.current.contains(event.target)) {
+        setPickerOpen(false);
+      }
+      if (actionsRef.current && !actionsRef.current.contains(event.target)) {
+        setConfirmDelete(false);
+      }
     };
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') setPickerOpen(false);
+      if (event.key === 'Escape') {
+        setPickerOpen(false);
+        setConfirmDelete(false);
+      }
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -87,15 +98,26 @@ const MemoReactions = ({
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [pickerOpen]);
+  }, [pickerOpen, confirmDelete]);
 
   const pickEmoji = (emoji) => {
     setPickerOpen(false);
     onReact?.(emoji);
   };
 
+  const handleDelete = (event) => {
+    event.stopPropagation();
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setConfirmDelete(false);
+    onDelete?.();
+  };
+
   const handleShare = async (event) => {
     event.stopPropagation();
+    setConfirmDelete(false);
     try {
       const result = await shareMemo(buildMemoSharePayload({
         memo,
@@ -122,7 +144,7 @@ const MemoReactions = ({
   return (
     <div className="mt-2 space-y-2">
       <MemoReactionChips chips={chips} mine={mine} onReact={onReact} />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" ref={actionsRef}>
         <div className="relative" ref={pickerRef}>
           {pickerOpen && (
             <div
@@ -181,6 +203,21 @@ const MemoReactions = ({
           <Share2 size={15} strokeWidth={2.2} />
           <span>{shareStatus || 'Share'}</span>
         </button>
+        {onDelete && (
+          <button
+            type="button"
+            aria-label={confirmDelete ? 'Confirm delete memo' : 'Delete this memo'}
+            onClick={handleDelete}
+            className={`tap-target inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors ${
+              confirmDelete
+                ? 'bg-red-600/90 border-red-400 text-white'
+                : 'bg-black/25 border-white/10 text-white hover:border-white/30'
+            }`}
+          >
+            <Trash2 size={15} strokeWidth={2.2} />
+            <span>{confirmDelete ? 'Delete?' : 'Delete'}</span>
+          </button>
+        )}
       </div>
     </div>
   );
