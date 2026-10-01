@@ -279,9 +279,10 @@ service cloud.firestore {
       // The author may delete their own memo. Other family members cannot.
       // ============================================================================
       match /memos/{memoId} {
-        allow read: if isBubbleMember(bubbleId) || isBubbleOwner(bubbleId);
+        allow read: if canAccessBubble(bubbleId);
 
-        allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId)) &&
+        allow create: if (isBubbleMember(bubbleId) || isBubbleOwner(bubbleId) ||
+                          isBubbleMemberAfter(bubbleId) || isBubbleOwnerAfter(bubbleId)) &&
                        request.resource.data.userId == request.auth.uid &&
                        request.resource.data.bubbleId == bubbleId &&
                        request.resource.data.type in ['status', 'sos', 'checkin', 'place'] &&

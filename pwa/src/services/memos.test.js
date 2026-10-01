@@ -10,6 +10,9 @@ import {
   createFamilyMemo,
   deleteFamilyMemo,
   formatMemberLocation,
+  listenToFamilyMemos,
+  memosFromMemberStatuses,
+  mergeAutoloadedMemos,
   nextMemoReaction,
   reactionCountByEmoji,
   shareMemo,
@@ -88,6 +91,54 @@ describe('Family Memos', () => {
     expect(sorted[0]).toBe(sos);
     expect(sorted[1]).toBe(newer);
     expect(sorted[2]).toBe(older);
+  });
+
+  test('autoloads current member statuses when Firestore memos are empty', () => {
+    const members = [
+      {
+        id: 'n1',
+        userId: 'u1',
+        status: '😊',
+        statusText: 'Home',
+        lastUpdated: { toMillis: () => 50 },
+      },
+      { id: 'n2', userId: 'u2' },
+    ];
+    const seeded = memosFromMemberStatuses(members, 'b1');
+    expect(seeded).toHaveLength(1);
+    expect(seeded[0]).toMatchObject({
+      type: MEMO_TYPE.STATUS,
+      userId: 'u1',
+      nodeId: 'n1',
+      message: 'Home',
+      bubbleId: 'b1',
+    });
+    expect(mergeAutoloadedMemos([], seeded)).toEqual(seeded);
+    expect(mergeAutoloadedMemos([{ memoId: 'real' }], seeded)[0].memoId).toBe('real');
+  });
+
+  test('retries memo listen without orderBy when the ordered query fails', () => {
+    const { onSnapshot } = require('firebase/firestore');
+    const onChange = jest.fn();
+    onSnapshot
+      .mockImplementationOnce((_query, _ok, err) => {
+        err({ code: 'failed-precondition', message: 'index' });
+        return jest.fn();
+      })
+      .mockImplementationOnce((_query, ok) => {
+        ok({
+          docs: [{
+            id: 'm1',
+            data: () => ({ type: MEMO_TYPE.STATUS, userId: 'u1', status: '😊' }),
+          }],
+        });
+        return jest.fn();
+      });
+
+    listenToFamilyMemos('bubble-1', onChange);
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ memoId: 'm1', type: MEMO_TYPE.STATUS, userId: 'u1' }),
+    ]);
   });
 
   test('formats location without hard-coded coordinates', () => {

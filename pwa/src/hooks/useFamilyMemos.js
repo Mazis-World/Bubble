@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listenToFamilyMemos, sortFamilyMemos } from '../services/memos';
+import {
+  listenToFamilyMemos,
+  memosFromMemberStatuses,
+  mergeAutoloadedMemos,
+  sortFamilyMemos,
+} from '../services/memos';
 
-export default function useFamilyMemos(bubbleId, openSosIds = []) {
+export default function useFamilyMemos(bubbleId, openSosIds = [], members = []) {
   const [memos, setMemos] = useState([]);
 
   useEffect(() => {
@@ -12,5 +17,13 @@ export default function useFamilyMemos(bubbleId, openSosIds = []) {
     return listenToFamilyMemos(bubbleId, setMemos);
   }, [bubbleId]);
 
-  return useMemo(() => sortFamilyMemos(memos, openSosIds), [memos, openSosIds]);
+  const memberMemos = useMemo(
+    () => memosFromMemberStatuses(members, bubbleId),
+    [members, bubbleId]
+  );
+
+  return useMemo(
+    () => sortFamilyMemos(mergeAutoloadedMemos(memos, memberMemos), openSosIds),
+    [memos, memberMemos, openSosIds]
+  );
 }

@@ -109,7 +109,11 @@ const Bubble = ({
     () => (sos?.openEvents || []).map((event) => event.sosId),
     [sos?.openEvents]
   );
-  const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
+  const familyMemos = useFamilyMemos(
+    bubbleData?.bubble?.id,
+    openSosIds,
+    bubbleData?.allMembers || []
+  );
   const { places, presence } = usePlaces(bubbleData?.bubble?.id);
 
   useEffect(() => {
