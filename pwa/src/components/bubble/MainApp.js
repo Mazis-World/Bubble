@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API } from '../../services/bubble';
 import Bubble from './Bubble';
+import CreateAnotherBubble from './CreateAnotherBubble';
+import BubblePopup from './BubblePopup';
 import { db } from '../../firebase';
 import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
+import {
+  canCreateAnotherBubble,
+  clearPersistedBubble,
+  listBubbleSummaries,
+  locationPayload,
+  membersToCopy,
+  persistCurrentBubble,
+  splitPersonName,
+} from '../../services/bubbleSwitcher';
 
-const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onInitiateCreate, onInitiateJoin, onJoinProcessed }) => {
+const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onJoinProcessed }) => {
   const [bubbleData, setBubbleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
@@ -16,8 +27,18 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const [manualInviteCode, setManualInviteCode] = useState('');
   const [joiningManual, setJoiningManual] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [userBubbles, setUserBubbles] = useState([]);
+  const [showCreateBubble, setShowCreateBubble] = useState(false);
+  const [creatingBubble, setCreatingBubble] = useState(false);
+  const [showJoinBubble, setShowJoinBubble] = useState(false);
+  const [showCopyMembers, setShowCopyMembers] = useState(false);
+  const [copyCandidates, setCopyCandidates] = useState([]);
+  const [copySourceName, setCopySourceName] = useState('');
+  const [leavingBubble, setLeavingBubble] = useState(false);
+  const [invitingMembers, setInvitingMembers] = useState(false);
   const unsubscribeRef = useRef(null);
   const currentBubbleIdRef = useRef(null);
+  const switchInFlightRef = useRef(false);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
   const joinAttemptedRef = useRef(null);
 
@@ -108,6 +129,102 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }, { includeMetadataChanges: true });
   }, [userId]);
 
+  const refreshUserBubbles = React.useCallback(async () => {
+    if (!userId) {
+      setUserBubbles([]);
+      return [];
+    }
+    try {
+      const all = await API.getUserBubbles(userId);
+      const summaries = listBubbleSummaries(all);
+      setUserBubbles(summaries);
+      return summaries;
+    } catch (error) {
+      console.warn('Could not load bubble list:', error);
+      return [];
+    }
+  }, [userId]);
+
+  const activateBubble = React.useCallback(async (bubbleId) => {
+    if (!bubbleId || bubbleId === currentBubbleIdRef.current || switchInFlightRef.current) {
+      return;
+    }
+    switchInFlightRef.current = true;
+    previousMembersRef.current = new Map();
+    try {
+      persistCurrentBubble(bubbleId);
+      const data = await API.getBubbleById(bubbleId, userId);
+      if (data?.bubble) {
+        setBubbleData(data);
+        currentBubbleIdRef.current = data.bubble.id;
+        setupRealtimeListener(data.bubble.id, userId);
+      }
+    } catch (error) {
+      console.error('Could not switch bubbles:', error);
+    } finally {
+      switchInFlightRef.current = false;
+    }
+  }, [userId, setupRealtimeListener]);
+
+  const handleCreateAnotherBubble = React.useCallback(async (form) => {
+    if (!userId || creatingBubble) return;
+    if (!canCreateAnotherBubble(userBubbles.length)) {
+      alert('You can be in 2 bubbles at a time, including the one you are in.');
+      return;
+    }
+    setCreatingBubble(true);
+    try {
+      const member = bubbleData?.currentMember;
+      let { firstName, lastName } = splitPersonName(member?.name, form.firstName, form.lastName);
+      if (!form.firstName || !form.lastName) {
+        const userRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userRef);
+        const fromUser = splitPersonName(userDoc.exists() ? userDoc.data()?.fullName : '');
+        if (!form.firstName) firstName = firstName || fromUser.firstName;
+        if (!form.lastName) lastName = lastName || fromUser.lastName;
+      }
+
+      const result = await API.createBubble(
+        userId,
+        firstName,
+        lastName,
+        form.bubbleName,
+        null,
+        form.relationshipRole,
+        locationPayload(member?.lastKnownLocation)
+      );
+
+      if (!result?.bubbleId) {
+        throw new Error('Bubble was created without an id');
+      }
+
+      analyticsService.trackBubbleCreate(result.bubbleId, (userBubbles.length || 0) + 1);
+      persistCurrentBubble(result.bubbleId);
+      currentBubbleIdRef.current = result.bubbleId;
+      previousMembersRef.current = new Map();
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const next = await API.getBubbleById(result.bubbleId, userId);
+      if (next?.bubble) {
+        setBubbleData(next);
+        setupRealtimeListener(result.bubbleId, userId);
+      }
+      await refreshUserBubbles();
+      setShowCreateBubble(false);
+    } catch (error) {
+      console.error('Error creating another bubble:', error);
+      alert(`Failed to create bubble: ${error.message}`);
+    } finally {
+      setCreatingBubble(false);
+    }
+  }, [
+    userId,
+    creatingBubble,
+    bubbleData,
+    userBubbles.length,
+    refreshUserBubbles,
+    setupRealtimeListener,
+  ]);
+
   const loadBubble = React.useCallback(async () => {
     // Support both authenticated users and anonymous users
     const nodeUserId = userId || localStorage.getItem('familyBubble_nodeUserId');
@@ -117,19 +234,24 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     let data = null;
 
     // Try to load bubble data
-    if (bubbleId) {
-      console.log("Loading bubble from localStorage:", bubbleId);
-      data = await API.getBubbleById(bubbleId, nodeUserId || userId);
-    } else if (userId) {
-      console.log("Loading bubble from user document for userId:", userId);
+    if (userId) {
+      console.log("Loading bubble from user memberships for userId:", userId);
       data = await API.getUserBubble(userId);
-      if (data) {
+      if (data?.bubble) {
         bubbleId = data.bubble.id;
-        localStorage.setItem('familyBubble_bubbleId', bubbleId);
+        persistCurrentBubble(bubbleId);
         console.log("Found bubble from user document:", bubbleId);
+      } else if (storedBubbleId) {
+        console.log("Loading bubble from localStorage:", storedBubbleId);
+        data = await API.getBubbleById(storedBubbleId, nodeUserId || userId);
+        bubbleId = data?.bubble?.id || null;
       } else {
-        console.log("No bubble found in user document - user may not have created/joined a bubble yet");
+        console.log("No readable bubble in user document");
       }
+    } else if (storedBubbleId) {
+      console.log("Loading bubble from localStorage:", storedBubbleId);
+      data = await API.getBubbleById(storedBubbleId, nodeUserId);
+      bubbleId = data?.bubble?.id || null;
     }
 
     if (data && data.bubble) {
@@ -141,7 +263,8 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       setLoading(false);
       console.log("No bubble data available");
     }
-  }, [userId, setupRealtimeListener]);
+    await refreshUserBubbles();
+  }, [userId, setupRealtimeListener, refreshUserBubbles]);
 
   useEffect(() => {
     return () => {
@@ -184,6 +307,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
                 
                 // Setup real-time listener
                 setupRealtimeListener(result.bubbleId, userId);
+                refreshUserBubbles();
               } else {
                 console.error("Bubble data is invalid:", bubbleData);
                 setLoading(false);
@@ -298,6 +422,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
                     
                     // Setup real-time listener for the joined bubble
                     setupRealtimeListener(result.bubbleId, userId);
+                    refreshUserBubbles();
                     return; // Success, exit retry loop
                   } else {
                     console.warn("Bubble loaded but current member not found. Retrying...");
@@ -360,7 +485,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     } else {
       setLoading(false);
     }
-  }, [userId, bubbleCreationData, initialJoinToken, onBubbleCreated, onJoinProcessed, loadBubble, setupRealtimeListener]);
+  }, [userId, bubbleCreationData, initialJoinToken, onBubbleCreated, onJoinProcessed, loadBubble, setupRealtimeListener, refreshUserBubbles]);
 
   // Get current location
   const getCurrentLocation = () => {
@@ -431,6 +556,40 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id]); // updateLocation intentionally excluded to prevent re-creation
 
+  useEffect(() => {
+    const code = typeof initialJoinToken === 'string'
+      ? initialJoinToken
+      : initialJoinToken?.inviteToken;
+    if (code) {
+      setManualInviteCode(String(code).trim().toUpperCase());
+    }
+  }, [initialJoinToken]);
+
+  const pendingInviteCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!userId || !bubbleData || pendingInviteCheckedRef.current) return undefined;
+    pendingInviteCheckedRef.current = true;
+    let cancelled = false;
+    API.getPendingInvites(userId)
+      .then((invites) => {
+        if (cancelled || !invites.length) return;
+        const next = invites.find((invite) => !userBubbles.some((bubble) => bubble.id === invite.bubbleId));
+        if (!next?.token) return;
+        setManualInviteCode(String(next.token).toUpperCase());
+        if (canCreateAnotherBubble(userBubbles.length)) {
+          joinWithInviteCode(next.token);
+        } else {
+          setShowJoinBubble(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // joinWithInviteCode is stable enough for a one-time session check
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, bubbleData, userBubbles]);
+
   const joinWithInviteCode = async (rawCode) => {
     const inviteCode = (rawCode || '').trim().toUpperCase();
     if (!inviteCode || !userId) return;
@@ -452,9 +611,17 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         });
       }
       const result = await API.joinBubble(inviteCode, userName, null, 'Family Member', userId);
+      if (result?.alreadyMember) {
+        persistCurrentBubble(result.bubbleId);
+        if (onJoinProcessed) onJoinProcessed();
+        await activateBubble(result.bubbleId);
+        await refreshUserBubbles();
+        setShowJoinBubble(false);
+        return;
+      }
       if (result?.bubbleId) {
         analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
-        localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+        persistCurrentBubble(result.bubbleId);
         localStorage.removeItem('familyBubble_pendingJoin');
         currentBubbleIdRef.current = result.bubbleId;
         if (onJoinProcessed) onJoinProcessed();
@@ -463,13 +630,85 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           setBubbleData(data);
           setupRealtimeListener(result.bubbleId, userId);
         }
+        await refreshUserBubbles();
+        setShowJoinBubble(false);
       }
     } catch (error) {
       console.error("Error joining bubble:", error);
+      setManualInviteCode(inviteCode);
+      setShowJoinBubble(true);
       alert(`Failed to join bubble: ${error.message}`);
     } finally {
       setJoiningManual(false);
       setLoading(false);
+    }
+  };
+
+  const handleLeaveBubble = async () => {
+    const bubbleId = bubbleData?.bubble?.id;
+    const nodeId = bubbleData?.currentMember?.id;
+    if (!bubbleId || !nodeId || !userId || leavingBubble) return;
+    const name = bubbleData?.bubble?.name || 'this bubble';
+    if (!window.confirm(`Leave ${name}? You can join again later with an invite code.`)) {
+      return;
+    }
+    setLeavingBubble(true);
+    try {
+      await API.leaveBubble(bubbleId, nodeId, userId);
+      const remaining = (await refreshUserBubbles()).filter((bubble) => bubble.id !== bubbleId);
+      if (remaining[0]) {
+        await activateBubble(remaining[0].id);
+      } else {
+        if (unsubscribeRef.current) unsubscribeRef.current();
+        currentBubbleIdRef.current = null;
+        clearPersistedBubble();
+        setBubbleData(null);
+      }
+    } catch (error) {
+      console.error('Error leaving bubble:', error);
+      alert(`Could not leave bubble: ${error.message}`);
+    } finally {
+      setLeavingBubble(false);
+    }
+  };
+
+  const handleOpenCopyMembers = async () => {
+    const currentId = bubbleData?.bubble?.id;
+    const other = userBubbles.find((bubble) => bubble.id && bubble.id !== currentId);
+    if (!other?.id || !userId) {
+      alert('Join or create a second bubble first, then you can copy people between them.');
+      return;
+    }
+    try {
+      const source = await API.getBubbleById(other.id, userId);
+      setCopySourceName(other.name);
+      setCopyCandidates(membersToCopy({
+        sourceMembers: source?.allMembers || [],
+        targetMembers: bubbleData?.allMembers || [],
+        currentUserId: userId,
+      }));
+      setShowCopyMembers(true);
+    } catch (error) {
+      alert(`Could not load members: ${error.message}`);
+    }
+  };
+
+  const handleInviteCopiedMembers = async (memberIds) => {
+    const selected = copyCandidates.filter((member) => memberIds.includes(member.userId));
+    if (!selected.length || !bubbleData?.currentMember?.id) return;
+    setInvitingMembers(true);
+    try {
+      await API.inviteMembersToBubble(
+        bubbleData.bubble.id,
+        bubbleData.currentMember.id,
+        selected
+      );
+      setShowCopyMembers(false);
+      alert('Invites are ready. Those family members can join with the link or code, and it will fill in automatically if they open it.');
+    } catch (error) {
+      alert(`Could not invite members: ${error.message}`);
+    } finally {
+      setInvitingMembers(false);
     }
   };
 
@@ -625,9 +864,23 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           >
             {joiningManual ? 'Joining…' : 'Join bubble'}
           </button>
+          {showCreateBubble ? (
+            <BubblePopup
+              isOpen
+              onClose={() => setShowCreateBubble(false)}
+              title="Create a bubble"
+            >
+              <CreateAnotherBubble
+                needProfileNames
+                submitting={creatingBubble}
+                onSubmit={handleCreateAnotherBubble}
+                onCancel={() => setShowCreateBubble(false)}
+              />
+            </BubblePopup>
+          ) : null}
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => onInitiateCreate ? onInitiateCreate() : loadBubble()}
+              onClick={() => setShowCreateBubble(true)}
               className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 tap-target"
             >
               Create a bubble
@@ -660,6 +913,27 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       handlePhotoUpdate={handlePhotoUpdate}
       handleProfileUpdate={handleProfileUpdate}
       onLogout={onLogout}
+      userBubbles={userBubbles}
+      onSwitchBubble={activateBubble}
+      showCreateBubble={showCreateBubble}
+      setShowCreateBubble={setShowCreateBubble}
+      creatingBubble={creatingBubble}
+      onCreateAnotherBubble={handleCreateAnotherBubble}
+      showJoinBubble={showJoinBubble}
+      setShowJoinBubble={setShowJoinBubble}
+      joinCode={manualInviteCode}
+      setJoinCode={setManualInviteCode}
+      joiningBubble={joiningManual}
+      onJoinByCode={joinWithInviteCode}
+      onLeaveBubble={handleLeaveBubble}
+      leavingBubble={leavingBubble}
+      showCopyMembers={showCopyMembers}
+      setShowCopyMembers={setShowCopyMembers}
+      copyCandidates={copyCandidates}
+      copySourceName={copySourceName}
+      onOpenCopyMembers={handleOpenCopyMembers}
+      onInviteCopiedMembers={handleInviteCopiedMembers}
+      invitingMembers={invitingMembers}
     />
   );
 };
