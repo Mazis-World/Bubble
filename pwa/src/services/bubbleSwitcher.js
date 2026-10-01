@@ -3,14 +3,14 @@ export const MAX_USER_BUBBLES = 2;
 
 export const BUBBLE_HALO_PALETTE = [
   {
-    ring: 'rgba(139, 92, 246, 0.7)',
-    glow: 'rgba(59, 130, 246, 0.45)',
-    accent: '#8b5cf6',
+    ring: 'rgba(59, 130, 246, 0.78)',
+    glow: 'rgba(96, 165, 250, 0.5)',
+    accent: '#60a5fa',
   },
   {
-    ring: 'rgba(236, 72, 153, 0.75)',
-    glow: 'rgba(251, 146, 60, 0.4)',
-    accent: '#ec4899',
+    ring: 'rgba(244, 114, 182, 0.8)',
+    glow: 'rgba(34, 211, 238, 0.38)',
+    accent: '#f472b6',
   },
 ];
 

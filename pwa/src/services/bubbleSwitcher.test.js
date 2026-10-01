@@ -118,7 +118,20 @@ describe('bubbleSwitcher helpers', () => {
       targetMembers: [{ userId: 'sis', name: 'Sis' }],
       currentUserId: 'me',
     }).map((member) => member.userId)).toEqual(['bro']);
-    expect(haloForBubbleIndex(0).accent).toBe('#8b5cf6');
-    expect(haloForBubbleIndex(1).accent).toBe('#ec4899');
+    expect(haloForBubbleIndex(0).accent).toBe('#60a5fa');
+    expect(haloForBubbleIndex(1).accent).toBe('#f472b6');
+  });
+
+  test('holder glow uses app blue and pink instead of purple', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const css = fs.readFileSync(path.join(__dirname, '../index.css'), 'utf8');
+    const dockStart = css.indexOf('.bubble-switcher-dock');
+    const dock = css.slice(dockStart, css.indexOf('.bubble-mini-halo', dockStart));
+    expect(dock).toContain('59, 130, 246');
+    expect(dock).toContain('244, 114, 182');
+    expect(dock).toContain('34, 211, 238');
+    expect(dock).not.toContain('139, 92, 246');
+    expect(dock).not.toContain('167, 139, 250');
   });
 });
