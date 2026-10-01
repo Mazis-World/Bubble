@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import GlobeView from './GlobeView';
 import BubbleCluster from './BubbleCluster';
 import SlideUpCard from '../ui/SlideUpCard';
@@ -11,9 +11,28 @@ import NotificationSettings from '../ui/NotificationSettings';
 import BubbleSwitcher from './BubbleSwitcher';
 import CreateAnotherBubble from './CreateAnotherBubble';
 import BubblePopup from './BubblePopup';
-import { Circle, Plus, Share2, Settings } from 'lucide-react';
+import StatusMediaComposer from '../ui/StatusMediaComposer';
+import SosButton from '../sos/SosButton';
+import SosConfirmOverlay from '../sos/SosConfirmOverlay';
+import SosActiveScreen from '../sos/SosActiveScreen';
+import SosAlertScreen from '../sos/SosAlertScreen';
+import SosPermissionSheet from '../sos/SosPermissionSheet';
+import EmergencyNumberSettings from '../sos/EmergencyNumberSettings';
+import PremiumSettings from '../paywall/PremiumSettings';
+import BubbleOverviewSheet from './BubbleOverviewSheet';
+import PlacesHub from '../places/PlacesHub';
+import MapViewBadges from './MapViewBadges';
+import CheckInPopup from './CheckInPopup';
+import { ensurePlaceLocationPermission } from '../../services/places/permissions';
+import usePlaces from '../../hooks/usePlaces';
+import { Circle, Navigation, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
+import { auth } from '../../firebase';
+import { API } from '../../services/bubble';
+import useFamilyMemos from '../../hooks/useFamilyMemos';
+import { MEMO_TYPE, deleteFamilyMemo, parseMemoDeepLink, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
+import { buildCheckInMemo, canCheckIn, lookupPlaceLabel, readCurrentPosition } from '../../services/checkin';
 
 const Bubble = ({
   bubbleData,
@@ -51,6 +70,11 @@ const Bubble = ({
   onOpenCopyMembers,
   onInviteCopiedMembers,
   invitingMembers = false,
+  sos = null,
+  isSubscribed = false,
+  isLapsedSubscriber = false,
+  onUpgrade,
+  onRestorePurchases,
 }) => {
   const [shareSuccess, setShareSuccess] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -61,9 +85,32 @@ const Bubble = ({
   const [statusLocation, setStatusLocation] = useState(null);
   const [statusText, setStatusText] = useState('');
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
+  const [statusMedia, setStatusMedia] = useState({
+    photoFile: null,
+    photoFiles: [],
+    voiceBlob: null,
+    voiceDurationMs: null,
+    recording: false,
+  });
+  const [statusPosting, setStatusPosting] = useState(false);
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
   const [selectedCopyIds, setSelectedCopyIds] = useState([]);
   const currentBubbleId = bubbleData?.bubble?.id;
+  const [showOverview, setShowOverview] = useState(false);
+  const [showMemos, setShowMemos] = useState(false);
+  const [focusedMemoId, setFocusedMemoId] = useState(null);
+  const [mapFocus, setMapFocus] = useState(null);
+  const [checkInState, setCheckInState] = useState('idle');
+  const [showCheckIn, setShowCheckIn] = useState(false);
+  const [checkInMemo, setCheckInMemo] = useState(null);
+  const [showPlaces, setShowPlaces] = useState(false);
+  const [placesFocusId, setPlacesFocusId] = useState(null);
+  const openSosIds = useMemo(
+    () => (sos?.openEvents || []).map((event) => event.sosId),
+    [sos?.openEvents]
+  );
+  const familyMemos = useFamilyMemos(bubbleData?.bubble?.id, openSosIds);
+  const { places, presence } = usePlaces(bubbleData?.bubble?.id);
 
   useEffect(() => {
     setSelectedMember(null);
@@ -71,6 +118,59 @@ const Bubble = ({
     setShowProfileEdit(false);
     setSelectedCopyIds([]);
   }, [currentBubbleId]);
+
+  const openPlaces = useCallback((placeId = null) => {
+    setPlacesFocusId(placeId);
+    setShowPlaces(true);
+    ensurePlaceLocationPermission();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const placeId = params.get('place');
+      if (placeId) {
+        openPlaces(placeId);
+      }
+      const memoId = parseMemoDeepLink(window.location.search)
+        || localStorage.getItem('familyBubble_pendingMemo');
+      if (memoId) {
+        setFocusedMemoId(memoId);
+        setShowMemos(true);
+        localStorage.removeItem('familyBubble_pendingMemo');
+      }
+    } catch (error) {
+      // ignore malformed URLs
+    }
+  }, [openPlaces]);
+
+  const resetStatusSheet = () => {
+    setShowStatus(false);
+    setStatusLocation(null);
+    setStatusText('');
+    setSelectedStatusEmoji(null);
+    setStatusMedia({
+      photoFile: null,
+      photoFiles: [],
+      voiceBlob: null,
+      voiceDurationMs: null,
+      recording: false,
+    });
+    setStatusPosting(false);
+  };
+
+  const submitStatus = async () => {
+    if (statusPosting || statusMedia.recording) return;
+    setStatusPosting(true);
+    try {
+      const emoji = selectedStatusEmoji || bubbleData?.currentMember?.status || '😊';
+      await handleStatusChange(emoji, statusLocation, statusText, statusMedia);
+      resetStatusSheet();
+    } catch (error) {
+      setStatusPosting(false);
+      alert(error.message || 'Could not update status.');
+    }
+  };
 
   const handleShare = async () => {
     if (!inviteToken || inviteToken === 'Generating...') return;
@@ -115,6 +215,83 @@ const Bubble = ({
     }
   };
 
+  const handleCheckIn = async () => {
+    const bubbleId = bubbleData?.bubble?.id;
+    const nodeId = bubbleData?.currentMember?.id;
+    const uid = auth.currentUser?.uid;
+    setViewMode('globe');
+    setShowCheckIn(true);
+    if (
+      checkInState === 'busy'
+      || checkInState === 'done'
+      || !bubbleId
+      || !nodeId
+      || !canCheckIn({ authUid: uid, userId: uid, isBubbleMember: true })
+    ) {
+      return;
+    }
+
+    setCheckInState('busy');
+    setCheckInMemo(null);
+    try {
+      const location = await readCurrentPosition();
+      const address = await lookupPlaceLabel(location.latitude, location.longitude);
+      const checkInLocation = address ? { ...location, address } : location;
+      await API.checkIn(bubbleId, nodeId, checkInLocation);
+      analyticsService.trackCheckIn(bubbleId, true);
+      setMapFocus({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+      setCheckInMemo({
+        ...buildCheckInMemo({ location: checkInLocation }),
+        createdAt: Date.now(),
+      });
+      setCheckInState('done');
+    } catch (error) {
+      console.error('Check-in failed:', error);
+      analyticsService.trackCheckIn(bubbleId, false);
+      setCheckInState('error');
+    }
+  };
+
+  const closeCheckIn = () => {
+    if (checkInState === 'busy') return;
+    setShowCheckIn(false);
+    setCheckInState('idle');
+  };
+
+  const handleMemoReact = useCallback(async (memo, emoji) => {
+    const bubbleId = bubbleData?.bubble?.id;
+    const uid = auth.currentUser?.uid;
+    if (!bubbleId || !memo?.memoId || !uid) return;
+    try {
+      await toggleMemoReaction({
+        bubbleId,
+        memoId: memo.memoId,
+        emoji,
+        currentEmoji: viewerMemoReaction(memo.reactions, uid),
+      });
+    } catch (error) {
+      console.warn('Memo reaction failed:', error);
+    }
+  }, [bubbleData?.bubble?.id]);
+
+  const handleMemoDelete = useCallback(async (memo) => {
+    const bubbleId = bubbleData?.bubble?.id;
+    if (!bubbleId || !memo?.memoId) return;
+    try {
+      await deleteFamilyMemo({
+        bubbleId,
+        memoId: memo.memoId,
+        userId: memo.userId,
+      });
+    } catch (error) {
+      console.warn('Memo delete failed:', error);
+      alert(error.message || 'Could not delete that memo.');
+    }
+  }, [bubbleData?.bubble?.id]);
+
   if (!bubbleData || !bubbleData.currentMember) {
     return (
       <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center relative overflow-hidden">
@@ -130,6 +307,18 @@ const Bubble = ({
       </div>
     );
   }
+
+  const viewBadges = (
+    <MapViewBadges
+      memberCount={bubbleData.allMembers.length}
+      memoCount={familyMemos.length}
+      checkInState={checkInState}
+      onMemberCountClick={() => setShowOverview(true)}
+      onMemosClick={() => setShowMemos(true)}
+      onCheckIn={handleCheckIn}
+      onPlacesClick={() => openPlaces()}
+    />
+  );
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden flex flex-col safe-area-insets" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
@@ -207,6 +396,12 @@ const Bubble = ({
         {viewMode === 'globe' ? (
           <GlobeView
             bubbleData={bubbleData}
+            focusTarget={mapFocus}
+            checkInOpen={showCheckIn}
+            overlay={viewBadges}
+            places={places}
+            presence={presence}
+            onPlaceClick={(place) => openPlaces(place?.placeId)}
             onMemberClick={(member) => {
               setSelectedMember(member);
               setShowProfile(true);
@@ -216,6 +411,10 @@ const Bubble = ({
         ) : (
           <BubbleCluster
             bubbleData={bubbleData}
+            overlay={viewBadges}
+            places={places}
+            presence={presence}
+            onPlaceClick={(place) => openPlaces(place?.placeId)}
             onStatusClick={() => setShowStatus(true)}
             onMemberClick={(member) => {
               setSelectedMember(member);
@@ -241,7 +440,15 @@ const Bubble = ({
       <div className="p-4 sm:p-6 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 
         paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
       }}>
-        <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl">
+        <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl space-y-3">
+          {sos && (
+            <SosButton
+              onHoldComplete={sos.handleHoldComplete}
+              disabled={sos.busy || sos.sosActive}
+              locked={!isSubscribed}
+              onLockedPress={onUpgrade}
+            />
+          )}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
               onClick={() => setShowStatus(true)}
@@ -274,12 +481,7 @@ const Bubble = ({
 
       <SlideUpCard 
         isOpen={showStatus} 
-        onClose={() => {
-          setShowStatus(false);
-          setStatusLocation(null);
-          setStatusText('');
-          setSelectedStatusEmoji(null);
-        }}
+        onClose={resetStatusSheet}
         title="Update Your Status"
       >
         <div className="w-full space-y-3">
@@ -303,12 +505,22 @@ const Bubble = ({
                 placeholder="What's on your mind?"
                 maxLength={100}
                 autoComplete="off"
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 pr-16 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base tap-target"
+                disabled={statusPosting}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 pr-16 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-base tap-target disabled:opacity-50"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
                 {statusText.length}/100
               </div>
             </div>
+          </div>
+
+          <div className="border-t border-gray-800 pt-2.5">
+            {showStatus && (
+              <StatusMediaComposer
+                disabled={statusPosting}
+                onChange={setStatusMedia}
+              />
+            )}
           </div>
           
           <div className="border-t border-gray-800 pt-4">
@@ -324,22 +536,19 @@ const Bubble = ({
           </div>
           
           <button
-            onClick={() => {
-              const emoji = selectedStatusEmoji || bubbleData?.currentMember?.status || '😊';
-              handleStatusChange(emoji, statusLocation, statusText);
-              setShowStatus(false);
-              setStatusLocation(null);
-              setStatusText('');
-              setSelectedStatusEmoji(null);
-            }}
-            className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-400 hover:via-purple-400 hover:to-pink-400 text-white py-3.5 rounded-2xl font-bold transition-all duration-300 shadow-lg glow-blue hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] tap-target relative overflow-hidden group"
+            type="button"
+            onClick={submitStatus}
+            disabled={statusPosting || statusMedia.recording}
+            className="w-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-400 hover:via-purple-400 hover:to-pink-400 text-white py-3.5 rounded-2xl font-bold transition-all duration-300 shadow-lg glow-blue hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] tap-target relative overflow-hidden group disabled:opacity-60 disabled:hover:scale-100"
           >
-            <span className="relative z-10">Update Status</span>
+            <span className="relative z-10">
+              {statusPosting ? 'Posting…' : statusMedia.recording ? 'Stop recording first' : 'Update Status'}
+            </span>
             <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
         </div>
         <p className="text-gray-400 text-sm mt-3 text-center font-medium">
-          Everyone in your bubble will see your status and location instantly
+          Everyone in your bubble will see your status, photos, and voice memos
         </p>
       </SlideUpCard>
 
@@ -562,11 +771,44 @@ const Bubble = ({
             {leavingBubble ? 'Leaving…' : 'Leave this bubble'}
           </button>
         </div>
+
+        <div className="my-6 border-t border-gray-800" />
+
+        <div className="space-y-3 mb-6">
+          <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-2">
+            <Navigation size={16} />
+            Places
+          </h4>
+          <p className="text-gray-400 text-sm">
+            Save Home, School, or Work and FamilyBubble can let family know when you arrive or leave.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettings(false);
+              openPlaces();
+            }}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-600/30 transition-all"
+          >
+            Open Places
+          </button>
+        </div>
         
         <div className="my-6 border-t border-gray-800" />
         
         {/* Notification Settings */}
         <NotificationSettings />
+        
+        <div className="my-6 border-t border-gray-800" />
+        <PremiumSettings
+          isSubscribed={isSubscribed}
+          isLapsedSubscriber={isLapsedSubscriber}
+          onUpgrade={onUpgrade}
+          onRestorePurchases={onRestorePurchases}
+        />
+        
+        <div className="my-6 border-t border-gray-800" />
+        <EmergencyNumberSettings />
         
         <div className="border-t border-gray-800 mt-6" />
         <div className="space-y-3 mt-6">
@@ -665,10 +907,36 @@ const Bubble = ({
         </button>
       </BubblePopup>
 
+      <SlideUpCard
+        isOpen={showPlaces}
+        onClose={() => {
+          setShowPlaces(false);
+          setPlacesFocusId(null);
+        }}
+        title="Places"
+      >
+        <PlacesHub
+          bubbleId={bubbleData?.bubble?.id}
+          members={bubbleData?.allMembers || []}
+          currentMember={bubbleData?.currentMember}
+          initialPlaceId={placesFocusId}
+          isPremium={isSubscribed}
+          onUpgrade={onUpgrade}
+          onClose={() => {
+            setShowPlaces(false);
+            setPlacesFocusId(null);
+          }}
+        />
+      </SlideUpCard>
+
+
       {/* Profile View Modal */}
       {showProfile && selectedMember && (
         <ProfileView
-          member={selectedMember}
+          member={
+            bubbleData?.allMembers?.find((item) => item.id === selectedMember.id)
+            || selectedMember
+          }
           isCurrentUser={selectedMember.id === bubbleData?.currentMember?.id}
           currentUserLocation={bubbleData?.currentMember?.lastKnownLocation}
           onClose={() => {
@@ -704,6 +972,111 @@ const Bubble = ({
           }}
         />
       </SlideUpCard>
+
+      <SlideUpCard
+        isOpen={showOverview}
+        onClose={() => setShowOverview(false)}
+        title={bubbleData?.bubble?.name || 'Members'}
+      >
+        <BubbleOverviewSheet
+          section="members"
+          members={bubbleData.allMembers}
+          onMemberClick={(member) => {
+            setShowOverview(false);
+            setSelectedMember(member);
+            setShowProfile(true);
+            analyticsService.trackMemberProfileView(member.id);
+          }}
+        />
+      </SlideUpCard>
+
+      <SlideUpCard
+        isOpen={showMemos}
+        onClose={() => {
+          setShowMemos(false);
+          setFocusedMemoId(null);
+        }}
+        title="Family Memos"
+      >
+        <BubbleOverviewSheet
+          section="memos"
+          members={bubbleData.allMembers}
+          memos={familyMemos}
+          bubbleName={bubbleData?.bubble?.name}
+          bubbleId={bubbleData?.bubble?.id}
+          currentUserId={auth.currentUser?.uid || bubbleData.currentMember.userId}
+          focusedMemoId={focusedMemoId}
+          onMemoReact={handleMemoReact}
+          onMemoDelete={handleMemoDelete}
+          onMemoClick={(memo) => {
+            setShowMemos(false);
+            const member = bubbleData.allMembers.find(
+              (item) => item.userId === memo.userId || item.id === memo.nodeId
+            );
+            const location = memo.location || member?.lastKnownLocation;
+            setViewMode('globe');
+            if (location?.latitude != null && location?.longitude != null) {
+              setMapFocus({
+                latitude: location.latitude,
+                longitude: location.longitude,
+              });
+            }
+            if (memo.type === MEMO_TYPE.SOS && memo.sosId && sos?.focusSos) {
+              sos.focusSos(memo.sosId);
+            }
+          }}
+        />
+      </SlideUpCard>
+
+      <CheckInPopup
+        open={showCheckIn}
+        state={checkInState}
+        member={bubbleData.currentMember}
+        memo={checkInMemo || familyMemos.find((memo) => (
+          memo.type === MEMO_TYPE.CHECKIN
+          && (memo.userId === bubbleData.currentMember.userId || memo.nodeId === bubbleData.currentMember.id)
+        ))}
+        onConfirm={handleCheckIn}
+        onClose={closeCheckIn}
+      />
+
+      {sos && (
+        <>
+          <SosConfirmOverlay
+            open={sos.showConfirm}
+            onConfirm={sos.activateAfterConfirm}
+            onCancel={sos.cancelConfirm}
+          />
+          <SosPermissionSheet
+            reason={sos.permissionReason}
+            enabling={sos.enablingLocation}
+            onEnable={sos.handleEnableLocation}
+            onContinueWithout={sos.continueWithoutLocation}
+            onClose={sos.closePermission}
+          />
+          {sos.showActiveScreen && (
+            <SosActiveScreen
+              sos={sos.ownOpenSos}
+              deliveryState={sos.deliveryState}
+              locationError={sos.locationError}
+              onResolve={sos.handleResolve}
+              onCancel={sos.handleCancel}
+              resolving={sos.busy}
+            />
+          )}
+          {sos.incomingSos && (
+            <SosAlertScreen
+              sos={sos.incomingSos}
+              member={sos.memberForSos(sos.incomingSos)}
+              acknowledgedByName={sos.acknowledgedByName}
+              onAcknowledge={sos.handleAcknowledge}
+              acknowledging={sos.busy}
+              onClose={sos.closeIncoming}
+              onMuteSound={sos.muteAlertSound}
+            />
+          )}
+        </>
+      )}
 
     </div>
   );

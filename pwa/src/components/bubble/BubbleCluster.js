@@ -1,6 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import MemberBubble from '../ui/MemberBubble';
+import PlaceRadarMarker from '../places/PlaceRadarMarker';
 import { Radio } from 'lucide-react';
+import {
+  hydrateRadarNodes,
+  layoutRadarNodes,
+  layoutRadarPlaces,
+  radarMaxDistanceKm,
+  RADAR_BUBBLE_SIZE,
+} from '../../services/radarLayout';
+import {
+  assignMembersToPlaces,
+  isMemberInPlaceBubble,
+} from '../../services/places/occupancy';
 
 // Theme system - ready for future additions like snowflakes
 // eslint-disable-next-line no-unused-vars
@@ -15,39 +27,20 @@ const RADAR_THEMES = {
   },
 };
 
-// Geographic calculation utilities for radar positioning
-const calculateBearing = (lat1, lon1, lat2, lon2) => {
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const lat1Rad = lat1 * Math.PI / 180;
-  const lat2Rad = lat2 * Math.PI / 180;
-  
-  const y = Math.sin(dLon) * Math.cos(lat2Rad);
-  const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - 
-            Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-  
-  let bearing = Math.atan2(y, x);
-  bearing = bearing * 180 / Math.PI;
-  bearing = (bearing + 360) % 360;
-  
-  return bearing;
-};
-
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Distance in km
-};
-
-const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'default' }) => {
+const BubbleCluster = ({
+  bubbleData,
+  onStatusClick,
+  onMemberClick,
+  theme = 'default',
+  overlay = null,
+  places = [],
+  presence = [],
+  onPlaceClick,
+}) => {
   const clusterRef = useRef(null);
 
   const [nodes, setNodes] = useState([]);
+  const [placeNodes, setPlaceNodes] = useState([]);
   const [positions, setPositions] = useState({});
   const [maxDistance, setMaxDistance] = useState(100); // km
   const [sweepAngle, setSweepAngle] = useState(0);
@@ -68,155 +61,87 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
   });
   
   const memberIdString = validMembers.map(m => m.id).join(',');
+  const locationKey = validMembers.map((member) => {
+    const loc = member.lastKnownLocation;
+    return `${member.id}:${loc?.latitude ?? ''}:${loc?.longitude ?? ''}`;
+  }).join('|');
+  const placeKey = (places || []).map((place) => (
+    `${place.placeId}:${place.latitude ?? ''}:${place.longitude ?? ''}:${place.icon ?? ''}:${place.isActive !== false ? 1 : 0}`
+  )).join('|');
+  const presenceKey = (presence || []).map((item) => (
+    `${item.userId}:${item.placeId}:${item.inside ? 1 : 0}`
+  )).join('|');
 
   /** ----------------------------
    * RADAR POSITIONING BASED ON LOCATION
    * ---------------------------- */
   useEffect(() => {
     if (!currentMember || !validMembers.length) {
-      return;
+      return undefined;
     }
 
+    const layout = () => {
+      const container = clusterRef.current;
+      if (!container) return;
+
+      const origin = currentMember.lastKnownLocation;
+      const maxDistanceKm = radarMaxDistanceKm({
+        origin,
+        members: validMembers,
+        places,
+        currentMemberId: currentMember.id,
+      });
+
+      const occupancy = assignMembersToPlaces({
+        members: validMembers,
+        places,
+        presence,
+      });
+      const radarNodes = layoutRadarNodes({
+        members: validMembers,
+        currentMemberId: currentMember.id,
+        width: container.offsetWidth,
+        height: container.offsetHeight,
+        maxDistanceKm,
+      });
+      const radarPlaces = layoutRadarPlaces({
+        places,
+        origin,
+        width: container.offsetWidth,
+        height: container.offsetHeight,
+        maxDistanceKm,
+        memberNodes: radarNodes,
+        occupancy,
+        currentMemberId: currentMember.id,
+      });
+
+      const farthest = Math.max(
+        10,
+        ...radarNodes.map((node) => (typeof node.distance === 'number' ? node.distance : 0)),
+        ...radarPlaces.map((node) => (typeof node.distance === 'number' ? node.distance : 0))
+      );
+      setMaxDistance(farthest);
+      setNodes(radarNodes);
+      setPlaceNodes(radarPlaces);
+      const nextPositions = {};
+      radarNodes.forEach((node) => {
+        nextPositions[node.id] = { x: node.x, y: node.y };
+      });
+      setPositions(nextPositions);
+    };
+
+    layout();
     const container = clusterRef.current;
-    if (!container) return;
-
-    const width = container.offsetWidth;
-    const height = container.offsetHeight;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const maxRadius = Math.min(width, height) * 0.4;
-
-    const centerLocation = currentMember.lastKnownLocation;
-    if (!centerLocation || !centerLocation.latitude || !centerLocation.longitude) {
-      // Fallback to tier-based if no location
-      const ownerNode = validMembers.find(m => m.type === 'owner' || m.tier === 1);
-      const tierGroups = {};
-      validMembers.forEach(member => {
-        const tier = member.tier || (member.type === 'owner' ? 1 : 2);
-        if (!tierGroups[tier]) tierGroups[tier] = [];
-        tierGroups[tier].push(member);
-      });
-      
-      const fallbackNodes = validMembers.map((member) => {
-        const isOwner = member.type === 'owner' || member.tier === 1;
-        const tier = member.tier || (isOwner ? 1 : 2);
-        
-        let x, y;
-        if (isOwner || (ownerNode && member.id === ownerNode.id)) {
-          x = centerX;
-          y = centerY;
-        } else {
-          const tierRadius = {
-            1: 0,
-            2: maxRadius * 0.5,
-            3: maxRadius * 0.7,
-            4: maxRadius * 0.9,
-          };
-          const radius = tierRadius[tier] || tierRadius[4];
-          const membersInTier = tierGroups[tier] || [];
-          const tierIndex = membersInTier.findIndex(m => m.id === member.id);
-          const angle = (tierIndex / Math.max(membersInTier.length, 1)) * Math.PI * 2;
-          x = centerX + Math.cos(angle) * radius;
-          y = centerY + Math.sin(angle) * radius;
-        }
-        
-        return {
-          id: member.id,
-          ...member,
-          x,
-          y,
-          distance: 0,
-          bearing: 0,
-        };
-      });
-      
-      setNodes(fallbackNodes);
-      const initialPositions = {};
-      fallbackNodes.forEach(n => {
-        initialPositions[n.id] = { x: n.x, y: n.y };
-      });
-      setPositions(initialPositions);
-      return;
+    if (!container || typeof ResizeObserver === 'undefined') {
+      return undefined;
     }
-
-    // Calculate positions based on geographic location
-    const centerLat = centerLocation.latitude;
-    const centerLon = centerLocation.longitude;
-
-    const membersWithLocation = validMembers
-      .map(member => {
-        const loc = member.lastKnownLocation;
-        if (!loc || !loc.latitude || !loc.longitude) return null;
-        
-        const distance = calculateDistance(centerLat, centerLon, loc.latitude, loc.longitude);
-        const bearing = calculateBearing(centerLat, centerLon, loc.latitude, loc.longitude);
-        
-        return {
-          member,
-          distance,
-          bearing,
-        };
-      })
-      .filter(Boolean);
-
-    const distances = membersWithLocation.map(m => m.distance);
-    const calculatedMaxDistance = Math.max(...distances, 10);
-    setMaxDistance(calculatedMaxDistance);
-
-    const radarNodes = validMembers.map((member) => {
-      const isCurrentUser = member.id === currentMember.id;
-      
-      if (isCurrentUser) {
-        return {
-          id: member.id,
-          ...member,
-          x: centerX,
-          y: centerY,
-          distance: 0,
-          bearing: 0,
-        };
-      }
-
-      const locationData = membersWithLocation.find(m => m.member.id === member.id);
-      
-      if (locationData) {
-        const normalizedDistance = Math.min(locationData.distance / calculatedMaxDistance, 1);
-        const radius = normalizedDistance * maxRadius;
-        const angleRad = ((locationData.bearing - 90) * Math.PI / 180);
-        
-        const x = centerX + Math.cos(angleRad) * radius;
-        const y = centerY + Math.sin(angleRad) * radius;
-        
-        return {
-          id: member.id,
-          ...member,
-          x,
-          y,
-          distance: locationData.distance,
-          bearing: locationData.bearing,
-        };
-      } else {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = maxRadius * 0.9;
-        return {
-          id: member.id,
-          ...member,
-          x: centerX + Math.cos(angle) * radius,
-          y: centerY + Math.sin(angle) * radius,
-          distance: null,
-          bearing: null,
-        };
-      }
-    });
-
-    setNodes(radarNodes);
-    
-    const initialPositions = {};
-    radarNodes.forEach(n => {
-      initialPositions[n.id] = { x: n.x, y: n.y };
-    });
-    setPositions(initialPositions);
-  }, [memberIdString, currentMember, validMembers.length, validMembers]);
+    const observer = new ResizeObserver(() => layout());
+    observer.observe(container);
+    return () => observer.disconnect();
+    // validMembers is represented by memberIdString + locationKey so layout
+    // does not rerun on every parent render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberIdString, locationKey, placeKey, presenceKey, currentMember?.id]);
 
   /** ----------------------------
    * ANIMATED RADAR SWEEP
@@ -240,16 +165,24 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
     );
   }
 
-  // Get container dimensions for accurate centering
-  const container = clusterRef.current;
-  const containerWidth = container?.offsetWidth || 500;
-  const containerHeight = container?.offsetHeight || 500;
-  // Use exact center - these should match the visual center of the radar
-  const centerX = containerWidth / 2;
-  const centerY = containerHeight / 2;
+  const occupancy = assignMembersToPlaces({
+    members: validMembers,
+    places,
+    presence,
+  });
+  const displayNodes = hydrateRadarNodes(nodes, validMembers)
+    .filter((node) => !isMemberInPlaceBubble(occupancy, node.id));
+  const displayPlaces = placeNodes.map((node) => ({
+    ...node,
+    occupants: (occupancy.byPlace[node.place?.placeId] || []).map((member) => {
+      const live = validMembers.find((item) => item.id === member.id);
+      return live || member;
+    }),
+  }));
 
   return (
     <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-4" style={{ width: '100%', height: '100%' }}>
+      {overlay}
       {/* Outer radar frame with glow - mobile optimized - PERFECTLY CENTERED */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div 
@@ -504,37 +437,53 @@ const BubbleCluster = ({ bubbleData, onStatusClick, onMemberClick, theme = 'defa
         <div className="absolute inset-0 rounded-full glass-light pointer-events-none" style={{ zIndex: 9, opacity: 0.3 }}></div>
 
 
+        {/* Place icons sit on the radar before member avatars */}
+        {displayPlaces.map((node) => (
+          <PlaceRadarMarker
+            key={node.id}
+            place={node.place}
+            x={node.x}
+            y={node.y}
+            occupants={node.occupants}
+            members={validMembers}
+            currentMemberId={currentMember.id}
+            onClick={onPlaceClick}
+            onMemberClick={onMemberClick}
+            onStatusClick={onStatusClick}
+          />
+        ))}
+
         {/* Member bubbles positioned by location - z-index 10+ (on top of everything) */}
-        {nodes.map((node, index) => {
+        {displayNodes.map((node, index) => {
           const pos = positions[node.id] || { x: node.x, y: node.y };
           const isCurrentUser = node.id === currentMember.id;
-          
-          const leftPercent = ((pos?.x ?? node.x ?? centerX) / containerWidth) * 100;
-          const topPercent = ((pos?.y ?? node.y ?? centerY) / containerHeight) * 100;
-          
+
           return (
             <div
               key={node.id}
               className="member-bubble-wrapper absolute tap-target"
               style={{
-                left: `${leftPercent}%`,
-                top: `${topPercent}%`,
-                transform: `translate(-50%, -50%)`,
+                left: pos.x,
+                top: pos.y,
+                transform: 'translate(-50%, -50%)',
                 transition: 'left 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 zIndex: isCurrentUser ? 12 : 11,
-                minWidth: '48px',
-                minHeight: '48px',
+                width: RADAR_BUBBLE_SIZE,
+                height: RADAR_BUBBLE_SIZE,
+                overflow: 'visible',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                flexShrink: 0,
               }}
             >
               <MemberBubble
                 member={node}
                 isCenter={isCurrentUser}
+                size={RADAR_BUBBLE_SIZE}
+                familyMembers={validMembers}
                 onClick={isCurrentUser ? onStatusClick : () => onMemberClick && onMemberClick(node)}
                 delay={index * 50}
-                position={pos}
               />
             </div>
           );

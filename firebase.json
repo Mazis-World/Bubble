@@ -6,6 +6,18 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "*.local"
+      ]
+    }
+  ],
   "hosting": {
     "public": "pwa/build",
     "ignore": [
@@ -21,7 +33,7 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(js|css|jpg|jpeg|gif|png|svg|woff|woff2|ttf|eot)",
+        "source": "/static/**/*.@(js|css|jpg|jpeg|gif|png|svg|woff|woff2|ttf|eot)",
         "headers": [
           {
             "key": "Cache-Control",
@@ -40,6 +52,15 @@
       },
       {
         "source": "/service-worker.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/firebase-messaging-sw.js",
         "headers": [
           {
             "key": "Cache-Control",

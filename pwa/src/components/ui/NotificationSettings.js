@@ -88,7 +88,7 @@ const NotificationSettings = () => {
               <Bell size={20} className="text-yellow-400" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-white">Enable notifications</p>
-                <p className="text-xs text-gray-400">Get notified about status updates and important events</p>
+                <p className="text-xs text-gray-400">Get lock-screen alerts for status updates and SOS, even when the app is closed</p>
               </div>
             </div>
             <button
@@ -115,8 +115,8 @@ const NotificationSettings = () => {
           <div className="flex items-center gap-3 text-emerald-400">
             <Check size={20} />
             <div className="flex-1">
-              <p className="text-sm font-medium">Notifications enabled</p>
-              <p className="text-xs text-gray-400">You'll receive notifications for important events</p>
+              <p className="text-sm font-medium">Push notifications enabled</p>
+              <p className="text-xs text-gray-400">You'll get system alerts even when FamilyBubble is closed</p>
             </div>
           </div>
         )}
@@ -162,11 +162,31 @@ const NotificationSettings = () => {
             </button>
           </div>
 
+          {/* SOS Alerts - on by default */}
+          <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">SOS alerts</p>
+              <p className="text-xs text-gray-400">When a family member activates SOS</p>
+            </div>
+            <button
+              onClick={() => handleTogglePreference('sosAlerts')}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                preferences.sosAlerts !== false ? 'bg-red-600' : 'bg-gray-700'
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  preferences.sosAlerts !== false ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Status Updates */}
           <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
             <div className="flex-1">
               <p className="text-sm font-medium text-white">Status updates</p>
-              <p className="text-xs text-gray-400">When family members update their status</p>
+              <p className="text-xs text-gray-400">When family members post, react to, or share a memo</p>
             </div>
             <button
               onClick={() => handleTogglePreference('statusUpdates')}
@@ -199,6 +219,27 @@ const NotificationSettings = () => {
               <span
                 className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
                   preferences.newMembers && preferences.enabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Place Alerts */}
+          <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg border border-gray-800">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">Place arrivals and departures</p>
+              <p className="text-xs text-gray-400">Know they're okay when they get to Home, School, or Work</p>
+            </div>
+            <button
+              onClick={() => handleTogglePreference('placeAlerts')}
+              disabled={!preferences.enabled}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                preferences.placeAlerts !== false && preferences.enabled ? 'bg-blue-600' : 'bg-gray-700'
+              } disabled:opacity-50`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  preferences.placeAlerts !== false && preferences.enabled ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>

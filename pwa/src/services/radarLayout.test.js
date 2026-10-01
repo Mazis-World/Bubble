@@ -1,0 +1,189 @@
+import {
+  RADAR_BUBBLE_GAP,
+  RADAR_BUBBLE_SIZE,
+  RADAR_PLACE_SIZE,
+  distanceBetween,
+  hydrateRadarNodes,
+  layoutRadarNodes,
+  layoutRadarPlaces,
+  radarMaxDistanceKm,
+  separateOverlappingNodes,
+} from './radarLayout';
+
+const sameHouse = { latitude: -26.2, longitude: 28.04 };
+
+describe('radar layout', () => {
+  test('keeps the current user at the center', () => {
+    const nodes = layoutRadarNodes({
+      members: [
+        { id: 'me', lastKnownLocation: sameHouse },
+        { id: 'mom', lastKnownLocation: { latitude: -26.21, longitude: 28.05 } },
+      ],
+      currentMemberId: 'me',
+      width: 400,
+      height: 400,
+    });
+    const me = nodes.find((node) => node.id === 'me');
+    expect(me.x).toBe(200);
+    expect(me.y).toBe(200);
+  });
+
+  test('spreads members who share the same GPS so bubbles do not overlap', () => {
+    const nodes = layoutRadarNodes({
+      members: [
+        { id: 'me', lastKnownLocation: sameHouse },
+        { id: 'a', lastKnownLocation: sameHouse },
+        { id: 'b', lastKnownLocation: sameHouse },
+        { id: 'c', lastKnownLocation: sameHouse },
+      ],
+      currentMemberId: 'me',
+      width: 400,
+      height: 400,
+    });
+    const others = nodes.filter((node) => node.id !== 'me');
+    expect(others).toHaveLength(3);
+    for (let i = 0; i < others.length; i += 1) {
+      expect(distanceBetween(nodes.find((node) => node.id === 'me'), others[i]))
+        .toBeGreaterThanOrEqual(RADAR_BUBBLE_SIZE + RADAR_BUBBLE_GAP - 1);
+      for (let j = i + 1; j < others.length; j += 1) {
+        expect(distanceBetween(others[i], others[j]))
+          .toBeGreaterThanOrEqual(RADAR_BUBBLE_SIZE + RADAR_BUBBLE_GAP - 1);
+      }
+    }
+  });
+
+  test('places members without location evenly instead of stacking them', () => {
+    const nodes = layoutRadarNodes({
+      members: [
+        { id: 'me' },
+        { id: 'a' },
+        { id: 'b' },
+        { id: 'c' },
+      ],
+      currentMemberId: 'me',
+      width: 400,
+      height: 400,
+    });
+    const others = nodes.filter((node) => node.id !== 'me');
+    const distances = others.map((node) => distanceBetween(nodes[0], node));
+    const unique = new Set(others.map((node) => `${Math.round(node.x)}:${Math.round(node.y)}`));
+    expect(unique.size).toBe(3);
+    distances.forEach((dist) => {
+      expect(dist).toBeGreaterThan(40);
+    });
+  });
+
+  test('does not move a pinned bubble while separating a pair', () => {
+    const separated = separateOverlappingNodes(
+      [
+        { id: 'me', x: 200, y: 200 },
+        { id: 'other', x: 202, y: 200 },
+      ],
+      { centerX: 200, centerY: 200, maxRadius: 160, pinnedId: 'me' }
+    );
+    expect(separated[0].x).toBe(200);
+    expect(separated[0].y).toBe(200);
+    expect(distanceBetween(separated[0], separated[1]))
+      .toBeGreaterThanOrEqual(RADAR_BUBBLE_SIZE + RADAR_BUBBLE_GAP - 1);
+  });
+
+  test('hydrates live status onto laid-out nodes without moving them', () => {
+    const laidOut = [
+      { id: 'me', x: 200, y: 200, distance: 0, bearing: 0, status: '✅', name: 'Me' },
+    ];
+    const live = [{ id: 'me', status: '🏠', statusText: 'Home', name: 'Me', photoUrl: 'https://example/me.jpg' }];
+    const [hydrated] = hydrateRadarNodes(laidOut, live);
+    expect(hydrated.status).toBe('🏠');
+    expect(hydrated.statusText).toBe('Home');
+    expect(hydrated.photoUrl).toBe('https://example/me.jpg');
+    expect(hydrated.x).toBe(200);
+    expect(hydrated.y).toBe(200);
+  });
+
+  test('projects a place north of the user onto the radar', () => {
+    const origin = { latitude: -26.2, longitude: 28.04 };
+    const nodes = layoutRadarPlaces({
+      origin,
+      width: 400,
+      height: 400,
+      maxDistanceKm: 10,
+      places: [{
+        placeId: 'school',
+        name: 'School',
+        icon: '🏫',
+        latitude: -26.11,
+        longitude: 28.04,
+      }],
+    });
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].place.placeId).toBe('school');
+    expect(nodes[0].y).toBeLessThan(200);
+    expect(Math.abs(nodes[0].x - 200)).toBeLessThan(12);
+  });
+
+  test('nudge a place off the current-user bubble when they share GPS', () => {
+    const origin = { latitude: -26.2, longitude: 28.04 };
+    const memberNodes = [{ id: 'me', x: 200, y: 200 }];
+    const nodes = layoutRadarPlaces({
+      origin,
+      width: 400,
+      height: 400,
+      maxDistanceKm: 10,
+      memberNodes,
+      places: [{
+        placeId: 'home',
+        name: 'Home',
+        icon: '🏠',
+        latitude: origin.latitude,
+        longitude: origin.longitude,
+      }],
+    });
+    expect(distanceBetween(memberNodes[0], nodes[0]))
+      .toBeGreaterThanOrEqual((RADAR_BUBBLE_SIZE + RADAR_PLACE_SIZE) / 2 + RADAR_BUBBLE_GAP - 1);
+  });
+
+  test('keeps an occupied Place on the people inside it', () => {
+    const origin = { latitude: -26.2, longitude: 28.04 };
+    const me = { id: 'me', name: 'Me', lastKnownLocation: origin };
+    const home = {
+      placeId: 'home',
+      name: 'Home',
+      icon: '🏠',
+      latitude: origin.latitude,
+      longitude: origin.longitude,
+      radiusMeters: 200,
+    };
+    const occupancy = {
+      byPlace: { home: [me] },
+      memberPlace: { me: 'home' },
+    };
+    const memberNodes = [{ id: 'me', x: 200, y: 200 }];
+    const nodes = layoutRadarPlaces({
+      origin,
+      width: 400,
+      height: 400,
+      maxDistanceKm: 10,
+      memberNodes,
+      occupancy,
+      currentMemberId: 'me',
+      places: [home],
+    });
+    expect(distanceBetween(memberNodes[0], nodes[0])).toBeLessThan(8);
+    expect(nodes[0].occupants.map((member) => member.id)).toEqual(['me']);
+    expect(nodes[0].occupied).toBe(true);
+  });
+
+  test('includes places in the shared km scale', () => {
+    const origin = { latitude: 0, longitude: 0 };
+    const km = radarMaxDistanceKm({
+      origin,
+      currentMemberId: 'me',
+      members: [
+        { id: 'me', lastKnownLocation: origin },
+        { id: 'kid', lastKnownLocation: { latitude: 0.01, longitude: 0 } },
+      ],
+      places: [{ latitude: 0.2, longitude: 0 }],
+    });
+    expect(km).toBeGreaterThan(10);
+  });
+});

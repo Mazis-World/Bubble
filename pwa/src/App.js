@@ -9,6 +9,8 @@ import WelcomeWalkthrough from './components/auth/WelcomeWalkthrough';
 import CustomPaywall from './components/paywall/CustomPaywall';
 import { Purchases, LogLevel } from '@revenuecat/purchases-js';
 import { analyticsService } from './services/analytics';
+import { API, sessionBubble } from './services/bubble';
+import { hadPremiumEntitlement, hasPremiumEntitlement } from './services/billing';
 
 const PENDING_JOIN_KEY = 'familyBubble_pendingJoin';
 
@@ -22,6 +24,7 @@ export default function FamilyBubbleApp() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLapsedSubscriber, setIsLapsedSubscriber] = useState(false);
   const [pendingJoinToken, setPendingJoinToken] = useState(null);
+  const [pendingSosLink, setPendingSosLink] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [pendingPurchaseSuccess, setPendingPurchaseSuccess] = useState(null);
@@ -37,13 +40,19 @@ export default function FamilyBubbleApp() {
     setPendingJoinToken(token);
   }, []);
 
+  const persistPendingSos = React.useCallback((link) => {
+    if (!link) return;
+    localStorage.setItem('familyBubble_pendingSosLink', JSON.stringify(link));
+    setPendingSosLink(link);
+  }, []);
+
   const clearPendingJoin = React.useCallback(() => {
     localStorage.removeItem(PENDING_JOIN_KEY);
     setPendingJoinToken(null);
     setJoinToken(null);
   }, []);
 
-  // Handle URL parameters for join links - check on mount
+  // Handle URL parameters for join links and SOS deep links
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const fromUrl = urlParams.get('join');
@@ -52,11 +61,43 @@ export default function FamilyBubbleApp() {
 
     if (token) {
       persistPendingJoin(token);
-      if (fromUrl) {
-        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    const sosId = urlParams.get('sos');
+    const sosBubble = urlParams.get('bubble');
+    if (sosId && sosBubble) {
+      persistPendingSos({ sosId, bubbleId: sosBubble });
+    } else {
+      try {
+        const storedSos = localStorage.getItem('familyBubble_pendingSosLink');
+        if (storedSos) setPendingSosLink(JSON.parse(storedSos));
+      } catch (error) {
+        // Ignore malformed stored SOS links.
       }
     }
-  }, [persistPendingJoin]);
+
+    if (fromUrl || sosId) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (!('serviceWorker' in navigator)) return undefined;
+    const onPushClick = (event) => {
+      if (event.data?.type !== 'NOTIFICATION_CLICK') return;
+      const clickUrl = event.data.url || '';
+      const params = new URLSearchParams(clickUrl.split('?')[1] || '');
+      const clickSos = params.get('sos');
+      const clickBubble = params.get('bubble');
+      if (clickSos && clickBubble) {
+        persistPendingSos({ sosId: clickSos, bubbleId: clickBubble });
+      }
+      const clickMemo = params.get('memo');
+      if (clickMemo) {
+        localStorage.setItem('familyBubble_pendingMemo', clickMemo);
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', onPushClick);
+    return () => navigator.serviceWorker.removeEventListener('message', onPushClick);
+  }, [persistPendingJoin, persistPendingSos]);
   
   // Logged-out users go through the join wizard. Logged-in users with an
   // invite code skip the wizard so join still runs in MainApp.
@@ -111,12 +152,16 @@ export default function FamilyBubbleApp() {
       // Get initial customer info
       const purchases = Purchases.getSharedInstance();
       const customerInfo = await purchases.getCustomerInfo();
-      const premiumEntitlement = customerInfo.entitlements.active["FamilyBubble Premium"];
-      const wasOnceSubscriber = customerInfo.entitlements.all["FamilyBubble Premium"];
+      const isPremium = hasPremiumEntitlement(customerInfo);
+      const wasOnceSubscriber = hadPremiumEntitlement(customerInfo);
 
-      if (typeof premiumEntitlement !== "undefined") {
+      if (isPremium) {
         setIsSubscribed(true);
-      } else if (typeof wasOnceSubscriber !== "undefined") {
+        setIsLapsedSubscriber(false);
+        API.applyPremiumToOwner(user.uid).catch((error) => {
+          console.error("Failed to apply premium member cap:", error);
+        });
+      } else if (wasOnceSubscriber) {
         setIsLapsedSubscriber(true);
       }
       
@@ -130,19 +175,22 @@ export default function FamilyBubbleApp() {
       const checkInterval = setInterval(async () => {
         try {
           const updatedCustomerInfo = await purchases.getCustomerInfo();
-          const updatedPremiumEntitlement = updatedCustomerInfo.entitlements.active["FamilyBubble Premium"];
-          const updatedWasOnceSubscriber = updatedCustomerInfo.entitlements.all["FamilyBubble Premium"];
+          const hasSubscription = hasPremiumEntitlement(updatedCustomerInfo);
+          const updatedWasOnceSubscriber = hadPremiumEntitlement(updatedCustomerInfo);
 
           setIsSubscribed(prevSubscribed => {
-            const hasSubscription = typeof updatedPremiumEntitlement !== "undefined";
-
             if (hasSubscription && !prevSubscribed) {
               setIsLapsedSubscriber(false);
+              if (user?.uid) {
+                API.applyPremiumToOwner(user.uid).catch((error) => {
+                  console.error("Failed to apply premium member cap:", error);
+                });
+              }
               return true;
             } else if (hasSubscription) {
               setIsLapsedSubscriber(false);
               return true;
-            } else if (typeof updatedWasOnceSubscriber !== "undefined") {
+            } else if (updatedWasOnceSubscriber) {
               setIsLapsedSubscriber(true);
               return false;
             }
@@ -205,6 +253,7 @@ export default function FamilyBubbleApp() {
 
   const handleLogout = () => {
     analyticsService.trackLogout();
+    sessionBubble.clear();
     auth.signOut().then(async () => {
       if (Purchases.isConfigured()) {
         try {
@@ -264,11 +313,15 @@ export default function FamilyBubbleApp() {
         return;
       }
       const customerInfo = await Purchases.getSharedInstance().restorePurchases();
-      const premiumEntitlement = customerInfo.entitlements.active["FamilyBubble Premium"];
 
-      if (typeof premiumEntitlement !== "undefined") {
+      if (hasPremiumEntitlement(customerInfo)) {
         setIsSubscribed(true);
         setIsLapsedSubscriber(false);
+        if (currentUser?.uid) {
+          API.applyPremiumToOwner(currentUser.uid).catch((error) => {
+            console.error("Failed to apply premium member cap:", error);
+          });
+        }
         alert("Your purchases have been restored.");
       } else {
         alert("No active subscriptions found to restore.");
@@ -318,14 +371,17 @@ export default function FamilyBubbleApp() {
           setShowCustomPaywall(false);
           setIsSubscribed(true);
           setIsLapsedSubscriber(false);
-          
-          // Execute pending callback if exists (e.g., to proceed to create flow)
+          if (currentUser?.uid) {
+            API.applyPremiumToOwner(currentUser.uid).catch((error) => {
+              console.error("Failed to apply premium member cap:", error);
+            });
+          }
+
           if (pendingPurchaseSuccess) {
             const callback = pendingPurchaseSuccess;
             setPendingPurchaseSuccess(null);
             callback();
-          } else {
-            // Show walkthrough if no callback (e.g., upgrade from main app)
+          } else if (!currentUser) {
             setShowWalkthrough(true);
             setView('walkthrough');
           }
@@ -352,21 +408,16 @@ export default function FamilyBubbleApp() {
                   onComplete={async (joinData) => {
                     try {
                       // Create user account first
+                      persistPendingJoin(joinData.inviteToken);
                       const { email, password } = joinData;
                       if (email && password) {
                         await createUserWithEmailAndPassword(auth, email, password);
-                        // Track sign up
                         analyticsService.trackSignUp('email');
-                        // User will be automatically set via onAuthStateChanged
-                        // Store join data to process after authentication
                         setJoinToken(joinData);
-                        // The auth state change will handle switching to main view
                       } else {
-                        // Fallback if no email/password (shouldn't happen in new flow)
                         setJoinToken(joinData);
-                      setView('main');
+                        setView('main');
                       }
-                      persistPendingJoin(joinData.inviteToken);
                     } catch (error) {
                       console.error("Error creating account:", error);
                       analyticsService.trackError('signup_error', error.message);
@@ -380,7 +431,6 @@ export default function FamilyBubbleApp() {
                 />;
       case 'create':
         return <CreateBubbleFlow 
-                  isSubscribed={isSubscribed}
                   onComplete={async (data) => {
                     setBubbleCreationData(data);
                     try {
@@ -399,7 +449,6 @@ export default function FamilyBubbleApp() {
                     }
                   }}
                   onBack={() => setView('welcome')}
-                  handlePurchase={handlePurchase}
                 />;
       case 'login':
         return <Login onLoginSuccess={() => setView('main')} onBack={handleLoginBack} />;
@@ -492,27 +541,6 @@ export default function FamilyBubbleApp() {
     );
   }
 
-  if (view === 'main' && isLapsedSubscriber && !isSubscribed) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center" style={{ minHeight: '100dvh' }}>
-          <h1 className="text-3xl font-bold text-white mb-4">Your Subscription has Expired</h1>
-          <p className="text-gray-400 mb-8">Please renew your subscription to continue using premium features.</p>
-          <button
-            onClick={() => handlePurchase()}
-            className="w-full max-w-sm bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-600/30 transition-all"
-          >
-            Renew Subscription
-          </button>
-           <button
-            onClick={handleLogout}
-            className="mt-8 text-gray-400 text-sm hover:text-white transition-colors"
-          >
-            Sign Out
-          </button>
-      </div>
-    );
-  }
-
   return (
     <div className="h-screen bg-gray-950 overflow-hidden" style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
       <MainApp 
@@ -522,11 +550,13 @@ export default function FamilyBubbleApp() {
         bubbleCreationData={bubbleCreationData}
         onBubbleCreated={onBubbleCreatedCallback}
         isSubscribed={isSubscribed}
+        isLapsedSubscriber={isLapsedSubscriber}
         onUpgrade={handlePurchase}
         onRestorePurchases={handleRestorePurchases}
         onInitiateCreate={onInitiateCreateCallback}
         onInitiateJoin={onInitiateJoinCallback}
         onJoinProcessed={clearPendingJoin}
+        sosLink={pendingSosLink}
       />
     </div>
   );
