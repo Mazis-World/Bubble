@@ -429,7 +429,7 @@ const Bubble = ({
         )}
       </div>
 
-      <div className="relative z-20 flex-shrink-0 py-2">
+      <div className="relative z-30 flex-shrink-0 -mt-5 -mb-3">
         <BubbleSwitcher
           bubbles={userBubbles.length ? userBubbles : [{
             id: currentBubbleId,
@@ -441,7 +441,7 @@ const Bubble = ({
         />
       </div>
 
-      <div className="p-4 sm:p-6 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 
+      <div className="px-4 sm:px-6 pt-5 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 
         paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
       }}>
         <div className="max-w-md mx-auto glass-strong rounded-3xl p-3 sm:p-4 border border-white/10 shadow-2xl space-y-3">

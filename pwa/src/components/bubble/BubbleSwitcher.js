@@ -86,19 +86,22 @@ const MiniBubble = ({
     aria-current={active ? 'true' : undefined}
     onClick={onSelect}
     className={`relative flex-shrink-0 rounded-full transition-all duration-200 ${
-      active ? 'w-11 h-11' : 'w-8 h-8 opacity-70 hover:opacity-100'
+      active ? 'w-[18px] h-[18px]' : 'w-[11px] h-[11px] opacity-55 hover:opacity-90'
     }`}
     style={{
       background: active
-        ? `radial-gradient(circle at 35% 30%, #fff 0%, ${halo.accent} 42%, #1e1b4b 100%)`
-        : 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.85) 0%, rgba(148,163,184,0.9) 40%, rgba(30,41,59,0.95) 100%)',
+        ? `radial-gradient(circle at 32% 28%, #fff 0%, ${halo.accent} 46%, #0f172a 100%)`
+        : 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9) 0%, rgba(148,163,184,0.75) 42%, rgba(15,23,42,0.95) 100%)',
+      boxShadow: active
+        ? `0 0 10px ${halo.glow}`
+        : '0 0 6px rgba(148,163,184,0.25)',
     }}
   >
     {active && (
       <span
-        className="bubble-mini-halo pointer-events-none absolute -inset-1 rounded-full"
+        className="bubble-mini-halo pointer-events-none absolute -inset-[3px] rounded-full"
         style={{
-          boxShadow: `0 0 0 2px ${halo.ring}, 0 0 12px ${halo.glow}`,
+          boxShadow: `0 0 0 1px ${halo.ring}, 0 0 8px ${halo.glow}`,
         }}
         aria-hidden="true"
       />
@@ -147,9 +150,9 @@ const BubbleSwitcher = ({
   });
 
   return (
-    <div className="relative mx-auto max-w-md px-4" data-testid="bubble-switcher">
+    <div className="relative mx-auto flex justify-center px-4" data-testid="bubble-switcher">
       <p
-        className={`h-5 text-center text-xs font-semibold text-white/90 truncate transition-opacity duration-200 ${
+        className={`pointer-events-none absolute -top-4 h-4 w-full text-center text-[10px] font-semibold tracking-wide text-white/80 truncate transition-opacity duration-200 ${
           revealedName ? 'opacity-100' : 'opacity-0'
         }`}
         aria-live="polite"
@@ -157,7 +160,7 @@ const BubbleSwitcher = ({
         {revealedName || '\u00a0'}
       </p>
       <div
-        className="flex items-center justify-center gap-3 select-none py-1"
+        className="bubble-switcher-dock flex items-center justify-center gap-1.5 select-none px-2.5 py-[5px]"
         data-testid="bubble-switcher-track"
         style={{ touchAction: 'pan-y' }}
         onPointerDown={swipe.onPointerDown}
@@ -182,9 +185,9 @@ const BubbleSwitcher = ({
           type="button"
           aria-label="Create another bubble"
           onClick={handleCreate}
-          className="flex-shrink-0 w-8 h-8 rounded-full border border-dashed border-white/50 text-white/90 flex items-center justify-center hover:bg-white/10 tap-target"
+          className="flex-shrink-0 w-[14px] h-[14px] rounded-full border border-dashed border-white/40 text-white/80 flex items-center justify-center hover:bg-white/10 hover:border-white/70"
         >
-          <Plus size={16} />
+          <Plus size={9} strokeWidth={2.4} />
         </button>
       </div>
     </div>
