@@ -86,7 +86,7 @@ describe('BubbleSwitcher', () => {
     expect(screen.getByText('E')).toBeTruthy();
     expect(screen.getByText('F')).toBeTruthy();
     const face = screen.getAllByTestId('mini-member-photo')[0];
-    expect(Number.parseFloat(face.style.width)).toBeLessThanOrEqual(16);
+    expect(Number.parseFloat(face.style.width)).toBeLessThanOrEqual(12);
   });
 
   test('shows create even when the user already has one bubble', () => {

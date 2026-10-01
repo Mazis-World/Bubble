@@ -74,14 +74,12 @@ export function miniClusterLayout(count) {
     return { size: MINI_PHOTO_MAX, overlap: 0 };
   }
 
+  // Keep about half of each face visible; shrink the diameter until the stack fits.
+  const visibleRatio = 0.55;
   for (let size = MINI_PHOTO_MAX; size >= MINI_PHOTO_MIN; size -= 1) {
-    const minVisible = 2;
-    const minOverlap = Math.round(size * 0.32);
-    const maxOverlap = size - minVisible;
-    const neededOverlap = size - (MINI_CLUSTER_MAX_WIDTH - size) / (n - 1);
-    const overlap = Math.min(maxOverlap, Math.max(minOverlap, neededOverlap));
+    const overlap = Math.round(size * (1 - visibleRatio));
     const width = size + (n - 1) * (size - overlap);
-    if (width <= MINI_CLUSTER_MAX_WIDTH + 0.5) {
+    if (width <= MINI_CLUSTER_MAX_WIDTH) {
       return { size, overlap };
     }
   }

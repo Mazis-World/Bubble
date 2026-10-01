@@ -33,10 +33,12 @@ describe('bubbleSwitcher helpers', () => {
       { id: 'n2', name: 'Bob', photoUrl: null },
     ]);
     expect(miniPhotoSize(2)).toBeGreaterThan(miniPhotoSize(20));
+    expect(miniPhotoSize(6)).toBeLessThan(miniPhotoSize(2));
     const crowded = miniClusterLayout(8);
     const pair = miniClusterLayout(2);
     expect(crowded.size + (8 - 1) * (crowded.size - crowded.overlap)).toBeLessThanOrEqual(41);
     expect(pair.size).toBeGreaterThanOrEqual(crowded.size);
+    expect(miniClusterLayout(6).size).toBeLessThanOrEqual(12);
     expect(listBubbleSummaries([{
       bubbleId: 'dad',
       bubble: { name: "Dad's Family" },
