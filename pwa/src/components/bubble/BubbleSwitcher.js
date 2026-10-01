@@ -1,54 +1,110 @@
-import React, { useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 import {
-  adjacentBubbleId,
-  bubbleIndex,
-  canCreateAnotherBubble,
   haloForBubbleIndex,
+  peekSwitcherTarget,
   swipeDirection,
 } from '../../services/bubbleSwitcher';
+
+const NAME_REVEAL_MS = 1400;
+
+const pointFromEvent = (event) => {
+  const touch = event.changedTouches?.[0] || event.touches?.[0];
+  if (touch) {
+    return { x: touch.clientX, y: touch.clientY, id: touch.identifier };
+  }
+  return {
+    x: event.clientX,
+    y: event.clientY,
+    id: event.pointerId ?? 1,
+  };
+};
 
 export const useBubbleSwipe = ({
   bubbles,
   currentId,
   onSwitch,
+  onCreate,
   enabled = true,
 } = {}) => {
   const startRef = useRef(null);
 
-  const onPointerDown = (event) => {
+  const begin = (event) => {
     if (!enabled || event.button) return;
-    startRef.current = {
-      x: event.clientX,
-      y: event.clientY,
-      id: event.pointerId,
-    };
+    const point = pointFromEvent(event);
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+    startRef.current = point;
   };
 
   const finish = (event) => {
-    if (!startRef.current || startRef.current.id !== event.pointerId) return;
+    if (!startRef.current) return;
+    const point = pointFromEvent(event);
+    if (startRef.current.id !== point.id) return;
     const direction = swipeDirection({
       startX: startRef.current.x,
       startY: startRef.current.y,
-      endX: event.clientX,
-      endY: event.clientY,
+      endX: point.x,
+      endY: point.y,
     });
     startRef.current = null;
-    if (!direction || typeof onSwitch !== 'function') return;
-    const nextId = adjacentBubbleId(bubbles, currentId, direction);
-    if (nextId) onSwitch(nextId);
+    if (!direction) return;
+    const target = peekSwitcherTarget(bubbles, currentId, direction);
+    if (target?.kind === 'create') {
+      if (typeof onCreate === 'function') onCreate();
+      return;
+    }
+    if (target?.kind === 'bubble' && typeof onSwitch === 'function') {
+      onSwitch(target.id);
+    }
   };
 
-  const onPointerCancel = () => {
+  const cancel = () => {
     startRef.current = null;
   };
 
   return {
-    onPointerDown,
+    onPointerDown: begin,
     onPointerUp: finish,
-    onPointerCancel,
+    onPointerCancel: cancel,
+    onMouseDown: begin,
+    onMouseUp: finish,
+    onTouchStart: begin,
+    onTouchEnd: finish,
+    onTouchCancel: cancel,
   };
 };
+
+const MiniBubble = ({
+  name,
+  active,
+  halo,
+  onSelect,
+}) => (
+  <button
+    type="button"
+    aria-label={`Switch to ${name}`}
+    aria-current={active ? 'true' : undefined}
+    onClick={onSelect}
+    className={`relative flex-shrink-0 rounded-full transition-all duration-200 ${
+      active ? 'w-11 h-11' : 'w-8 h-8 opacity-70 hover:opacity-100'
+    }`}
+    style={{
+      background: active
+        ? `radial-gradient(circle at 35% 30%, #fff 0%, ${halo.accent} 42%, #1e1b4b 100%)`
+        : 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.85) 0%, rgba(148,163,184,0.9) 40%, rgba(30,41,59,0.95) 100%)',
+    }}
+  >
+    {active && (
+      <span
+        className="bubble-mini-halo pointer-events-none absolute -inset-1 rounded-full"
+        style={{
+          boxShadow: `0 0 0 2px ${halo.ring}, 0 0 12px ${halo.glow}`,
+        }}
+        aria-hidden="true"
+      />
+    )}
+  </button>
+);
 
 const BubbleSwitcher = ({
   bubbles = [],
@@ -57,91 +113,79 @@ const BubbleSwitcher = ({
   onCreate,
 }) => {
   const current = bubbles.find((bubble) => bubble.id === currentId) || bubbles[0];
-  const index = bubbleIndex(bubbles, current?.id);
-  const canSwipe = bubbles.length > 1;
-  const canCreate = Boolean(onCreate) && canCreateAnotherBubble(bubbles.length);
-  const halo = haloForBubbleIndex(index);
+  const [revealedName, setRevealedName] = useState('');
+  const hideNameRef = useRef(null);
+
+  const revealName = (name) => {
+    if (!name) return;
+    setRevealedName(name);
+    if (hideNameRef.current) clearTimeout(hideNameRef.current);
+    hideNameRef.current = setTimeout(() => setRevealedName(''), NAME_REVEAL_MS);
+  };
+
+  useEffect(() => () => {
+    if (hideNameRef.current) clearTimeout(hideNameRef.current);
+  }, []);
+
+  const handleSwitch = (id) => {
+    const bubble = bubbles.find((item) => item.id === id);
+    revealName(bubble?.name);
+    if (id !== current?.id && typeof onSwitch === 'function') onSwitch(id);
+  };
+
+  const handleCreate = () => {
+    revealName('Create a bubble');
+    if (typeof onCreate === 'function') onCreate();
+  };
+
   const swipe = useBubbleSwipe({
     bubbles,
     currentId: current?.id,
-    onSwitch,
-    enabled: canSwipe,
+    onSwitch: handleSwitch,
+    onCreate: handleCreate,
+    enabled: true,
   });
 
-  const go = (direction) => {
-    const nextId = adjacentBubbleId(bubbles, current?.id, direction);
-    if (nextId) onSwitch(nextId);
-  };
-
   return (
-    <div className="relative mx-auto max-w-md px-6" data-testid="bubble-switcher">
+    <div className="relative mx-auto max-w-md px-4" data-testid="bubble-switcher">
+      <p
+        className={`h-5 text-center text-xs font-semibold text-white/90 truncate transition-opacity duration-200 ${
+          revealedName ? 'opacity-100' : 'opacity-0'
+        }`}
+        aria-live="polite"
+      >
+        {revealedName || '\u00a0'}
+      </p>
       <div
-        className="bubble-fab-halo pointer-events-none absolute inset-x-8 -top-3 -bottom-3 rounded-full"
-        style={{
-          boxShadow: `0 0 0 2px ${halo.ring}, 0 0 28px ${halo.glow}, 0 0 48px ${halo.glow}`,
-        }}
-        aria-hidden="true"
-      />
-      <div
-        className="relative z-10 flex items-center justify-center gap-2 select-none glass-strong rounded-full px-3 py-2.5 border border-white/15"
+        className="flex items-center justify-center gap-3 select-none py-1"
+        data-testid="bubble-switcher-track"
         style={{ touchAction: 'pan-y' }}
         onPointerDown={swipe.onPointerDown}
         onPointerUp={swipe.onPointerUp}
         onPointerCancel={swipe.onPointerCancel}
+        onMouseDown={swipe.onMouseDown}
+        onMouseUp={swipe.onMouseUp}
+        onTouchStart={swipe.onTouchStart}
+        onTouchEnd={swipe.onTouchEnd}
+        onTouchCancel={swipe.onTouchCancel}
       >
-        {canSwipe && (
-          <button
-            type="button"
-            aria-label="Previous bubble"
-            onClick={() => go(-1)}
-            className="p-1.5 text-gray-200 hover:text-white rounded-full hover:bg-white/10 tap-target"
-          >
-            <ChevronLeft size={18} />
-          </button>
-        )}
-        <p
-          className="font-bold text-sm sm:text-base text-white truncate max-w-[10rem] sm:max-w-[14rem] text-center"
-          aria-live="polite"
-        >
-          {current?.name || 'FamilyBubble'}
-        </p>
-        {canSwipe && (
-          <button
-            type="button"
-            aria-label="Next bubble"
-            onClick={() => go(1)}
-            className="p-1.5 text-gray-200 hover:text-white rounded-full hover:bg-white/10 tap-target"
-          >
-            <ChevronRight size={18} />
-          </button>
-        )}
-        {canCreate && (
-          <button
-            type="button"
-            aria-label="Create another bubble"
-            onClick={onCreate}
-            className="p-1.5 text-white rounded-full hover:bg-white/10 tap-target"
-            style={{ boxShadow: `0 0 12px ${halo.glow}` }}
-          >
-            <Plus size={16} />
-          </button>
-        )}
-      </div>
-      <div className="relative z-10 flex items-center justify-center gap-1.5 mt-2 min-h-[10px]">
-        {bubbles.map((bubble, dotIndex) => (
-          <button
+        {bubbles.map((bubble, bubbleIndex) => (
+          <MiniBubble
             key={bubble.id}
-            type="button"
-            aria-label={`Switch to ${bubble.name}`}
-            aria-current={dotIndex === index ? 'true' : undefined}
-            onClick={() => bubble.id !== current?.id && onSwitch(bubble.id)}
-            className={`rounded-full transition-all ${
-              dotIndex === index
-                ? 'w-2 h-2 bg-white'
-                : 'w-1.5 h-1.5 bg-white/35 hover:bg-white/70'
-            }`}
+            name={bubble.name}
+            active={bubble.id === current?.id}
+            halo={haloForBubbleIndex(bubbleIndex)}
+            onSelect={() => handleSwitch(bubble.id)}
           />
         ))}
+        <button
+          type="button"
+          aria-label="Create another bubble"
+          onClick={handleCreate}
+          className="flex-shrink-0 w-8 h-8 rounded-full border border-dashed border-white/50 text-white/90 flex items-center justify-center hover:bg-white/10 tap-target"
+        >
+          <Plus size={16} />
+        </button>
       </div>
     </div>
   );

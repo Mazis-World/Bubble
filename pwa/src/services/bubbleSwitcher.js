@@ -79,6 +79,19 @@ export function adjacentBubbleId(bubbles, currentId, direction) {
   return bubbles[next]?.id || null;
 }
 
+export function peekSwitcherTarget(bubbles, currentId, direction) {
+  if (!Array.isArray(bubbles) || bubbles.length === 0) {
+    return Number(direction) > 0 ? { kind: 'create' } : null;
+  }
+  const delta = Number(direction);
+  if (!delta) return null;
+  const from = bubbleIndex(bubbles, currentId);
+  const next = from + delta;
+  if (next >= bubbles.length && delta > 0) return { kind: 'create' };
+  if (next < 0 || next >= bubbles.length) return null;
+  return { kind: 'bubble', id: bubbles[next].id };
+}
+
 export function swipeDirection({
   startX,
   startY,

@@ -7,7 +7,7 @@ describe('BubbleSwitcher', () => {
     { id: 'mom', name: "Mom's Family" },
   ];
 
-  test('shows the current bubble name and lets you swipe to the other one', () => {
+  test('hides names until you swipe through mini bubbles', () => {
     const onSwitch = jest.fn();
     render(
       <BubbleSwitcher
@@ -18,34 +18,38 @@ describe('BubbleSwitcher', () => {
       />
     );
 
-    expect(screen.getByText("Dad's Family")).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Next bubble' }));
+    expect(screen.queryByText("Dad's Family")).toBeNull();
+    const strip = screen.getByTestId('bubble-switcher-track');
+    fireEvent.mouseDown(strip, { clientX: 180, clientY: 12, button: 0 });
+    fireEvent.mouseUp(strip, { clientX: 40, clientY: 14, button: 0 });
     expect(onSwitch).toHaveBeenCalledWith('mom');
-
-    const strip = screen.getByText("Dad's Family").parentElement;
-    fireEvent.pointerDown(strip, { clientX: 180, clientY: 12, pointerId: 1, button: 0 });
-    fireEvent.pointerUp(strip, { clientX: 40, clientY: 14, pointerId: 1, button: 0 });
-    expect(onSwitch).toHaveBeenCalledWith('mom');
+    expect(screen.getByText("Mom's Family")).toBeTruthy();
   });
 
-  test('dot and plus buttons switch or create', () => {
+  test('keeps plus on the right and opens create from the last mini bubble', () => {
     const onSwitch = jest.fn();
     const onCreate = jest.fn();
     render(
       <BubbleSwitcher
         bubbles={bubbles}
-        currentId="dad"
+        currentId="mom"
         onSwitch={onSwitch}
         onCreate={onCreate}
       />
     );
 
     fireEvent.click(screen.getByRole('button', { name: "Switch to Mom's Family" }));
-    expect(onSwitch).toHaveBeenCalledWith('mom');
-    expect(screen.queryByRole('button', { name: 'Create another bubble' })).toBeNull();
+    expect(onSwitch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Create another bubble' }));
+    expect(onCreate).toHaveBeenCalled();
+
+    const strip = screen.getByTestId('bubble-switcher-track');
+    fireEvent.mouseDown(strip, { clientX: 180, clientY: 12, button: 0 });
+    fireEvent.mouseUp(strip, { clientX: 40, clientY: 14, button: 0 });
+    expect(onCreate).toHaveBeenCalledTimes(2);
   });
 
-  test('shows create on the floating control when the user has one bubble', () => {
+  test('shows create even when the user already has one bubble', () => {
     const onCreate = jest.fn();
     render(
       <BubbleSwitcher
