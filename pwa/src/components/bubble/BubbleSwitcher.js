@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import {
   adjacentBubbleId,
   bubbleIndex,
+  canCreateAnotherBubble,
+  haloForBubbleIndex,
   swipeDirection,
 } from '../../services/bubbleSwitcher';
 
@@ -57,6 +59,8 @@ const BubbleSwitcher = ({
   const current = bubbles.find((bubble) => bubble.id === currentId) || bubbles[0];
   const index = bubbleIndex(bubbles, current?.id);
   const canSwipe = bubbles.length > 1;
+  const canCreate = Boolean(onCreate) && canCreateAnotherBubble(bubbles.length);
+  const halo = haloForBubbleIndex(index);
   const swipe = useBubbleSwipe({
     bubbles,
     currentId: current?.id,
@@ -70,9 +74,16 @@ const BubbleSwitcher = ({
   };
 
   return (
-    <div className="px-3 sm:px-4 pb-2" data-testid="bubble-switcher">
+    <div className="relative mx-auto max-w-md px-6" data-testid="bubble-switcher">
       <div
-        className="flex items-center justify-center gap-2 select-none"
+        className="bubble-fab-halo pointer-events-none absolute inset-x-8 -top-3 -bottom-3 rounded-full"
+        style={{
+          boxShadow: `0 0 0 2px ${halo.ring}, 0 0 28px ${halo.glow}, 0 0 48px ${halo.glow}`,
+        }}
+        aria-hidden="true"
+      />
+      <div
+        className="relative z-10 flex items-center justify-center gap-2 select-none glass-strong rounded-full px-3 py-2.5 border border-white/15"
         style={{ touchAction: 'pan-y' }}
         onPointerDown={swipe.onPointerDown}
         onPointerUp={swipe.onPointerUp}
@@ -83,13 +94,13 @@ const BubbleSwitcher = ({
             type="button"
             aria-label="Previous bubble"
             onClick={() => go(-1)}
-            className="p-1.5 text-gray-300 hover:text-white rounded-lg hover:bg-white/10 tap-target"
+            className="p-1.5 text-gray-200 hover:text-white rounded-full hover:bg-white/10 tap-target"
           >
             <ChevronLeft size={18} />
           </button>
         )}
         <p
-          className="font-bold text-sm sm:text-base text-white truncate max-w-[12rem] sm:max-w-[16rem] text-center"
+          className="font-bold text-sm sm:text-base text-white truncate max-w-[10rem] sm:max-w-[14rem] text-center"
           aria-live="polite"
         >
           {current?.name || 'FamilyBubble'}
@@ -99,23 +110,24 @@ const BubbleSwitcher = ({
             type="button"
             aria-label="Next bubble"
             onClick={() => go(1)}
-            className="p-1.5 text-gray-300 hover:text-white rounded-lg hover:bg-white/10 tap-target"
+            className="p-1.5 text-gray-200 hover:text-white rounded-full hover:bg-white/10 tap-target"
           >
             <ChevronRight size={18} />
           </button>
         )}
-        {onCreate && (
+        {canCreate && (
           <button
             type="button"
             aria-label="Create another bubble"
             onClick={onCreate}
-            className="p-1.5 text-gray-300 hover:text-white rounded-lg hover:bg-white/10 tap-target"
+            className="p-1.5 text-white rounded-full hover:bg-white/10 tap-target"
+            style={{ boxShadow: `0 0 12px ${halo.glow}` }}
           >
             <Plus size={16} />
           </button>
         )}
       </div>
-      <div className="flex items-center justify-center gap-1.5 mt-1.5 min-h-[10px]">
+      <div className="relative z-10 flex items-center justify-center gap-1.5 mt-2 min-h-[10px]">
         {bubbles.map((bubble, dotIndex) => (
           <button
             key={bubble.id}

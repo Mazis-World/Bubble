@@ -42,6 +42,19 @@ describe('BubbleSwitcher', () => {
 
     fireEvent.click(screen.getByRole('button', { name: "Switch to Mom's Family" }));
     expect(onSwitch).toHaveBeenCalledWith('mom');
+    expect(screen.queryByRole('button', { name: 'Create another bubble' })).toBeNull();
+  });
+
+  test('shows create on the floating control when the user has one bubble', () => {
+    const onCreate = jest.fn();
+    render(
+      <BubbleSwitcher
+        bubbles={[{ id: 'dad', name: "Dad's Family" }]}
+        currentId="dad"
+        onSwitch={() => {}}
+        onCreate={onCreate}
+      />
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Create another bubble' }));
     expect(onCreate).toHaveBeenCalled();
   });

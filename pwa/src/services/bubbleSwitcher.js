@@ -1,4 +1,38 @@
 export const BUBBLE_SWIPE_THRESHOLD_PX = 48;
+export const MAX_USER_BUBBLES = 2;
+
+export const BUBBLE_HALO_PALETTE = [
+  {
+    ring: 'rgba(139, 92, 246, 0.7)',
+    glow: 'rgba(59, 130, 246, 0.45)',
+    accent: '#8b5cf6',
+  },
+  {
+    ring: 'rgba(236, 72, 153, 0.75)',
+    glow: 'rgba(251, 146, 60, 0.4)',
+    accent: '#ec4899',
+  },
+];
+
+export function canCreateAnotherBubble(count) {
+  return Number(count) < MAX_USER_BUBBLES;
+}
+
+export function haloForBubbleIndex(index) {
+  const palette = BUBBLE_HALO_PALETTE[Number(index) % BUBBLE_HALO_PALETTE.length];
+  return palette || BUBBLE_HALO_PALETTE[0];
+}
+
+export function membersToCopy({ sourceMembers = [], targetMembers = [], currentUserId } = {}) {
+  const alreadyIn = new Set(
+    (targetMembers || []).map((member) => member?.userId).filter(Boolean)
+  );
+  return (sourceMembers || []).filter((member) => {
+    const id = member?.userId;
+    if (!id || id === currentUserId) return false;
+    return !alreadyIn.has(id);
+  });
+}
 
 export function splitPersonName(fullName, firstName = '', lastName = '') {
   const first = String(firstName || '').trim();
@@ -88,5 +122,13 @@ export function readPersistedBubble() {
     return localStorage.getItem(STORED_BUBBLE_ID_KEY);
   } catch (error) {
     return null;
+  }
+}
+
+export function clearPersistedBubble() {
+  try {
+    localStorage.removeItem(STORED_BUBBLE_ID_KEY);
+  } catch (error) {
+    // ignore
   }
 }

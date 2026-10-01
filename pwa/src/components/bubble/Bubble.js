@@ -8,8 +8,9 @@ import ProfileEditForm from '../ui/ProfileEditForm';
 import EmojiPicker from '../ui/EmojiPicker';
 import LocationStep from '../ui/LocationStep';
 import NotificationSettings from '../ui/NotificationSettings';
-import BubbleSwitcher, { useBubbleSwipe } from './BubbleSwitcher';
+import BubbleSwitcher from './BubbleSwitcher';
 import CreateAnotherBubble from './CreateAnotherBubble';
+import BubblePopup from './BubblePopup';
 import { Circle, Plus, Share2, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { analyticsService } from '../../services/analytics';
@@ -35,6 +36,21 @@ const Bubble = ({
   setShowCreateBubble,
   creatingBubble = false,
   onCreateAnotherBubble,
+  showJoinBubble = false,
+  setShowJoinBubble,
+  joinCode = '',
+  setJoinCode,
+  joiningBubble = false,
+  onJoinByCode,
+  onLeaveBubble,
+  leavingBubble = false,
+  showCopyMembers = false,
+  setShowCopyMembers,
+  copyCandidates = [],
+  copySourceName = '',
+  onOpenCopyMembers,
+  onInviteCopiedMembers,
+  invitingMembers = false,
 }) => {
   const [shareSuccess, setShareSuccess] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -46,18 +62,14 @@ const Bubble = ({
   const [statusText, setStatusText] = useState('');
   const [selectedStatusEmoji, setSelectedStatusEmoji] = useState(null);
   const [viewMode, setViewMode] = useState('cluster'); // 'cluster' or 'globe' - default to cluster for now
+  const [selectedCopyIds, setSelectedCopyIds] = useState([]);
   const currentBubbleId = bubbleData?.bubble?.id;
-  const clusterSwipe = useBubbleSwipe({
-    bubbles: userBubbles,
-    currentId: currentBubbleId,
-    onSwitch: onSwitchBubble,
-    enabled: userBubbles.length > 1,
-  });
 
   useEffect(() => {
     setSelectedMember(null);
     setShowProfile(false);
     setShowProfileEdit(false);
+    setSelectedCopyIds([]);
   }, [currentBubbleId]);
 
   const handleShare = async () => {
@@ -189,30 +201,9 @@ const Bubble = ({
           </button>
           </div>
         </div>
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.4)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-        }}>
-          <BubbleSwitcher
-            bubbles={userBubbles.length ? userBubbles : [{
-              id: currentBubbleId,
-              name: bubbleData?.bubble?.name || 'FamilyBubble',
-            }]}
-            currentId={currentBubbleId}
-            onSwitch={onSwitchBubble}
-            onCreate={setShowCreateBubble ? () => setShowCreateBubble(true) : undefined}
-          />
-        </div>
       </div>
 
-      <div
-        className="flex-1 w-full overflow-hidden relative flex items-center justify-center"
-        style={{ minHeight: 0, touchAction: viewMode === 'cluster' ? 'pan-y' : undefined }}
-        onPointerDown={viewMode === 'cluster' ? clusterSwipe.onPointerDown : undefined}
-        onPointerUp={viewMode === 'cluster' ? clusterSwipe.onPointerUp : undefined}
-        onPointerCancel={viewMode === 'cluster' ? clusterSwipe.onPointerCancel : undefined}
-      >
+      <div className="flex-1 w-full overflow-hidden relative flex items-center justify-center" style={{ minHeight: 0 }}>
         {viewMode === 'globe' ? (
           <GlobeView
             bubbleData={bubbleData}
@@ -233,6 +224,18 @@ const Bubble = ({
             }}
           />
         )}
+      </div>
+
+      <div className="relative z-20 flex-shrink-0 py-2">
+        <BubbleSwitcher
+          bubbles={userBubbles.length ? userBubbles : [{
+            id: currentBubbleId,
+            name: bubbleData?.bubble?.name || 'FamilyBubble',
+          }]}
+          currentId={currentBubbleId}
+          onSwitch={onSwitchBubble}
+          onCreate={setShowCreateBubble ? () => setShowCreateBubble(true) : undefined}
+        />
       </div>
 
       <div className="p-4 sm:p-6 pb-12 sm:pb-8 safe-area-bottom z-20 flex-shrink-0" style={{ 
@@ -488,7 +491,7 @@ const Bubble = ({
         <div className="space-y-3 mb-6">
           <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Your bubbles</h4>
           <p className="text-gray-400 text-sm">
-            Swipe the family name at the top to move between bubbles, or pick one here.
+            Swipe the glowing control between the radar and Update Status to switch families. You can be in two bubbles.
           </p>
           <div className="space-y-2">
             {(userBubbles.length ? userBubbles : [{
@@ -514,15 +517,49 @@ const Bubble = ({
               </button>
             ))}
           </div>
+          {userBubbles.length < 2 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowSettings(false);
+                if (setShowCreateBubble) setShowCreateBubble(true);
+              }}
+              className="w-full bg-white/10 text-white py-3 rounded-xl font-semibold hover:bg-white/20"
+            >
+              Create another bubble
+            </button>
+          ) : (
+            <p className="text-gray-500 text-xs text-center">You’re in 2 bubbles. Leave one to create or join another.</p>
+          )}
           <button
             type="button"
             onClick={() => {
               setShowSettings(false);
-              if (setShowCreateBubble) setShowCreateBubble(true);
+              if (setShowJoinBubble) setShowJoinBubble(true);
             }}
             className="w-full bg-white/10 text-white py-3 rounded-xl font-semibold hover:bg-white/20"
           >
-            Create another bubble
+            Join a bubble by code
+          </button>
+          {userBubbles.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowSettings(false);
+                if (onOpenCopyMembers) onOpenCopyMembers();
+              }}
+              className="w-full bg-white/10 text-white py-3 rounded-xl font-semibold hover:bg-white/20"
+            >
+              Add members from another bubble
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onLeaveBubble}
+            disabled={leavingBubble}
+            className="w-full bg-rose-900/40 border border-rose-500/40 text-rose-100 py-3 rounded-xl font-semibold hover:bg-rose-900/60 disabled:opacity-50"
+          >
+            {leavingBubble ? 'Leaving…' : 'Leave this bubble'}
           </button>
         </div>
         
@@ -542,7 +579,7 @@ const Bubble = ({
         </div>
       </SlideUpCard>
 
-      <SlideUpCard
+      <BubblePopup
         isOpen={showCreateBubble}
         onClose={() => setShowCreateBubble && setShowCreateBubble(false)}
         title="Create another bubble"
@@ -553,7 +590,80 @@ const Bubble = ({
           onSubmit={onCreateAnotherBubble}
           onCancel={() => setShowCreateBubble && setShowCreateBubble(false)}
         />
-      </SlideUpCard>
+      </BubblePopup>
+
+      <BubblePopup
+        isOpen={showJoinBubble}
+        onClose={() => setShowJoinBubble && setShowJoinBubble(false)}
+        title="Join a bubble"
+      >
+        <p className="text-gray-400 text-sm mb-3">
+          Paste an invite code. If you opened a FamilyBubble link, the code is filled in for you.
+        </p>
+        <input
+          type="text"
+          placeholder="BUBXXXXXXXX"
+          value={joinCode}
+          onChange={(event) => setJoinCode && setJoinCode(event.target.value.toUpperCase())}
+          autoCapitalize="characters"
+          aria-label="Invite code"
+          className="w-full text-center font-mono tracking-widest px-4 py-3 mb-3 bg-gray-900 border-2 border-gray-700 rounded-xl text-white placeholder-gray-500"
+        />
+        <button
+          type="button"
+          onClick={() => onJoinByCode && onJoinByCode(joinCode)}
+          disabled={joiningBubble || String(joinCode || '').trim().length < 3}
+          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+        >
+          {joiningBubble ? 'Joining…' : 'Join bubble'}
+        </button>
+      </BubblePopup>
+
+      <BubblePopup
+        isOpen={showCopyMembers}
+        onClose={() => setShowCopyMembers && setShowCopyMembers(false)}
+        title="Add members from another bubble"
+      >
+        <p className="text-gray-400 text-sm mb-3">
+          Choose people from {copySourceName || 'your other family'} to invite into this bubble.
+        </p>
+        {copyCandidates.length === 0 ? (
+          <p className="text-gray-500 text-sm mb-3">Everyone from that bubble is already here.</p>
+        ) : (
+          <div className="space-y-2 mb-4 max-h-56 overflow-y-auto">
+            {copyCandidates.map((member) => {
+              const checked = selectedCopyIds.includes(member.userId);
+              return (
+                <label
+                  key={member.userId}
+                  className="flex items-center gap-3 bg-gray-900/60 border border-gray-700 rounded-xl px-3 py-2 text-white"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setSelectedCopyIds((current) => (
+                        checked
+                          ? current.filter((id) => id !== member.userId)
+                          : [...current, member.userId]
+                      ));
+                    }}
+                  />
+                  <span>{member.name || 'Family member'}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
+        <button
+          type="button"
+          disabled={invitingMembers || selectedCopyIds.length === 0}
+          onClick={() => onInviteCopiedMembers && onInviteCopiedMembers(selectedCopyIds)}
+          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl font-semibold disabled:opacity-50"
+        >
+          {invitingMembers ? 'Sending invites…' : 'Send invites'}
+        </button>
+      </BubblePopup>
 
       {/* Profile View Modal */}
       {showProfile && selectedMember && (

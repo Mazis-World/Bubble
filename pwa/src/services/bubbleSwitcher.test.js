@@ -57,4 +57,27 @@ describe('bubbleSwitcher helpers', () => {
     persistCurrentBubble('mom');
     expect(readPersistedBubble()).toBe('mom');
   });
+
+  test('caps every person at two bubbles and skips people already in the other family', () => {
+    const {
+      MAX_USER_BUBBLES,
+      canCreateAnotherBubble,
+      membersToCopy,
+      haloForBubbleIndex,
+    } = require('./bubbleSwitcher');
+    expect(MAX_USER_BUBBLES).toBe(2);
+    expect(canCreateAnotherBubble(1)).toBe(true);
+    expect(canCreateAnotherBubble(2)).toBe(false);
+    expect(membersToCopy({
+      sourceMembers: [
+        { userId: 'me', name: 'Me' },
+        { userId: 'sis', name: 'Sis' },
+        { userId: 'bro', name: 'Bro' },
+      ],
+      targetMembers: [{ userId: 'sis', name: 'Sis' }],
+      currentUserId: 'me',
+    }).map((member) => member.userId)).toEqual(['bro']);
+    expect(haloForBubbleIndex(0).accent).toBe('#8b5cf6');
+    expect(haloForBubbleIndex(1).accent).toBe('#ec4899');
+  });
 });

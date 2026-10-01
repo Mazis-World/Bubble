@@ -51,7 +51,7 @@ const CreateAnotherBubble = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4" data-testid="create-another-bubble">
       <p className="text-gray-400 text-sm">
-        Start another family space — like your mom’s side — then swipe to move between bubbles.
+        Start another family space — like your mom’s side. You can be in two bubbles.
       </p>
       <input
         type="text"

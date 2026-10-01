@@ -19,6 +19,7 @@ import Bubble from '../models/Bubble';
 import BubbleNode from '../models/BubbleNode';
 import BubbleEdge from '../models/BubbleEdge';
 import User from '../models/User';
+import { MAX_USER_BUBBLES } from './bubbleSwitcher';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -145,8 +146,10 @@ export const API = {
       }
     } else {
       console.log("User document already exists for:", userId);
-      // Update with latest info
       const existingUser = User.fromFirestore(existingUserDoc);
+      if ((existingUser.bubbles || []).length >= MAX_USER_BUBBLES) {
+        throw new Error('You can be in 2 bubbles at a time, including the one you are in.');
+      }
       if (uploadedPhotoUrl && uploadedPhotoUrl !== existingUser.photoURL) {
         existingUser.photoURL = uploadedPhotoUrl;
         existingUser.fullName = `${firstName} ${lastName}`;
@@ -384,7 +387,7 @@ export const API = {
     };
   },
   
-  generateReferral: async (bubbleId, fromNodeId) => {
+  generateReferral: async (bubbleId, fromNodeId, invitee = null) => {
     // Optimize: Generate token first (fast operation)
     const token = `BUB${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
     
@@ -419,6 +422,23 @@ export const API = {
       null // acceptedAt
     );
     const edgeRef = await addDoc(edgesRef, edge.toFirestore());
+    if (invitee?.userId) {
+      try {
+        await addDoc(collection(db, 'invitations'), {
+          bubbleId,
+          createdBy: fromNode.userId,
+          createdAt: serverTimestamp(),
+          token,
+          fromNodeId,
+          accepted: false,
+          used: false,
+          inviteeUserId: invitee.userId,
+          inviteeName: invitee.name || null,
+        });
+      } catch (inviteError) {
+        console.warn('Targeted invite saved as a share code only:', inviteError);
+      }
+    }
     return { token, edgeId: edgeRef.id, tier: newMemberTier };
   },
 
@@ -592,6 +612,17 @@ export const API = {
     }
 
     console.log("Found bubble:", bubbleId, "for user:", userId);
+
+    const memberUserDoc = await getDoc(userRef);
+    const memberBubbles = memberUserDoc.exists()
+      ? (memberUserDoc.data()?.bubbles || [])
+      : [];
+    if (memberBubbles.includes(bubbleId)) {
+      return { bubbleId, alreadyMember: true };
+    }
+    if (memberBubbles.length >= MAX_USER_BUBBLES) {
+      throw new Error('You can be in 2 bubbles at a time. Leave one to join another.');
+    }
 
     // Create a new node for the user in the bubble
     const nodeRef = doc(collection(db, 'bubbles', bubbleId, 'nodes'));
@@ -889,6 +920,41 @@ export const API = {
     
     await batch.commit();
     return { success: true };
+  },
+
+  getPendingInvites: async (userId) => {
+    if (!userId) return [];
+    const invitesQuery = query(
+      collection(db, 'invitations'),
+      where('inviteeUserId', '==', userId)
+    );
+    const snapshot = await getDocs(invitesQuery);
+    return snapshot.docs
+      .map((inviteDoc) => ({ id: inviteDoc.id, ...inviteDoc.data() }))
+      .filter((invite) => invite.token && !invite.used && !invite.accepted);
+  },
+
+  inviteMembersToBubble: async (targetBubbleId, fromNodeId, members = []) => {
+    const unique = [];
+    const seen = new Set();
+    (members || []).forEach((member) => {
+      if (!member?.userId || seen.has(member.userId)) return;
+      seen.add(member.userId);
+      unique.push(member);
+    });
+    const results = [];
+    for (const member of unique) {
+      const referral = await API.generateReferral(targetBubbleId, fromNodeId, {
+        userId: member.userId,
+        name: member.name || member.fullName || 'Family member',
+      });
+      results.push({
+        ...referral,
+        inviteeUserId: member.userId,
+        inviteeName: member.name || member.fullName || 'Family member',
+      });
+    }
+    return results;
   },
 
   // ============================================================================

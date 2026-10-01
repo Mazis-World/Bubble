@@ -2,13 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API } from '../../services/bubble';
 import Bubble from './Bubble';
 import CreateAnotherBubble from './CreateAnotherBubble';
+import BubblePopup from './BubblePopup';
 import { db } from '../../firebase';
 import { collection, onSnapshot, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { notificationService } from '../../services/notifications';
 import { analyticsService } from '../../services/analytics';
 import {
+  canCreateAnotherBubble,
+  clearPersistedBubble,
   listBubbleSummaries,
   locationPayload,
+  membersToCopy,
   persistCurrentBubble,
   splitPersonName,
 } from '../../services/bubbleSwitcher';
@@ -26,6 +30,12 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const [userBubbles, setUserBubbles] = useState([]);
   const [showCreateBubble, setShowCreateBubble] = useState(false);
   const [creatingBubble, setCreatingBubble] = useState(false);
+  const [showJoinBubble, setShowJoinBubble] = useState(false);
+  const [showCopyMembers, setShowCopyMembers] = useState(false);
+  const [copyCandidates, setCopyCandidates] = useState([]);
+  const [copySourceName, setCopySourceName] = useState('');
+  const [leavingBubble, setLeavingBubble] = useState(false);
+  const [invitingMembers, setInvitingMembers] = useState(false);
   const unsubscribeRef = useRef(null);
   const currentBubbleIdRef = useRef(null);
   const switchInFlightRef = useRef(false);
@@ -158,6 +168,10 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
   const handleCreateAnotherBubble = React.useCallback(async (form) => {
     if (!userId || creatingBubble) return;
+    if (!canCreateAnotherBubble(userBubbles.length)) {
+      alert('You can be in 2 bubbles at a time, including the one you are in.');
+      return;
+    }
     setCreatingBubble(true);
     try {
       const member = bubbleData?.currentMember;
@@ -542,6 +556,40 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id]); // updateLocation intentionally excluded to prevent re-creation
 
+  useEffect(() => {
+    const code = typeof initialJoinToken === 'string'
+      ? initialJoinToken
+      : initialJoinToken?.inviteToken;
+    if (code) {
+      setManualInviteCode(String(code).trim().toUpperCase());
+    }
+  }, [initialJoinToken]);
+
+  const pendingInviteCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!userId || !bubbleData || pendingInviteCheckedRef.current) return undefined;
+    pendingInviteCheckedRef.current = true;
+    let cancelled = false;
+    API.getPendingInvites(userId)
+      .then((invites) => {
+        if (cancelled || !invites.length) return;
+        const next = invites.find((invite) => !userBubbles.some((bubble) => bubble.id === invite.bubbleId));
+        if (!next?.token) return;
+        setManualInviteCode(String(next.token).toUpperCase());
+        if (canCreateAnotherBubble(userBubbles.length)) {
+          joinWithInviteCode(next.token);
+        } else {
+          setShowJoinBubble(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // joinWithInviteCode is stable enough for a one-time session check
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, bubbleData, userBubbles]);
+
   const joinWithInviteCode = async (rawCode) => {
     const inviteCode = (rawCode || '').trim().toUpperCase();
     if (!inviteCode || !userId) return;
@@ -563,9 +611,17 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         });
       }
       const result = await API.joinBubble(inviteCode, userName, null, 'Family Member', userId);
+      if (result?.alreadyMember) {
+        persistCurrentBubble(result.bubbleId);
+        if (onJoinProcessed) onJoinProcessed();
+        await activateBubble(result.bubbleId);
+        await refreshUserBubbles();
+        setShowJoinBubble(false);
+        return;
+      }
       if (result?.bubbleId) {
         analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
-        localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+        persistCurrentBubble(result.bubbleId);
         localStorage.removeItem('familyBubble_pendingJoin');
         currentBubbleIdRef.current = result.bubbleId;
         if (onJoinProcessed) onJoinProcessed();
@@ -575,13 +631,84 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           setupRealtimeListener(result.bubbleId, userId);
         }
         await refreshUserBubbles();
+        setShowJoinBubble(false);
       }
     } catch (error) {
       console.error("Error joining bubble:", error);
+      setManualInviteCode(inviteCode);
+      setShowJoinBubble(true);
       alert(`Failed to join bubble: ${error.message}`);
     } finally {
       setJoiningManual(false);
       setLoading(false);
+    }
+  };
+
+  const handleLeaveBubble = async () => {
+    const bubbleId = bubbleData?.bubble?.id;
+    const nodeId = bubbleData?.currentMember?.id;
+    if (!bubbleId || !nodeId || !userId || leavingBubble) return;
+    const name = bubbleData?.bubble?.name || 'this bubble';
+    if (!window.confirm(`Leave ${name}? You can join again later with an invite code.`)) {
+      return;
+    }
+    setLeavingBubble(true);
+    try {
+      await API.leaveBubble(bubbleId, nodeId, userId);
+      const remaining = (await refreshUserBubbles()).filter((bubble) => bubble.id !== bubbleId);
+      if (remaining[0]) {
+        await activateBubble(remaining[0].id);
+      } else {
+        if (unsubscribeRef.current) unsubscribeRef.current();
+        currentBubbleIdRef.current = null;
+        clearPersistedBubble();
+        setBubbleData(null);
+      }
+    } catch (error) {
+      console.error('Error leaving bubble:', error);
+      alert(`Could not leave bubble: ${error.message}`);
+    } finally {
+      setLeavingBubble(false);
+    }
+  };
+
+  const handleOpenCopyMembers = async () => {
+    const currentId = bubbleData?.bubble?.id;
+    const other = userBubbles.find((bubble) => bubble.id && bubble.id !== currentId);
+    if (!other?.id || !userId) {
+      alert('Join or create a second bubble first, then you can copy people between them.');
+      return;
+    }
+    try {
+      const source = await API.getBubbleById(other.id, userId);
+      setCopySourceName(other.name);
+      setCopyCandidates(membersToCopy({
+        sourceMembers: source?.allMembers || [],
+        targetMembers: bubbleData?.allMembers || [],
+        currentUserId: userId,
+      }));
+      setShowCopyMembers(true);
+    } catch (error) {
+      alert(`Could not load members: ${error.message}`);
+    }
+  };
+
+  const handleInviteCopiedMembers = async (memberIds) => {
+    const selected = copyCandidates.filter((member) => memberIds.includes(member.userId));
+    if (!selected.length || !bubbleData?.currentMember?.id) return;
+    setInvitingMembers(true);
+    try {
+      await API.inviteMembersToBubble(
+        bubbleData.bubble.id,
+        bubbleData.currentMember.id,
+        selected
+      );
+      setShowCopyMembers(false);
+      alert('Invites are ready. Those family members can join with the link or code, and it will fill in automatically if they open it.');
+    } catch (error) {
+      alert(`Could not invite members: ${error.message}`);
+    } finally {
+      setInvitingMembers(false);
     }
   };
 
@@ -738,14 +865,18 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
             {joiningManual ? 'Joining…' : 'Join bubble'}
           </button>
           {showCreateBubble ? (
-            <div className="text-left mb-4">
+            <BubblePopup
+              isOpen
+              onClose={() => setShowCreateBubble(false)}
+              title="Create a bubble"
+            >
               <CreateAnotherBubble
                 needProfileNames
                 submitting={creatingBubble}
                 onSubmit={handleCreateAnotherBubble}
                 onCancel={() => setShowCreateBubble(false)}
               />
-            </div>
+            </BubblePopup>
           ) : null}
           <div className="flex gap-3 justify-center">
             <button
@@ -788,6 +919,21 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       setShowCreateBubble={setShowCreateBubble}
       creatingBubble={creatingBubble}
       onCreateAnotherBubble={handleCreateAnotherBubble}
+      showJoinBubble={showJoinBubble}
+      setShowJoinBubble={setShowJoinBubble}
+      joinCode={manualInviteCode}
+      setJoinCode={setManualInviteCode}
+      joiningBubble={joiningManual}
+      onJoinByCode={joinWithInviteCode}
+      onLeaveBubble={handleLeaveBubble}
+      leavingBubble={leavingBubble}
+      showCopyMembers={showCopyMembers}
+      setShowCopyMembers={setShowCopyMembers}
+      copyCandidates={copyCandidates}
+      copySourceName={copySourceName}
+      onOpenCopyMembers={handleOpenCopyMembers}
+      onInviteCopiedMembers={handleInviteCopiedMembers}
+      invitingMembers={invitingMembers}
     />
   );
 };
