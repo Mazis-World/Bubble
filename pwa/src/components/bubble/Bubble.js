@@ -431,10 +431,15 @@ const Bubble = ({
 
       <div className="relative z-30 flex-shrink-0 -mt-5 -mb-3">
         <BubbleSwitcher
-          bubbles={userBubbles.length ? userBubbles : [{
+          bubbles={(userBubbles.length ? userBubbles : [{
             id: currentBubbleId,
             name: bubbleData?.bubble?.name || 'FamilyBubble',
-          }]}
+            members: bubbleData?.allMembers || [],
+          }]).map((bubble) => (
+            bubble.id === currentBubbleId
+              ? { ...bubble, members: bubbleData?.allMembers || bubble.members || [] }
+              : bubble
+          ))}
           currentId={currentBubbleId}
           onSwitch={onSwitchBubble}
           onCreate={setShowCreateBubble ? () => setShowCreateBubble(true) : undefined}

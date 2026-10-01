@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import {
   haloForBubbleIndex,
+  miniClusterLayout,
+  miniMemberPhotos,
   peekSwitcherTarget,
   swipeDirection,
 } from '../../services/bubbleSwitcher';
+import { colorForMember } from '../../utils/memberColor';
 
 const NAME_REVEAL_MS = 1400;
 
@@ -74,40 +77,73 @@ export const useBubbleSwipe = ({
   };
 };
 
-const MiniBubble = ({
+const MiniFamilyCluster = ({
   name,
   active,
   halo,
+  members = [],
   onSelect,
-}) => (
-  <button
-    type="button"
-    aria-label={`Switch to ${name}`}
-    aria-current={active ? 'true' : undefined}
-    onClick={onSelect}
-    className={`relative flex-shrink-0 rounded-full transition-all duration-200 ${
-      active ? 'w-[18px] h-[18px]' : 'w-[11px] h-[11px] opacity-55 hover:opacity-90'
-    }`}
-    style={{
-      background: active
-        ? `radial-gradient(circle at 32% 28%, #fff 0%, ${halo.accent} 46%, #0f172a 100%)`
-        : 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.9) 0%, rgba(148,163,184,0.75) 42%, rgba(15,23,42,0.95) 100%)',
-      boxShadow: active
-        ? `0 0 10px ${halo.glow}`
-        : '0 0 6px rgba(148,163,184,0.25)',
-    }}
-  >
-    {active && (
-      <span
-        className="bubble-mini-halo pointer-events-none absolute -inset-[3px] rounded-full"
-        style={{
-          boxShadow: `0 0 0 1px ${halo.ring}, 0 0 8px ${halo.glow}`,
-        }}
-        aria-hidden="true"
-      />
-    )}
-  </button>
-);
+}) => {
+  const photos = miniMemberPhotos(members);
+  const faces = photos.length ? photos : [{ id: 'empty', name, photoUrl: null }];
+  const { size, overlap } = miniClusterLayout(faces.length);
+  const initialSize = Math.max(5, Math.round(size * 0.48));
+
+  return (
+    <button
+      type="button"
+      aria-label={`Switch to ${name}`}
+      aria-current={active ? 'true' : undefined}
+      onClick={onSelect}
+      className={`relative flex-shrink-0 overflow-visible rounded-full transition-opacity duration-200 ${
+        active ? '' : 'opacity-50 hover:opacity-90'
+      }`}
+    >
+      {active && (
+        <span
+          className="bubble-mini-halo pointer-events-none absolute -inset-[3px] rounded-full"
+          style={{
+            boxShadow: `0 0 0 1px ${halo.ring}, 0 0 8px ${halo.glow}`,
+          }}
+          aria-hidden="true"
+        />
+      )}
+      <span className="relative flex items-center">
+        {faces.map((member, index) => (
+          <span
+            key={member.id}
+            data-testid="mini-member-photo"
+            className="relative rounded-full overflow-hidden border border-slate-950/70"
+            style={{
+              width: size,
+              height: size,
+              marginLeft: index === 0 ? 0 : -overlap,
+              zIndex: faces.length - index,
+              background: photos.length
+                ? colorForMember(member, photos)
+                : `radial-gradient(circle at 32% 28%, #fff 0%, ${halo.accent} 46%, #0f172a 100%)`,
+            }}
+          >
+            {member.photoUrl ? (
+              <img
+                src={member.photoUrl}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <span
+                className="flex items-center justify-center w-full h-full font-bold text-white leading-none"
+                style={{ fontSize: initialSize }}
+              >
+                {String(member.name || '?').charAt(0).toUpperCase()}
+              </span>
+            )}
+          </span>
+        ))}
+      </span>
+    </button>
+  );
+};
 
 const BubbleSwitcher = ({
   bubbles = [],
@@ -173,11 +209,12 @@ const BubbleSwitcher = ({
         onTouchCancel={swipe.onTouchCancel}
       >
         {bubbles.map((bubble, bubbleIndex) => (
-          <MiniBubble
+          <MiniFamilyCluster
             key={bubble.id}
             name={bubble.name}
             active={bubble.id === current?.id}
             halo={haloForBubbleIndex(bubbleIndex)}
+            members={bubble.members}
             onSelect={() => handleSwitch(bubble.id)}
           />
         ))}

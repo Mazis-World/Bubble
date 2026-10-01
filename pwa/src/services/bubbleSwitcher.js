@@ -48,6 +48,53 @@ export function splitPersonName(fullName, firstName = '', lastName = '') {
   };
 }
 
+export const MINI_CLUSTER_MAX_WIDTH = 40;
+export const MINI_PHOTO_MAX = 16;
+export const MINI_PHOTO_MIN = 7;
+
+export function miniMemberPhotos(members = []) {
+  const seen = new Set();
+  const list = [];
+  (members || []).forEach((member) => {
+    const id = member?.userId || member?.id || member?.nodeId;
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    list.push({
+      id,
+      name: String(member?.name || '').trim() || 'Family member',
+      photoUrl: member?.photoUrl || member?.photoURL || null,
+    });
+  });
+  return list;
+}
+
+export function miniClusterLayout(count) {
+  const n = Math.max(1, Number(count) || 1);
+  if (n === 1) {
+    return { size: MINI_PHOTO_MAX, overlap: 0 };
+  }
+
+  for (let size = MINI_PHOTO_MAX; size >= MINI_PHOTO_MIN; size -= 1) {
+    const minVisible = 2;
+    const minOverlap = Math.round(size * 0.32);
+    const maxOverlap = size - minVisible;
+    const neededOverlap = size - (MINI_CLUSTER_MAX_WIDTH - size) / (n - 1);
+    const overlap = Math.min(maxOverlap, Math.max(minOverlap, neededOverlap));
+    const width = size + (n - 1) * (size - overlap);
+    if (width <= MINI_CLUSTER_MAX_WIDTH + 0.5) {
+      return { size, overlap };
+    }
+  }
+
+  const size = MINI_PHOTO_MIN;
+  const step = Math.max(1, (MINI_CLUSTER_MAX_WIDTH - size) / (n - 1));
+  return { size, overlap: Math.min(size - 1, size - step) };
+}
+
+export function miniPhotoSize(count) {
+  return miniClusterLayout(count).size;
+}
+
 export function listBubbleSummaries(bubbles = []) {
   const seen = new Set();
   const list = [];
@@ -59,6 +106,7 @@ export function listBubbleSummaries(bubbles = []) {
       id,
       name: String(entry?.bubble?.name || '').trim() || 'Family bubble',
       isOwner: Boolean(entry?.isOwner),
+      members: miniMemberPhotos(entry?.allMembers || entry?.members),
     });
   });
   return list;

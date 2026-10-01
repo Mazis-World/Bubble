@@ -2,6 +2,9 @@ import {
   adjacentBubbleId,
   listBubbleSummaries,
   locationPayload,
+  miniClusterLayout,
+  miniMemberPhotos,
+  miniPhotoSize,
   splitPersonName,
   swipeDirection,
 } from './bubbleSwitcher';
@@ -14,8 +17,32 @@ describe('bubbleSwitcher helpers', () => {
       { bubbleId: 'dad', bubble: { name: 'Duplicate' } },
       { bubble: { name: 'Missing id' } },
     ])).toEqual([
-      { id: 'dad', name: "Dad's Family", isOwner: true },
-      { id: 'mom', name: "Mom's Family", isOwner: true },
+      { id: 'dad', name: "Dad's Family", isOwner: true, members: [] },
+      { id: 'mom', name: "Mom's Family", isOwner: true, members: [] },
+    ]);
+  });
+
+  test('packs member photos into each family summary', () => {
+    const members = miniMemberPhotos([
+      { id: 'n1', userId: 'u1', name: 'Ada', photoUrl: 'https://example.com/ada.jpg' },
+      { userId: 'u1', name: 'Ada duplicate', photoURL: 'https://example.com/skip.jpg' },
+      { id: 'n2', name: 'Bob' },
+    ]);
+    expect(members).toEqual([
+      { id: 'u1', name: 'Ada', photoUrl: 'https://example.com/ada.jpg' },
+      { id: 'n2', name: 'Bob', photoUrl: null },
+    ]);
+    expect(miniPhotoSize(2)).toBeGreaterThan(miniPhotoSize(20));
+    const crowded = miniClusterLayout(8);
+    const pair = miniClusterLayout(2);
+    expect(crowded.size + (8 - 1) * (crowded.size - crowded.overlap)).toBeLessThanOrEqual(41);
+    expect(pair.size).toBeGreaterThanOrEqual(crowded.size);
+    expect(listBubbleSummaries([{
+      bubbleId: 'dad',
+      bubble: { name: "Dad's Family" },
+      allMembers: [{ id: 'n1', userId: 'u1', name: 'Ada', photoUrl: 'https://example.com/ada.jpg' }],
+    }])[0].members).toEqual([
+      { id: 'u1', name: 'Ada', photoUrl: 'https://example.com/ada.jpg' },
     ]);
   });
 
