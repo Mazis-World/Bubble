@@ -203,6 +203,28 @@ export const sortFamilyMemos = (memos, openSosIds = []) =>
     return timestampToMs(b.createdAt) - timestampToMs(a.createdAt);
   });
 
+export const memosFromMemberStatuses = (members = [], bubbleId = null) =>
+  (members || [])
+    .filter((member) => member && (member.status || member.statusText))
+    .map((member) => new FamilyMemo({
+      memoId: `status-${member.id || member.userId}`,
+      bubbleId,
+      userId: member.userId || null,
+      nodeId: member.id || null,
+      type: MEMO_TYPE.STATUS,
+      status: member.status || null,
+      message: member.statusText || null,
+      location: member.lastKnownLocation || null,
+      createdAt: member.lastUpdated || member.createdAt || null,
+    }));
+
+export const mergeAutoloadedMemos = (firestoreMemos = [], memberMemos = []) => {
+  if (Array.isArray(firestoreMemos) && firestoreMemos.length > 0) {
+    return firestoreMemos;
+  }
+  return Array.isArray(memberMemos) ? memberMemos : [];
+};
+
 const memosCollection = (bubbleId) => collection(db, 'bubbles', bubbleId, 'memos');
 
 export const createFamilyMemo = async ({
@@ -317,15 +339,25 @@ export const deleteFamilyMemo = async ({ bubbleId, memoId, userId = null }) => {
 
 export const listenToFamilyMemos = (bubbleId, onChange) => {
   if (!bubbleId) return () => {};
-  const memosQuery = query(memosCollection(bubbleId), orderBy('createdAt', 'desc'), limit(MEMO_LIMIT));
-  return onSnapshot(
-    memosQuery,
-    (snapshot) => {
-      onChange(snapshot.docs.map((item) => FamilyMemo.fromFirestore(item)));
-    },
-    (error) => {
-      console.warn('Family memos listener failed:', error);
+
+  const applySnapshot = (snapshot) => {
+    onChange(snapshot.docs.map((item) => FamilyMemo.fromFirestore(item)));
+  };
+
+  const col = memosCollection(bubbleId);
+  const ordered = query(col, orderBy('createdAt', 'desc'), limit(MEMO_LIMIT));
+  let unsubscribe = () => {};
+
+  const attach = (target, onFail) => onSnapshot(target, applySnapshot, onFail);
+
+  unsubscribe = attach(ordered, (error) => {
+    console.warn('Family memos ordered listener failed, retrying without order:', error?.code || error.message);
+    unsubscribe();
+    unsubscribe = attach(col, (fallbackError) => {
+      console.warn('Family memos listener failed:', fallbackError);
       onChange([]);
-    }
-  );
+    });
+  });
+
+  return () => unsubscribe();
 };
