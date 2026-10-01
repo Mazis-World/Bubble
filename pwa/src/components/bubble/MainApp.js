@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { API } from '../../services/bubble';
+import { API, sessionBubble } from '../../services/bubble';
 import Bubble from './Bubble';
 import CreateAnotherBubble from './CreateAnotherBubble';
 import BubblePopup from './BubblePopup';
@@ -16,8 +16,12 @@ import {
   persistCurrentBubble,
   splitPersonName,
 } from '../../services/bubbleSwitcher';
+import useSos from '../../hooks/useSos';
+import usePlaceWatcher from '../../hooks/usePlaceWatcher';
+import { getPlaceWatcher } from '../../services/places/watcher';
+import { canInviteMoreMembers, inviteLimitMessage } from '../../services/billing';
 
-const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, onUpgrade, onJoinProcessed }) => {
+const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreationData, onBubbleCreated, isSubscribed, isLapsedSubscriber = false, onUpgrade, onRestorePurchases, onInitiateCreate, onInitiateJoin, onJoinProcessed, sosLink = null }) => {
   const [bubbleData, setBubbleData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStatus, setShowStatus] = useState(false);
@@ -41,6 +45,16 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   const switchInFlightRef = useRef(false);
   const previousMembersRef = useRef(new Map()); // Track previous member states for notifications
   const joinAttemptedRef = useRef(null);
+  const isSubscribedRef = useRef(isSubscribed);
+  isSubscribedRef.current = isSubscribed;
+  const sos = useSos({ userId, bubbleData, initialSosLink: sosLink });
+  usePlaceWatcher({
+    bubbleId: bubbleData?.bubble?.id,
+    userId: bubbleData?.currentMember?.userId || userId,
+    nodeId: bubbleData?.currentMember?.id,
+    displayName: bubbleData?.currentMember?.name,
+    enabled: Boolean(bubbleData?.bubble?.id && bubbleData?.currentMember && !sos.sosActive),
+  });
 
   const setupRealtimeListener = React.useCallback((bubbleId, memberId) => {
     // Clean up previous listener
@@ -153,6 +167,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     previousMembersRef.current = new Map();
     try {
       persistCurrentBubble(bubbleId);
+      sessionBubble.set(userId, bubbleId);
       const data = await API.getBubbleById(bubbleId, userId);
       if (data?.bubble) {
         setBubbleData(data);
@@ -226,26 +241,25 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   ]);
 
   const loadBubble = React.useCallback(async () => {
-    // Support both authenticated users and anonymous users
     const nodeUserId = userId || localStorage.getItem('familyBubble_nodeUserId');
-    const storedBubbleId = localStorage.getItem('familyBubble_bubbleId');
-    
-    let bubbleId = storedBubbleId;
+    const storedBubbleId = sessionBubble.get(userId || null);
     let data = null;
+    let bubbleId = storedBubbleId;
 
-    // Try to load bubble data
     if (userId) {
       console.log("Loading bubble from user memberships for userId:", userId);
       data = await API.getUserBubble(userId);
       if (data?.bubble) {
         bubbleId = data.bubble.id;
         persistCurrentBubble(bubbleId);
+        sessionBubble.set(userId, bubbleId);
         console.log("Found bubble from user document:", bubbleId);
       } else if (storedBubbleId) {
         console.log("Loading bubble from localStorage:", storedBubbleId);
         data = await API.getBubbleById(storedBubbleId, nodeUserId || userId);
         bubbleId = data?.bubble?.id || null;
       } else {
+        sessionBubble.clear();
         console.log("No readable bubble in user document");
       }
     } else if (storedBubbleId) {
@@ -275,13 +289,23 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
   }, []);
 
   useEffect(() => {
+    if (!userId) return undefined;
+    notificationService.enablePush(userId).catch((error) => {
+      console.warn('Push registration skipped:', error?.message || error);
+    });
+    return undefined;
+  }, [userId]);
+
+  useEffect(() => {
     // If bubbleCreationData exists, it means the user just completed the create bubble flow
     if (bubbleCreationData && userId) {
       setLoading(true);
       const { bubbleName, firstName, lastName, imageFile, relationshipRole, location } = bubbleCreationData;
       console.log("Creating bubble for user:", userId, "with data:", { bubbleName, firstName, lastName, location });
       
-      API.createBubble(userId, firstName, lastName, bubbleName, imageFile, relationshipRole, location)
+      API.createBubble(userId, firstName, lastName, bubbleName, imageFile, relationshipRole, location, {
+        isPremium: Boolean(isSubscribedRef.current),
+      })
         .then(async (result) => {
           console.log("Bubble created successfully:", result);
           onBubbleCreated(); // Clear the creation data from App.js
@@ -290,7 +314,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
             // Track bubble creation
             analyticsService.trackBubbleCreate(result.bubbleId, 1);
             // Store bubbleId for future reference
-            localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+            sessionBubble.set(userId, result.bubbleId);
             currentBubbleIdRef.current = result.bubbleId;
             
             // Wait a moment for Firestore to propagate
@@ -397,7 +421,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           if (result && result.bubbleId) {
             // Track bubble join
             analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
-            localStorage.setItem('familyBubble_bubbleId', result.bubbleId);
+            sessionBubble.set(userId, result.bubbleId);
             currentBubbleIdRef.current = result.bubbleId;
             
             // Wait a moment for Firestore to propagate the changes
@@ -479,7 +503,11 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         alert(`Failed to ensure user document: ${error.message}`);
       });
     } else if (userId) {
-      // Normal bubble loading if not creating a new one and user is authenticated
+      const pendingJoin = localStorage.getItem('familyBubble_pendingJoin');
+      if (pendingJoin && !initialJoinToken) {
+        setLoading(true);
+        return;
+      }
       setLoading(true);
       loadBubble();
     } else {
@@ -524,6 +552,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
 
     try {
       const location = await getCurrentLocation();
+      getPlaceWatcher().ingest(location).catch(() => {});
       await API.updateLocation(
         bubbleData.bubble.id,
         bubbleData.currentMember.id,
@@ -536,25 +565,27 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }
   };
 
-  // Location tracking: Update location when bubble loads and periodically
+  // Location tracking: Update location when bubble loads and periodically.
+  // Live GPS watch for SOS is owned by useSos and only runs while SOS is open.
   useEffect(() => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.currentMember) {
       return;
     }
+    if (sos.sosActive) {
+      return;
+    }
 
-    // Update location immediately when bubble loads
     updateLocation();
 
-    // Update location every 15 minutes
     const locationInterval = setInterval(() => {
       updateLocation();
-    }, 15 * 60 * 1000); // 15 minutes
+    }, 15 * 60 * 1000);
 
     return () => {
       clearInterval(locationInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id]); // updateLocation intentionally excluded to prevent re-creation
+  }, [bubbleData?.bubble?.id, bubbleData?.currentMember?.id, sos.sosActive]);
 
   useEffect(() => {
     const code = typeof initialJoinToken === 'string'
@@ -622,6 +653,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       if (result?.bubbleId) {
         analyticsService.trackBubbleJoin(result.bubbleId, 'invite');
         persistCurrentBubble(result.bubbleId);
+        sessionBubble.set(userId, result.bubbleId);
         localStorage.removeItem('familyBubble_pendingJoin');
         currentBubbleIdRef.current = result.bubbleId;
         if (onJoinProcessed) onJoinProcessed();
@@ -662,6 +694,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         if (unsubscribeRef.current) unsubscribeRef.current();
         currentBubbleIdRef.current = null;
         clearPersistedBubble();
+        sessionBubble.clear();
         setBubbleData(null);
       }
     } catch (error) {
@@ -712,14 +745,50 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
     }
   };
 
-  const handleStatusChange = async (status, location = null, statusText = null) => {
+  const handleStatusChange = async (status, location = null, statusText = null, media = {}) => {
     if (!bubbleData || !bubbleData.bubble || !bubbleData.currentMember || !bubbleData.currentMember.id) {
       console.error("Cannot update status: missing bubble or member data");
       return;
     }
     
+    // Show the new status on radar immediately; the nodes listener confirms it.
+    const memberId = bubbleData.currentMember.id;
+    const previousBubbleData = bubbleData;
+    setBubbleData((prev) => {
+      if (!prev?.currentMember) return prev;
+      const patchMember = (member) => {
+        if (member.id !== memberId) return member;
+        const next = { ...member, status };
+        if (statusText !== null) next.statusText = statusText;
+        if (location?.latitude != null && location?.longitude != null) {
+          next.lastKnownLocation = {
+            ...(member.lastKnownLocation || {}),
+            ...location,
+          };
+        }
+        return next;
+      };
+      return {
+        ...prev,
+        allMembers: (prev.allMembers || []).map(patchMember),
+        currentMember: patchMember(prev.currentMember),
+      };
+    });
+
     // Update status immediately (don't wait for location)
-    const statusPromise = API.updateStatus(bubbleData.bubble.id, bubbleData.currentMember.id, status, statusText);
+    const statusPromise = API.updateStatus(
+      bubbleData.bubble.id,
+      bubbleData.currentMember.id,
+      status,
+      statusText,
+      {
+        location,
+        photoFile: media.photoFile || null,
+        photoFiles: Array.isArray(media.photoFiles) ? media.photoFiles : (media.photoFile ? [media.photoFile] : []),
+        voiceBlob: media.voiceBlob || null,
+        voiceDurationMs: media.voiceDurationMs || null,
+      }
+    );
     
     // Update location in parallel if provided
     const locationPromise = location 
@@ -728,8 +797,13 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
         })
       : Promise.resolve();
     
-    // Wait for both, but don't block on location
-    await Promise.all([statusPromise, locationPromise]);
+    try {
+      await Promise.all([statusPromise, locationPromise]);
+    } catch (error) {
+      console.error('Status update failed:', error);
+      setBubbleData(previousBubbleData);
+      return;
+    }
     
     // Track status update
     analyticsService.trackStatusUpdate(
@@ -807,6 +881,18 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       console.error("Cannot generate invite: currentMember or nodeId is missing.", { bubbleData });
       return;
     }
+
+    const memberCount = Array.isArray(bubbleData.allMembers)
+      ? bubbleData.allMembers.length
+      : (bubbleData.bubble.members || []).length;
+    if (!canInviteMoreMembers({ isPremium: Boolean(isSubscribed), memberCount })) {
+      if (onUpgrade) {
+        onUpgrade();
+      } else {
+        alert(inviteLimitMessage());
+      }
+      return;
+    }
     
     // Prevent multiple clicks
     if (isGeneratingInvite) return;
@@ -880,7 +966,7 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
           ) : null}
           <div className="flex gap-3 justify-center">
             <button
-              onClick={() => setShowCreateBubble(true)}
+              onClick={() => onInitiateCreate ? onInitiateCreate() : setShowCreateBubble(true)}
               className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 tap-target"
             >
               Create a bubble
@@ -934,6 +1020,11 @@ const MainApp = ({ userId, onLogout, joinToken: initialJoinToken, bubbleCreation
       onOpenCopyMembers={handleOpenCopyMembers}
       onInviteCopiedMembers={handleInviteCopiedMembers}
       invitingMembers={invitingMembers}
+      sos={sos}
+      isSubscribed={Boolean(isSubscribed)}
+      isLapsedSubscriber={Boolean(isLapsedSubscriber)}
+      onUpgrade={onUpgrade}
+      onRestorePurchases={onRestorePurchases}
     />
   );
 };

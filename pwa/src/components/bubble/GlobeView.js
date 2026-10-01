@@ -3,10 +3,15 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import { RotateCcw, Pause, Play, Maximize2, Minimize2 } from 'lucide-react';
 import { formatLastSeen, getStatusEmoji } from '../../utils/timeUtils';
+import { createPlaceHtmlMarker, createMemberHtmlMarker, globeHtmlLayers, globeMemberPoints } from '../../services/places/markers';
+import { assignMembersToPlaces } from '../../services/places/occupancy';
+import { groupPlacesByOwner } from '../../services/places/mapStyle';
+import { colorForMember, hexToNumber } from '../../utils/memberColor';
 
 // Create amazing glass-like bubbles that pop off the globe
-const createFloatingHead = (member, size) => {
+const createFloatingHead = (member, size, members = []) => {
   const group = new THREE.Group();
+  const accent = hexToNumber(colorForMember(member, members));
   
   // Main bubble sphere - larger for better visibility
   const bubbleRadius = size * 0.25;
@@ -14,11 +19,12 @@ const createFloatingHead = (member, size) => {
   
   // Create amazing glass bubble material
   let material;
-  if (member.photoUrl) {
+  const photoSrc = member.photoUrl || member.photoURL;
+  if (photoSrc) {
     // Load texture from photo with glass bubble effect
     const loader = new THREE.TextureLoader();
     const texture = loader.load(
-      member.photoUrl,
+      photoSrc,
       undefined,
       undefined,
       (err) => {
@@ -39,14 +45,12 @@ const createFloatingHead = (member, size) => {
       ior: 1.5, // Glass-like index of refraction
       transmission: 0.9, // Glass transmission
       thickness: bubbleRadius * 0.5,
-      emissive: member.tier === 1 ? 0x4a1d96 : 0x1e3a8a,
+      emissive: accent,
       emissiveIntensity: 0.3,
     });
   } else {
     // Glass bubble material for members without photos
-    const colors = member.tier === 1 
-      ? 0xa855f7 // Purple for owner
-      : 0x3b82f6; // Blue for participants
+    const colors = accent;
     material = new THREE.MeshPhysicalMaterial({
       color: colors,
       transparent: true,
@@ -96,7 +100,7 @@ const createFloatingHead = (member, size) => {
   // Add outer glow ring that pulses (like a bubble's edge)
   const glowGeometry = new THREE.SphereGeometry(bubbleRadius * 1.4, 32, 32);
   const glowMaterial = new THREE.MeshBasicMaterial({
-    color: member.tier === 1 ? 0xa855f7 : 0x3b82f6,
+    color: accent,
     transparent: true,
     opacity: 0.3,
     side: THREE.BackSide,
@@ -325,7 +329,16 @@ const animateFloatingHeads = (globe) => {
   });
 };
 
-const GlobeView = ({ bubbleData, onMemberClick }) => {
+const GlobeView = ({
+  bubbleData,
+  onMemberClick,
+  checkInOpen = false,
+  focusTarget = null,
+  overlay = null,
+  places = [],
+  presence = [],
+  onPlaceClick,
+}) => {
   const globeEl = useRef();
   const containerRef = useRef();
   const [points, setPoints] = useState([]);
@@ -338,18 +351,7 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
   useEffect(() => {
     if (!bubbleData || !bubbleData.allMembers) return;
 
-    // Convert members to globe points with cartoonish sizing
-    const memberPoints = bubbleData.allMembers
-      .filter(member => member.lastKnownLocation && member.lastKnownLocation.latitude && member.lastKnownLocation.longitude)
-      .map(member => ({
-        lat: member.lastKnownLocation.latitude,
-        lng: member.lastKnownLocation.longitude,
-        size: member.tier === 1 ? 0.6 : 0.4, // Larger for more cartoonish effect
-        color: member.tier === 1 ? '#a855f7' : '#3b82f6',
-        member: member,
-        name: member.name,
-      }));
-
+    const memberPoints = globeMemberPoints(bubbleData.allMembers);
     setPoints(memberPoints);
 
     // Create arcs between members (optional - show connections)
@@ -439,6 +441,16 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
     }
   }, [bubbleData?.currentMember?.lastKnownLocation]);
 
+  // Center on an SOS / memo / check-in target without requiring a page refresh.
+  useEffect(() => {
+    if (!globeEl.current || focusTarget?.latitude == null || focusTarget?.longitude == null) return;
+    setAutoRotate(false);
+    globeEl.current.pointOfView(
+      { lat: focusTarget.latitude, lng: focusTarget.longitude, altitude: 1.2 },
+      1200
+    );
+  }, [focusTarget]);
+
   // Handle window resize and container size changes
   useEffect(() => {
     if (!globeEl.current || !containerRef.current) return;
@@ -495,8 +507,24 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
     );
   }
 
+  const checkInRing = focusTarget?.latitude != null && focusTarget?.longitude != null
+    ? [{ lat: focusTarget.latitude, lng: focusTarget.longitude }]
+    : [];
+  const occupancy = assignMembersToPlaces({
+    members: bubbleData.allMembers,
+    places,
+    presence,
+  });
+  const globeLayers = globeHtmlLayers({
+    members: bubbleData.allMembers,
+    places,
+    occupancy,
+  });
+  const placePoints = globeLayers.filter((item) => item.place);
+  const placeGroups = groupPlacesByOwner(places, bubbleData.allMembers);
+
   // If no members have locations yet, show a message
-  if (points.length === 0) {
+  if (points.length === 0 && placePoints.length === 0) {
     return (
       <div ref={containerRef} className="w-full h-full relative flex items-center justify-center">
         <Globe
@@ -508,14 +536,17 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
           atmosphereColor="#3b82f6"
           atmosphereAltitude={0.15}
         />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-gray-900/90 backdrop-blur-sm rounded-2xl px-6 py-4 border border-gray-800 text-center max-w-md mx-4">
-            <p className="text-white text-lg font-semibold mb-2">🌍 Waiting for Locations</p>
-            <p className="text-gray-400 text-sm">
-              Family members will appear here once they update their status or enable location sharing.
-            </p>
+        {!checkInOpen && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="glass-strong rounded-2xl px-6 py-4 border border-white/10 text-center max-w-md mx-4">
+              <p className="text-white text-lg font-semibold mb-2">🌍 Waiting for Locations</p>
+              <p className="text-gray-400 text-sm">
+                Family members will appear here once they update their status or enable location sharing.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
+        {overlay}
       </div>
     );
   }
@@ -529,7 +560,7 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
         pointsData={points}
         pointThreeObject={(point) => {
-          const head = createFloatingHead(point.member, point.size || 0.4);
+          const head = createFloatingHead(point.member, point.size || 0.4, bubbleData.allMembers);
           // Store initial Y position for floating animation
           head.userData.initialY = head.position.y;
           return head;
@@ -579,6 +610,53 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
         arcDashGap={0.1}
         arcDashAnimateTime={1500}
         arcStroke={0.8}
+        ringsData={checkInRing}
+        ringColor={() => (t) => `rgba(96,165,250,${1 - t})`}
+        ringMaxRadius={2.2}
+        ringPropagationSpeed={2.2}
+        ringRepeatPeriod={700}
+        htmlElementsData={globeLayers}
+        htmlLat="lat"
+        htmlLng="lng"
+        htmlAltitude={(item) => (item.member ? 0.06 : 0.02)}
+        htmlTransition={0}
+        htmlElement={(item) => {
+          const marker = item.member
+            ? createMemberHtmlMarker(item.member, {
+              isCurrent: item.member.id === bubbleData?.currentMember?.id,
+              members: bubbleData.allMembers,
+              onClick: (member) => {
+                if (globeEl.current) {
+                  globeEl.current.pointOfView(
+                    { lat: item.lat, lng: item.lng, altitude: 1.5 },
+                    800
+                  );
+                }
+                if (onMemberClick) onMemberClick(member);
+              },
+            })
+            : createPlaceHtmlMarker(item.place, {
+              members: bubbleData.allMembers,
+              occupants: item.occupants,
+              currentMemberId: bubbleData?.currentMember?.id,
+              onMemberClick: (member) => {
+                if (onMemberClick) onMemberClick(member);
+              },
+              onClick: (place) => {
+                if (globeEl.current) {
+                  globeEl.current.pointOfView(
+                    { lat: place.latitude, lng: place.longitude, altitude: 1.5 },
+                    800
+                  );
+                }
+                if (onPlaceClick) onPlaceClick(place);
+              },
+            });
+          if (item.dx || item.dy) {
+            marker.style.transform = `translate(${item.dx}px, ${item.dy}px) translate(-50%, -100%)`;
+          }
+          return marker;
+        }}
         showAtmosphere={true}
         atmosphereColor="#3b82f6"
         atmosphereAltitude={0.2}
@@ -586,16 +664,11 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
         enablePointerInteraction={true}
       />
       
-      {/* Overlay info */}
-      <div className="absolute top-4 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-2.5 border border-gray-800/50 z-10 shadow-xl">
-        <p className="text-white text-sm font-semibold">
-          🌍 {points.length} {points.length === 1 ? 'member' : 'members'} visible
-        </p>
-      </div>
+      {overlay}
       
       {/* Hovered member info */}
       {hoveredPoint && (
-        <div className="absolute top-4 right-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-4 py-3 border border-gray-800/50 z-10 shadow-xl max-w-xs">
+        <div className="absolute top-36 right-4 glass-strong rounded-xl px-4 py-3 border border-white/10 z-10 shadow-xl max-w-xs">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">{getStatusEmoji(hoveredPoint.member.status || '⚪')}</span>
             <div>
@@ -622,11 +695,11 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
       )}
       
       {/* Controls panel */}
-      {showControls && (
-        <div className="absolute bottom-4 right-4 bg-gray-900/95 backdrop-blur-xl rounded-xl p-2 border border-gray-800/50 z-10 shadow-xl flex flex-col gap-2">
+      {showControls && !checkInOpen && (
+        <div className="absolute bottom-4 right-4 glass-strong rounded-xl p-2 border border-white/10 z-10 shadow-xl flex flex-col gap-2">
           <button
             onClick={() => setAutoRotate(!autoRotate)}
-            className="p-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg transition-all duration-200 text-white"
+            className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 text-white"
             title={autoRotate ? 'Pause rotation' : 'Resume rotation'}
           >
             {autoRotate ? <Pause size={18} /> : <Play size={18} />}
@@ -638,7 +711,7 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
                 globeEl.current.pointOfView({ lat: latitude, lng: longitude, altitude: 2 }, 1000);
               }
             }}
-            className="p-2 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg transition-all duration-200 text-white"
+            className="p-2 hover:bg-white/10 rounded-lg transition-all duration-200 text-white"
             title="Reset to your location"
           >
             <RotateCcw size={18} />
@@ -646,21 +719,51 @@ const GlobeView = ({ bubbleData, onMemberClick }) => {
         </div>
       )}
       
+      {!checkInOpen && placeGroups.length > 0 && (
+        <div
+          className="absolute bottom-36 left-3 z-10 glass-strong rounded-2xl px-3 py-2 border border-white/10 shadow-xl max-w-[240px]"
+          data-testid="place-map-legend"
+        >
+          <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1.5">Family places</p>
+          <div className="space-y-1.5">
+            {placeGroups.map((group) => (
+              <div key={group.ownerId} className="flex items-start gap-2">
+                <span
+                  aria-hidden="true"
+                  className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                  style={{ background: group.color, boxShadow: `0 0 8px ${group.color}` }}
+                />
+                <div className="min-w-0">
+                  <p className="text-white text-xs font-bold leading-tight">{group.name}</p>
+                  <p className="text-gray-400 text-[11px] leading-tight truncate">
+                    {group.places.map((place) => place.name || 'Place').join(', ')}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Toggle controls button */}
-      <button
-        onClick={() => setShowControls(!showControls)}
-        className="absolute bottom-4 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl p-2 border border-gray-800/50 z-10 shadow-xl text-white hover:bg-gray-800/50 transition-all duration-200"
-        title={showControls ? 'Hide controls' : 'Show controls'}
-      >
-        {showControls ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-      </button>
+      {!checkInOpen && (
+        <button
+          onClick={() => setShowControls(!showControls)}
+          className="absolute bottom-4 left-4 glass-strong rounded-xl p-2 border border-white/10 z-10 shadow-xl text-white hover:bg-white/10 transition-all duration-200"
+          title={showControls ? 'Hide controls' : 'Show controls'}
+        >
+          {showControls ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+        </button>
+      )}
       
       {/* Instructions overlay */}
-      <div className="absolute bottom-20 left-4 bg-gray-900/95 backdrop-blur-xl rounded-xl px-3 py-2 border border-gray-800/50 z-10 shadow-xl max-w-[200px] hidden sm:block">
-        <p className="text-gray-300 text-xs">
-          Click a point to view profile • Drag to rotate • Scroll to zoom
-        </p>
-      </div>
+      {!checkInOpen && (
+        <div className="absolute bottom-20 left-4 glass-strong rounded-xl px-3 py-2 border border-white/10 z-10 shadow-xl max-w-[200px] hidden sm:block">
+          <p className="text-gray-300 text-xs">
+            Click a point to view profile • Drag to rotate • Scroll to zoom
+          </p>
+        </div>
+      )}
     </div>
   );
 };

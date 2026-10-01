@@ -53,3 +53,8 @@ export const getStatusDisplay = (status) => {
   return getStatusEmoji(status);
 };
 
+export const getMemberStatusText = (member) => {
+  if (!member || typeof member.statusText !== 'string') return '';
+  return member.statusText.trim();
+};
+

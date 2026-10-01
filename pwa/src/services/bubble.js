@@ -1,8 +1,9 @@
-import { db } from '../firebase';
+import { app, auth, db } from '../firebase';
 import {
   collection,
   doc,
   writeBatch,
+  runTransaction,
   serverTimestamp,
   query,
   where,
@@ -15,11 +16,18 @@ import {
   arrayRemove,
   collectionGroup,
 } from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Bubble from '../models/Bubble';
 import BubbleNode from '../models/BubbleNode';
 import BubbleEdge from '../models/BubbleEdge';
 import User from '../models/User';
 import { MAX_USER_BUBBLES } from './bubbleSwitcher';
+import { MEMO_TYPE, createFamilyMemo } from './memos';
+import { buildCheckInMemo } from './checkin';
+import { prepareStatusMemoMedia } from './memoMedia';
+import { canJoinAtMemberCap, joinLimitMessage, memberLimitForPlan } from './billing';
+import { INVITE_ALREADY_USED, inviteFromRecords } from './invites';
+import { getPlaceWatcher } from './places/watcher';
 
 // ============================================================================
 // REAL BACKEND - FIREBASE
@@ -40,32 +48,48 @@ import { MAX_USER_BUBBLES } from './bubbleSwitcher';
 // Tier system: Tier 1 = owner, Tier 2 = immediate family, Tier 3+ = extended
 // ============================================================================
 
-// Firebase Storage is not enabled on this project (bucket 404 / CORS preflight
-// fails). Keep photos in Firestore as compressed JPEG data URLs instead.
-const MAX_PHOTO_DIMENSION = 384;
+const STORAGE_BUCKETS = [
+  'familybubble-ecfa6.appspot.com',
+  'familybubble-ecfa6.firebasestorage.app',
+];
 const MAX_PHOTO_DATA_URL_CHARS = 350000;
+
+const uploadToStorage = async (imageFile, userId, bucket, timeoutMs) => {
+  const bucketStorage = getStorage(app, `gs://${bucket}`);
+  const uniqueId = Date.now();
+  const path = `user_photos/${userId}/${uniqueId}`;
+  const imageRef = ref(bucketStorage, path);
+  console.log("Attempting Storage upload:", bucket || '(default)', path);
+  const uploadPromise = (async () => {
+    const snapshot = await uploadBytes(imageRef, imageFile, {
+      contentType: imageFile.type || 'image/jpeg',
+    });
+    return getDownloadURL(snapshot.ref);
+  })();
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Photo upload timed out')), timeoutMs);
+  });
+  return Promise.race([uploadPromise, timeoutPromise]);
+};
 
 const fileToCompressedDataUrl = async (imageFile) => {
   if (typeof document === 'undefined' || typeof createImageBitmap !== 'function') {
     throw new Error('Photo compression is only available in the browser.');
   }
-
   const bitmap = await createImageBitmap(imageFile);
   try {
-    const scale = Math.min(1, MAX_PHOTO_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const maxDim = 384;
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d', { alpha: false });
-    if (!ctx) {
-      throw new Error('Could not prepare photo.');
-    }
+    if (!ctx) throw new Error('Could not prepare photo.');
     ctx.fillStyle = '#111827';
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(bitmap, 0, 0, width, height);
-
     let quality = 0.74;
     let dataUrl = canvas.toDataURL('image/jpeg', quality);
     while (dataUrl.length > MAX_PHOTO_DATA_URL_CHARS && quality > 0.35) {
@@ -77,28 +101,176 @@ const fileToCompressedDataUrl = async (imageFile) => {
     }
     return dataUrl;
   } finally {
-    if (typeof bitmap.close === 'function') {
-      bitmap.close();
-    }
+    if (typeof bitmap.close === 'function') bitmap.close();
   }
 };
 
-const uploadImage = async (imageFile, userId) => {
+const uploadImage = async (imageFile, userId, timeoutMs = 12000) => {
   if (!imageFile) return null;
   if (!userId) {
     console.warn("No userId provided for image upload, skipping");
     return null;
   }
 
+  const fileWithType =
+    imageFile.type && imageFile.type.startsWith('image/')
+      ? imageFile
+      : new File([imageFile], imageFile.name || 'photo.jpg', { type: 'image/jpeg' });
+
   try {
-    const dataUrl = await fileToCompressedDataUrl(imageFile);
-    console.log("Photo prepared for Firestore, length:", dataUrl.length);
+    const downloadURL = await Promise.any(
+      STORAGE_BUCKETS.map((bucket) => uploadToStorage(fileWithType, userId, bucket, timeoutMs))
+    );
+    console.log("Image uploaded to Firebase Storage:", downloadURL);
+    return downloadURL;
+  } catch (error) {
+    console.warn("Firebase Storage upload failed on all buckets:", error?.errors?.[0]?.message || error.message);
+  }
+
+  try {
+    const dataUrl = await fileToCompressedDataUrl(fileWithType);
+    console.warn("Firebase Storage is not ready; stored a compressed photo in Firestore instead.");
     return dataUrl;
   } catch (error) {
     console.error("Error preparing photo:", error);
-    console.error("Error code:", error.code, "Error message:", error.message);
     return null;
   }
+};
+
+const normalizeInviteToken = (value) => (value || '').toString().trim().toUpperCase();
+
+const inviteTokenCandidates = (rawToken) => {
+  const raw = (rawToken || '').toString().trim();
+  if (!raw) return [];
+  return [...new Set([raw, raw.toUpperCase(), raw.toLowerCase()])];
+};
+
+const invitationFromDoc = (invitationDoc, edgeDoc = null) => {
+  const invitation = invitationDoc.data() || {};
+  return {
+    token: invitation.token || invitation.inviteCode || null,
+    bubbleId: invitation.bubbleId,
+    fromNodeId: invitation.fromNodeId || invitation.referredNode || edgeDoc?.data()?.fromNode,
+    edgeDoc,
+    invitationDoc,
+    accepted: inviteFromRecords(invitation, edgeDoc?.data()),
+  };
+};
+
+const edgeInviteFromDoc = (edgeDoc) => {
+  const data = edgeDoc.data() || {};
+  return {
+    token: data.referralToken || null,
+    bubbleId: edgeDoc.ref.parent.parent.id,
+    fromNodeId: data.fromNode,
+    edgeDoc,
+    invitationDoc: null,
+    accepted: inviteFromRecords({}, data),
+  };
+};
+
+const findEdgeInBubble = async (bubbleId, tokens) => {
+  for (const token of tokens) {
+    try {
+      const edgeSnap = await getDocs(
+        query(
+          collection(db, 'bubbles', bubbleId, 'edges'),
+          where('referralToken', '==', token)
+        )
+      );
+      if (!edgeSnap.empty) return edgeSnap.docs[0];
+    } catch (edgeError) {
+      console.warn("Invite found, but edge lookup failed:", edgeError);
+    }
+  }
+  return null;
+};
+
+const findInviteByToken = async (rawToken) => {
+  const tokens = inviteTokenCandidates(rawToken);
+  if (tokens.length === 0) return null;
+
+  for (const token of tokens) {
+    try {
+      const invitationQueries = [
+        query(collection(db, 'invitations'), where('token', '==', token)),
+        query(collection(db, 'invitations'), where('inviteCode', '==', token)),
+      ];
+      for (const invitationQuery of invitationQueries) {
+        const invitationSnap = await getDocs(invitationQuery);
+        if (!invitationSnap.empty) {
+          const invitationDoc = invitationSnap.docs[0];
+          const bubbleId = invitationDoc.data()?.bubbleId;
+          const edgeDoc = bubbleId ? await findEdgeInBubble(bubbleId, tokens) : null;
+          return invitationFromDoc(invitationDoc, edgeDoc);
+        }
+      }
+    } catch (invitationError) {
+      console.warn("Invitation lookup failed:", invitationError);
+    }
+  }
+
+  for (const token of tokens) {
+    const edgeQueries = [
+      query(collectionGroup(db, 'edges'), where('referralToken', '==', token)),
+      query(
+        collectionGroup(db, 'edges'),
+        where('referralToken', '==', token),
+        where('accepted', '==', false)
+      ),
+    ];
+    for (const edgeQuery of edgeQueries) {
+      try {
+        const edgeSnap = await getDocs(edgeQuery);
+        console.log("Query executed, found", edgeSnap.size, "edges for token", token);
+        if (!edgeSnap.empty) {
+          return edgeInviteFromDoc(edgeSnap.docs[0]);
+        }
+      } catch (edgeError) {
+        console.warn("Edge token query failed:", edgeError);
+      }
+    }
+  }
+
+  return null;
+};
+
+const STORED_BUBBLE_ID_KEY = 'familyBubble_bubbleId';
+const STORED_BUBBLE_USER_KEY = 'familyBubble_bubbleUserId';
+
+export const sessionBubble = {
+  get(userId) {
+    try {
+      const storedId = localStorage.getItem(STORED_BUBBLE_ID_KEY);
+      const storedUser = localStorage.getItem(STORED_BUBBLE_USER_KEY);
+      if (!storedId) return null;
+      if (userId && storedUser && storedUser !== userId) {
+        localStorage.removeItem(STORED_BUBBLE_ID_KEY);
+        localStorage.removeItem(STORED_BUBBLE_USER_KEY);
+        return null;
+      }
+      return storedId;
+    } catch (error) {
+      return null;
+    }
+  },
+  set(userId, bubbleId) {
+    try {
+      if (!bubbleId) return;
+      localStorage.setItem(STORED_BUBBLE_ID_KEY, bubbleId);
+      if (userId) localStorage.setItem(STORED_BUBBLE_USER_KEY, userId);
+    } catch (error) {
+      console.warn("Could not persist bubble id:", error);
+    }
+  },
+  clear() {
+    try {
+      localStorage.removeItem(STORED_BUBBLE_ID_KEY);
+      localStorage.removeItem(STORED_BUBBLE_USER_KEY);
+    } catch (error) {
+      // ignore
+    }
+  },
 };
 
 export const API = {
@@ -109,7 +281,8 @@ export const API = {
     bubbleName,
     imageFile,
     relationshipRole,
-    location = null
+    location = null,
+    { isPremium = false } = {}
   ) => {
     console.log("Creating bubble for user:", userId);
     
@@ -169,7 +342,7 @@ export const API = {
       userId,
       bubbleName || `${firstName}'s Bubble`,
       serverTimestamp(),
-      50, // maxMembers - default
+      memberLimitForPlan(isPremium), // maxMembers — free vs premium
       null, // inviteCode - will be generated later if needed
       'private', // visibility
       [userId] // members - Add owner to members list
@@ -272,12 +445,7 @@ export const API = {
     }
     
     const bubbleIds = [...new Set((user.bubbles || []).filter(Boolean))];
-    let preferredId = null;
-    try {
-      preferredId = localStorage.getItem('familyBubble_bubbleId');
-    } catch (error) {
-      preferredId = null;
-    }
+    const preferredId = sessionBubble.get(userId);
     const orderedIds = preferredId && bubbleIds.includes(preferredId)
       ? [preferredId, ...bubbleIds.filter((id) => id !== preferredId)]
       : bubbleIds;
@@ -285,12 +453,16 @@ export const API = {
     for (const bubbleId of orderedIds) {
       const data = await API.getBubbleById(bubbleId, userId);
       if (data?.bubble) {
+        sessionBubble.set(userId, bubbleId);
         console.log("Loading bubble for user:", userId, "bubbleId:", bubbleId);
         return data;
       }
       console.warn("Skipping missing or unreadable bubble:", bubbleId);
     }
 
+    if (preferredId && !bubbleIds.includes(preferredId)) {
+      sessionBubble.clear();
+    }
     return null;
   },
 
@@ -339,16 +511,33 @@ export const API = {
     const bubbleDoc = await getDoc(bubbleRef);
     
     if (!bubbleDoc.exists()) {
-      console.error("Bubble document does not exist:", bubbleId);
+      console.warn("Bubble document does not exist:", bubbleId);
       return null;
     }
     
     const bubble = Bubble.fromFirestore(bubbleDoc);
     console.log("Found bubble:", bubble.bubbleId, "name:", bubble.name);
 
-    // Get all nodes for that bubble
     const nodesRef = collection(db, 'bubbles', bubbleId, 'nodes');
-    const nodesSnapshot = await getDocs(nodesRef);
+    let nodesSnapshot = null;
+    let listError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        nodesSnapshot = await getDocs(nodesRef);
+        listError = null;
+        break;
+      } catch (error) {
+        listError = error;
+        console.warn(`Listing bubble members failed (attempt ${attempt + 1}):`, error.code || error.message);
+        if (error.code !== 'permission-denied' || attempt === 2) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+      }
+    }
+    if (!nodesSnapshot) {
+      throw listError || new Error('Failed to load bubble members.');
+    }
     const allMembers = nodesSnapshot.docs.map(d => {
       const node = BubbleNode.fromFirestore(d);
       return { id: node.nodeId, ...node };
@@ -388,58 +577,83 @@ export const API = {
   },
   
   generateReferral: async (bubbleId, fromNodeId, invitee = null) => {
-    // Optimize: Generate token first (fast operation)
     const token = `BUB${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
-    
-    // Get the referrer's node to determine their tier (can be done in parallel with edge creation)
     const fromNodeRef = doc(db, 'bubbles', bubbleId, 'nodes', fromNodeId);
-    const fromNodeDocPromise = getDoc(fromNodeRef);
-    
-    // Start edge creation immediately (don't wait for node fetch)
-    const edgesRef = collection(db, 'bubbles', bubbleId, 'edges');
-    
-    // Get node data (we need tier)
-    const fromNodeDoc = await fromNodeDocPromise;
-    
+    const fromNodeDoc = await getDoc(fromNodeRef);
+
     if (!fromNodeDoc.exists()) {
       throw new Error('Referrer node not found.');
     }
-    
+
     const fromNode = BubbleNode.fromFirestore(fromNodeDoc);
-    const referrerTier = fromNode.tier || 1; // Default to tier 1 if not set
-    const newMemberTier = referrerTier + 1; // New member will be one tier deeper
-    
-    // Create edge with token
-    const edge = new BubbleEdge(
-      null, // edgeId will be set by Firestore
-      fromNodeId,
-      null, // toNode - will be set when accepted
-      null, // relationship - can be set later
-      token,
-      false, // accepted
-      newMemberTier,
-      serverTimestamp(),
-      null // acceptedAt
-    );
-    const edgeRef = await addDoc(edgesRef, edge.toFirestore());
-    if (invitee?.userId) {
-      try {
-        await addDoc(collection(db, 'invitations'), {
-          bubbleId,
-          createdBy: fromNode.userId,
-          createdAt: serverTimestamp(),
-          token,
-          fromNodeId,
-          accepted: false,
-          used: false,
-          inviteeUserId: invitee.userId,
-          inviteeName: invitee.name || null,
-        });
-      } catch (inviteError) {
-        console.warn('Targeted invite saved as a share code only:', inviteError);
+    const referrerTier = fromNode.tier || 1;
+    const newMemberTier = referrerTier + 1;
+    const createdBy = auth.currentUser?.uid || fromNode.userId;
+    if (!createdBy) {
+      throw new Error('You must be signed in to generate an invite.');
+    }
+
+    const bubbleRef = doc(db, 'bubbles', bubbleId);
+    const bubbleSnap = await getDoc(bubbleRef);
+    if (bubbleSnap.exists()) {
+      const bubbleData = bubbleSnap.data() || {};
+      const memberCount = Array.isArray(bubbleData.members) ? bubbleData.members.length : 0;
+      if (!canJoinAtMemberCap({ memberCount, maxMembers: bubbleData.maxMembers })) {
+        throw new Error(joinLimitMessage());
       }
     }
-    return { token, edgeId: edgeRef.id, tier: newMemberTier };
+
+    const edgePayload = {
+      fromNode: fromNodeId,
+      toNode: null,
+      relationship: '',
+      referralToken: token,
+      accepted: false,
+      tier: newMemberTier,
+      createdAt: serverTimestamp(),
+      acceptedAt: null,
+    };
+
+    let edgeRef = null;
+    let invitationRef = null;
+    let persistError = null;
+
+    try {
+      edgeRef = await addDoc(collection(db, 'bubbles', bubbleId, 'edges'), edgePayload);
+    } catch (edgeError) {
+      persistError = edgeError;
+      console.error("Edge invite write failed; storing invitation anyway:", edgeError);
+    }
+
+    try {
+      invitationRef = await addDoc(collection(db, 'invitations'), {
+        bubbleId,
+        createdBy,
+        createdAt: serverTimestamp(),
+        token,
+        fromNodeId,
+        accepted: false,
+        used: false,
+        ...(invitee?.userId ? {
+          inviteeUserId: invitee.userId,
+          inviteeName: invitee.name || null,
+        } : {}),
+      });
+    } catch (invitationError) {
+      persistError = invitationError;
+      console.error("Invitation write failed:", invitationError);
+    }
+
+    if (!edgeRef && !invitationRef) {
+      throw new Error(`Failed to save invite code: ${persistError?.message || 'unknown error'}`);
+    }
+
+    return {
+      token,
+      edgeId: edgeRef?.id || null,
+      invitationId: invitationRef?.id || null,
+      tier: newMemberTier,
+    };
   },
 
   joinBubble: async (token, userName, userPhotoFile, relationshipRole, userId = null, location = null) => {
@@ -533,74 +747,37 @@ export const API = {
       }
     }
 
-    // ============================================================================
-    // STEP 2: Now proceed with bubble join logic
-    // ============================================================================
-    console.log("=== STEP 2: Finding edge with token ===");
-    
-    let q;
-    let querySnapshot;
-    try {
-      q = query(
-        collectionGroup(db, 'edges'),
-        where('referralToken', '==', token),
-        where('accepted', '==', false)
-      );
-      querySnapshot = await getDocs(q);
-      console.log("Query executed, found", querySnapshot.size, "edges");
-    } catch (queryError) {
-      console.error("Error querying edges:", queryError);
-      try {
-        q = query(collectionGroup(db, 'edges'), where('referralToken', '==', token));
-        querySnapshot = await getDocs(q);
-        console.log("Fallback token query found", querySnapshot.size, "edges");
-      } catch (fallbackError) {
-        if (queryError.message && queryError.message.includes('COLLECTION_GROUP')) {
-          throw new Error(
-            `Firestore index required. Please create the index by clicking this link:\n` +
-            `https://console.firebase.google.com/v1/r/project/familybubble-ecfa6/firestore/indexes?create_exemption=Cltwcm9qZWN0cy9mYW1pbHlidWJibGUtZWNmYTYvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2VkZ2VzL2ZpZWxkcy9yZWZlcnJhbFRva2VuEAIaEQoNcmVmZXJyYWxUb2tlbhAB\n\n` +
-            `After creating the index, wait 1-2 minutes for it to build, then try again.`
-          );
-        }
-        throw new Error(`Failed to find invite code: ${fallbackError.message}`);
-      }
-    }
-
-    if (querySnapshot.empty) {
-      console.error("No edge found with token:", token);
+    console.log("=== STEP 2: Finding invite with token ===");
+    const invite = await findInviteByToken(token);
+    if (!invite || !invite.bubbleId) {
+      console.error("No invite found with token:", normalizeInviteToken(token));
       throw new Error('Invalid or expired invite code.');
     }
-
-    const edgeDoc = querySnapshot.docs[0];
-    const edge = BubbleEdge.fromFirestore(edgeDoc);
-    console.log("Found edge:", edge.edgeId, "Data:", edge);
-    
-    if (edge.accepted) {
-      console.error("Edge already accepted");
-      throw new Error('This invite code has already been used.');
+    if (invite.accepted) {
+      throw new Error(INVITE_ALREADY_USED);
     }
 
-    const bubbleId = edgeDoc.ref.parent.parent.id;
-    console.log("Extracted bubbleId:", bubbleId);
-    
-    if (!bubbleId) {
-      throw new Error('Could not determine bubble ID from invite code.');
+    const bubbleId = invite.bubbleId;
+    const edgeDoc = invite.edgeDoc;
+    const edge = edgeDoc ? BubbleEdge.fromFirestore(edgeDoc) : null;
+    const fromNodeId = invite.fromNodeId || edge?.fromNode;
+    console.log("Found invite for bubble:", bubbleId, "fromNode:", fromNodeId);
+
+    if (!fromNodeId) {
+      throw new Error('This invite is missing the inviter. Ask them to generate a new code.');
     }
 
-    const fromNodeId = edge.fromNode;
-    console.log("From node ID:", fromNodeId);
-    
     const fromNodeRef = doc(db, 'bubbles', bubbleId, 'nodes', fromNodeId);
     const fromNodeDoc = await getDoc(fromNodeRef);
-    
+
     if (!fromNodeDoc.exists()) {
       console.error("Referrer node not found:", fromNodeId);
       throw new Error('Referrer node not found. The invite may be invalid.');
     }
-    
+
     const fromNode = BubbleNode.fromFirestore(fromNodeDoc);
     const referrerTier = fromNode.tier || 1;
-    const newMemberTier = edge.tier || (referrerTier + 1);
+    const newMemberTier = edge?.tier || (referrerTier + 1);
     console.log("Referrer tier:", referrerTier, "New member tier:", newMemberTier);
     
     const bubbleRef = doc(db, 'bubbles', bubbleId);
@@ -622,6 +799,13 @@ export const API = {
     }
     if (memberBubbles.length >= MAX_USER_BUBBLES) {
       throw new Error('You can be in 2 bubbles at a time. Leave one to join another.');
+    }
+    const existingMembers = Array.isArray(bubbleDoc.data()?.members) ? bubbleDoc.data().members : [];
+    if (!existingMembers.includes(userId) && !canJoinAtMemberCap({
+      memberCount: existingMembers.length,
+      maxMembers: bubbleDoc.data()?.maxMembers,
+    })) {
+      throw new Error(joinLimitMessage());
     }
 
     // Create a new node for the user in the bubble
@@ -655,42 +839,49 @@ export const API = {
       locationData
     );
 
-    // Record membership first so node create passes member checks.
+    // Record membership, the new node, and consume the invite in one commit
+    // so a second person cannot redeem the same code.
     try {
-      await updateDoc(userRef, {
-        bubbles: arrayUnion(bubbleId),
+      await runTransaction(db, async (transaction) => {
+        const invitationSnap = invite.invitationDoc
+          ? await transaction.get(invite.invitationDoc.ref)
+          : null;
+        const edgeSnap = invite.edgeDoc
+          ? await transaction.get(invite.edgeDoc.ref)
+          : null;
+
+        if (inviteFromRecords(invitationSnap?.data() || {}, edgeSnap?.data() || null)) {
+          throw new Error(INVITE_ALREADY_USED);
+        }
+        if (!invitationSnap?.exists() && !edgeSnap?.exists()) {
+          throw new Error('Invalid or expired invite code.');
+        }
+
+        transaction.update(userRef, {
+          bubbles: arrayUnion(bubbleId),
+        });
+        transaction.set(nodeRef, node.toFirestore());
+        transaction.update(bubbleRef, {
+          members: arrayUnion(userId),
+        });
+        if (edgeSnap?.exists()) {
+          transaction.update(edgeSnap.ref, {
+            toNode: nodeRef.id,
+            accepted: true,
+            acceptedAt: serverTimestamp(),
+            tier: newMemberTier,
+          });
+        }
+        if (invitationSnap?.exists()) {
+          transaction.update(invitationSnap.ref, {
+            accepted: true,
+            used: true,
+            acceptedBy: userId,
+            acceptedAt: serverTimestamp(),
+          });
+        }
       });
-      console.log("User membership updated for join:", bubbleId);
-    } catch (membershipError) {
-      console.error("Error updating user bubbles before join:", membershipError);
-      throw new Error(`Failed to join bubble: ${membershipError.message}`);
-    }
-
-    const batch = writeBatch(db);
-    batch.set(nodeRef, node.toFirestore());
-
-    // Update the edge to accept the invite and link the nodes
-    batch.update(edgeDoc.ref, {
-        toNode: nodeRef.id,
-        accepted: true,
-        acceptedAt: serverTimestamp(),
-        tier: newMemberTier,
-    });
-
-    // Add the userId to the bubble's members list
-    batch.update(bubbleRef, {
-        members: arrayUnion(userId),
-    });
-
-    console.log("Committing batch for join bubble - bubbleId:", bubbleId, "userId:", userId);
-    console.log("Batch operations:");
-    console.log("  1. Create node:", nodeRef.id);
-    console.log("  2. Update edge:", edgeDoc.id);
-    console.log("  3. Update bubble members:", bubbleId);
-    
-    try {
-      await batch.commit();
-      console.log("✓ Batch committed successfully");
+      console.log("✓ Join committed and invite code consumed");
       
       // Wait a moment for Firestore to propagate
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -780,21 +971,60 @@ export const API = {
       
       return { bubbleId, nodeId: nodeRef.id, nodeUserId: userId };
     } catch (batchError) {
-      console.error("✗ Error committing batch:", batchError);
+      if (batchError?.message === INVITE_ALREADY_USED) {
+        throw batchError;
+      }
+      console.error("✗ Error committing join:", batchError);
       console.error("Error code:", batchError.code);
       console.error("Error message:", batchError.message);
-      console.error("Error stack:", batchError.stack);
       throw new Error(`Failed to join bubble: ${batchError.message}`);
     }
   },
 
-  updateStatus: async (bubbleId, nodeId, status, statusText = null) => {
+  updateStatus: async (bubbleId, nodeId, status, statusText = null, options = {}) => {
     const nodeRef = doc(db, 'bubbles', bubbleId, 'nodes', nodeId);
     const updateData = { status, lastUpdated: serverTimestamp() };
     if (statusText !== null) {
       updateData.statusText = statusText;
     }
+
+    const photoFiles = Array.isArray(options.photoFiles)
+      ? options.photoFiles.filter(Boolean)
+      : (options.photoFile ? [options.photoFile] : []);
+    const mediaPromise = (!options.skipMemo && (photoFiles.length || options.voiceBlob))
+      ? prepareStatusMemoMedia({
+          photoFile: photoFiles[0] || null,
+          photoFiles,
+          voiceBlob: options.voiceBlob || null,
+          userId: auth.currentUser?.uid,
+        }).catch((error) => {
+          console.warn('Status memo media skipped:', error.message);
+          return { photoUrl: null, photoUrls: [], voiceUrl: null };
+        })
+      : Promise.resolve({ photoUrl: null, photoUrls: [], voiceUrl: null });
+
     await updateDoc(nodeRef, updateData);
+
+    // Family Memos board: every status update is posted to this bubble only.
+    if (!options.skipMemo) {
+      const [nodeSnap, media] = await Promise.all([getDoc(nodeRef), mediaPromise]);
+      const node = nodeSnap.exists() ? nodeSnap.data() : {};
+      await createFamilyMemo({
+        bubbleId,
+        userId: node.userId || auth.currentUser?.uid,
+        nodeId,
+        type: MEMO_TYPE.STATUS,
+        status,
+        message: statusText,
+        location: options.location || node.lastKnownLocation || null,
+        photoUrl: media.photoUrl,
+        photoUrls: media.photoUrls,
+        voiceUrl: media.voiceUrl,
+        voiceDurationMs: options.voiceDurationMs || null,
+      }).catch((error) => {
+        console.warn('Family memo write skipped:', error.message);
+      });
+    }
     return { success: true };
   },
 
@@ -859,6 +1089,7 @@ export const API = {
       name: profileData.name,
       role: profileData.role || node.role,
       quote: profileData.quote || null,
+      phone: profileData.phone || null,
       lastUpdated: serverTimestamp(),
     });
 
@@ -895,8 +1126,39 @@ export const API = {
       lastUpdated: serverTimestamp(),
     });
 
+    getPlaceWatcher().ingestConfirmed(location).catch((error) => {
+      console.warn('Place presence sync failed:', error);
+    });
+
     console.log("Location updated successfully");
     return { success: true };
+  },
+
+  /**
+   * Check in: drop the member's live GPS on the map and post a family memo.
+   * Does not change their status emoji.
+   */
+  checkIn: async (bubbleId, nodeId, location) => {
+    if (!location || location.latitude == null || location.longitude == null) {
+      throw new Error('Location is required to check in.');
+    }
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      throw new Error('You must be signed in to check in.');
+    }
+
+    await API.updateLocation(bubbleId, nodeId, location);
+    const memo = buildCheckInMemo({ location });
+    await createFamilyMemo({
+      bubbleId,
+      userId: uid,
+      nodeId,
+      type: memo.type,
+      status: memo.status,
+      message: memo.message,
+      location,
+    });
+    return { success: true, location };
   },
   
   leaveBubble: async (bubbleId, nodeId, userId) => {
@@ -955,6 +1217,32 @@ export const API = {
       });
     }
     return results;
+  },
+
+  applyPremiumToOwner: async (userId) => {
+    if (!userId) return { success: false };
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) {
+      return { success: false };
+    }
+
+    try {
+      await updateDoc(userRef, { premium: true });
+    } catch (error) {
+      console.error('Failed to mark user premium:', error);
+    }
+
+    const bubbleIds = userSnap.data()?.bubbles || [];
+    await Promise.all(bubbleIds.map(async (bubbleId) => {
+      const bubbleRef = doc(db, 'bubbles', bubbleId);
+      const bubbleSnap = await getDoc(bubbleRef);
+      if (!bubbleSnap.exists()) return;
+      if (bubbleSnap.data()?.ownerId !== userId) return;
+      await updateDoc(bubbleRef, { maxMembers: memberLimitForPlan(true) });
+    }));
+
+    return { success: true };
   },
 
   // ============================================================================

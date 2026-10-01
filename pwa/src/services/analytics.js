@@ -185,6 +185,13 @@ class AnalyticsService {
     });
   }
 
+  trackCheckIn(bubbleId, hasLocation = true) {
+    this.logEvent('check_in', {
+      bubble_id: bubbleId,
+      has_location: hasLocation,
+    });
+  }
+
   /**
    * Track profile update
    */
@@ -271,6 +278,31 @@ class AnalyticsService {
   // ============================================================================
   // FEATURE USAGE EVENTS
   // ============================================================================
+
+  trackSosActivate(bubbleId, duplicate = false) {
+    this.logEvent('sos_activate', {
+      bubble_id: bubbleId,
+      duplicate,
+    });
+  }
+
+  trackSosAcknowledge(bubbleId) {
+    this.logEvent('sos_acknowledge', {
+      bubble_id: bubbleId,
+    });
+  }
+
+  trackSosResolve(bubbleId) {
+    this.logEvent('sos_resolve', {
+      bubble_id: bubbleId,
+    });
+  }
+
+  trackSosCancel(bubbleId) {
+    this.logEvent('sos_cancel', {
+      bubble_id: bubbleId,
+    });
+  }
 
   /**
    * Track view change (globe, cluster, etc.)
