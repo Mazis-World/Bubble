@@ -22,6 +22,7 @@ import PremiumSettings from '../paywall/PremiumSettings';
 import BubbleOverviewSheet from './BubbleOverviewSheet';
 import PlacesHub from '../places/PlacesHub';
 import MapViewBadges from './MapViewBadges';
+import AppTour from './AppTour';
 import CheckInPopup from './CheckInPopup';
 import { ensurePlaceLocationPermission } from '../../services/places/permissions';
 import usePlaces from '../../hooks/usePlaces';
@@ -33,6 +34,7 @@ import { API } from '../../services/bubble';
 import useFamilyMemos from '../../hooks/useFamilyMemos';
 import { MEMO_TYPE, deleteFamilyMemo, parseMemoDeepLink, toggleMemoReaction, viewerMemoReaction } from '../../services/memos';
 import { buildCheckInMemo, canCheckIn, lookupPlaceLabel, readCurrentPosition } from '../../services/checkin';
+import { resetAppTour, shouldShowAppTour } from '../../services/appTour';
 
 const Bubble = ({
   bubbleData,
@@ -105,6 +107,7 @@ const Bubble = ({
   const [checkInMemo, setCheckInMemo] = useState(null);
   const [showPlaces, setShowPlaces] = useState(false);
   const [placesFocusId, setPlacesFocusId] = useState(null);
+  const [showTour, setShowTour] = useState(false);
   const openSosIds = useMemo(
     () => (sos?.openEvents || []).map((event) => event.sosId),
     [sos?.openEvents]
@@ -122,6 +125,33 @@ const Bubble = ({
     setShowProfileEdit(false);
     setSelectedCopyIds([]);
   }, [currentBubbleId]);
+
+  useEffect(() => {
+    if (!bubbleData?.currentMember) return undefined;
+    if (!shouldShowAppTour()) return undefined;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('place') || params.get('memo') || params.get('join')) return undefined;
+    } catch (error) {
+      // ignore
+    }
+    const timer = window.setTimeout(() => setShowTour(true), 450);
+    return () => window.clearTimeout(timer);
+  }, [bubbleData?.currentMember?.id]);
+
+  const handleTourStep = useCallback((step) => {
+    if (step?.viewMode) setViewMode(step.viewMode);
+  }, []);
+
+  const replayTour = useCallback(() => {
+    resetAppTour();
+    setShowSettings(false);
+    setShowOverview(false);
+    setShowMemos(false);
+    setShowPlaces(false);
+    setShowStatus(false);
+    window.setTimeout(() => setShowTour(true), 280);
+  }, [setShowSettings, setShowStatus]);
 
   const openPlaces = useCallback((placeId = null) => {
     setPlacesFocusId(placeId);
@@ -372,6 +402,7 @@ const Bubble = ({
                   setViewMode('globe');
                   analyticsService.trackViewChange('globe');
                 }}
+                data-tour="globe"
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl transition-all duration-300 flex items-center gap-1 sm:gap-2 font-semibold text-xs sm:text-sm ${
                   viewMode === 'globe'
                     ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-lg glow-blue scale-105'
@@ -461,6 +492,7 @@ const Bubble = ({
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
               onClick={() => setShowStatus(true)}
+              data-tour="status"
               className="bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 hover:from-blue-400 hover:via-blue-500 hover:to-purple-500 text-white py-4 sm:py-4 rounded-2xl font-bold transition-all duration-300 shadow-lg glow-blue hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] tap-target text-sm sm:text-base relative overflow-hidden group"
             >
               <span className="relative z-10">Update Status</span>
@@ -469,6 +501,7 @@ const Bubble = ({
             <button
               onClick={handleGenerateInvite}
               disabled={isGeneratingInvite}
+              data-tour="invite"
               className="bg-gradient-to-br from-purple-500 via-pink-500 to-blue-500 hover:from-purple-400 hover:via-pink-400 hover:to-blue-400 text-white py-4 sm:py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg glow-purple hover:shadow-xl hover:scale-[1.03] active:scale-[0.97] transition-all duration-200 tap-target text-sm sm:text-base relative overflow-hidden group disabled:opacity-70 disabled:cursor-wait"
             >
               {isGeneratingInvite ? (
@@ -807,6 +840,21 @@ const Bubble = ({
         
         {/* Notification Settings */}
         <NotificationSettings />
+
+        <div className="my-6 border-t border-gray-800" />
+        <div className="space-y-3 mb-6">
+          <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Help</h4>
+          <p className="text-gray-400 text-sm">
+            Replay the little tour that points at Check in, Status, Memos, and the globe.
+          </p>
+          <button
+            type="button"
+            onClick={replayTour}
+            className="w-full bg-white/10 text-white py-3 rounded-xl font-semibold hover:bg-white/20"
+          >
+            Show the button tour
+          </button>
+        </div>
         
         <div className="my-6 border-t border-gray-800" />
         <PremiumSettings
@@ -1086,6 +1134,12 @@ const Bubble = ({
           )}
         </>
       )}
+
+      <AppTour
+        open={showTour}
+        onClose={() => setShowTour(false)}
+        onStep={handleTourStep}
+      />
 
     </div>
   );

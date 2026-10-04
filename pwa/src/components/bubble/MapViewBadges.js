@@ -42,6 +42,7 @@ const MapViewBadges = ({
             onClick={onMemberCountClick}
             className={MAP_BADGE_CLASS}
             aria-label={`${memberCountLabel}. Open members`}
+            data-tour="members"
           >
             <p className="text-white text-sm font-semibold">🌍 {memberCountLabel}</p>
           </button>
@@ -55,6 +56,7 @@ const MapViewBadges = ({
               checkInState === 'idle' ? 'shadow-[0_0_0_3px_rgba(96,165,250,0.5)]' : ''
             }`}
             aria-label={checkInLabel}
+            data-tour="checkin"
           >
             <CheckInIcon state={checkInState} />
             <p className="text-white text-sm font-semibold">{checkInLabel}</p>
@@ -68,6 +70,7 @@ const MapViewBadges = ({
             onClick={onMemosClick}
             className={MAP_BADGE_CLASS}
             aria-label={`${memoCountLabel}. Open family memos`}
+            data-tour="memos"
           >
             <p className="text-white text-sm font-semibold">📝 {memoCountLabel}</p>
           </button>
@@ -78,6 +81,7 @@ const MapViewBadges = ({
             onClick={onPlacesClick}
             className={`${MAP_BADGE_CLASS} flex items-center gap-2`}
             aria-label="Open Places"
+            data-tour="places"
           >
             <Navigation className="w-4 h-4 text-blue-400 flex-shrink-0" aria-hidden="true" />
             <p className="text-white text-sm font-semibold">Places</p>

@@ -186,7 +186,7 @@ const BubbleSwitcher = ({
   });
 
   return (
-    <div className="relative mx-auto flex justify-center px-4" data-testid="bubble-switcher">
+    <div className="relative mx-auto flex justify-center px-4" data-testid="bubble-switcher" data-tour="switcher">
       <p
         className={`pointer-events-none absolute -top-4 h-4 w-full text-center text-[10px] font-semibold tracking-wide text-white/80 truncate transition-opacity duration-200 ${
           revealedName ? 'opacity-100' : 'opacity-0'
