@@ -126,8 +126,9 @@ const Bubble = ({
     setSelectedCopyIds([]);
   }, [currentBubbleId]);
 
+  const currentMemberId = bubbleData?.currentMember?.id;
   useEffect(() => {
-    if (!bubbleData?.currentMember) return undefined;
+    if (!currentMemberId) return undefined;
     if (!shouldShowAppTour()) return undefined;
     try {
       const params = new URLSearchParams(window.location.search);
@@ -137,7 +138,7 @@ const Bubble = ({
     }
     const timer = window.setTimeout(() => setShowTour(true), 450);
     return () => window.clearTimeout(timer);
-  }, [bubbleData?.currentMember?.id]);
+  }, [currentMemberId]);
 
   const handleTourStep = useCallback((step) => {
     if (step?.viewMode) setViewMode(step.viewMode);
