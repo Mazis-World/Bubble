@@ -39,7 +39,7 @@ const CustomSelect = ({ options, value, onChange, placeholder, className = '' })
       {isOpen && (
         <div className="absolute z-10 w-full mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto
           [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-900 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full">
-          {options.map((option) => (
+          {options.filter((option) => !option.disabled).map((option) => (
             <button
               key={option.value}
               type="button"

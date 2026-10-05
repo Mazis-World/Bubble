@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronRight, Circle, Plus } from 'lucide-react';
 import CustomSelect from '../ui/CustomSelect';
 import LocationStep from '../ui/LocationStep';
 import imageCompression from 'browser-image-compression';
+import { RELATIONSHIP_ROLE_OPTIONS } from '../../constants/relationshipRoles';
 
 const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
   const [step, setStep] = useState(1);
@@ -41,23 +42,7 @@ const JoinBubbleFlow = ({ onComplete, onBack, initialInviteToken = '' }) => {
     onComplete(joinData);
   };
 
-  const relationshipOptions = [
-    { value: '', label: 'Select your role', disabled: true },
-    { value: 'Mom', label: 'Mom' },
-    { value: 'Dad', label: 'Dad' },
-    { value: 'Brother', label: 'Brother' },
-    { value: 'Sister', label: 'Sister' },
-    { value: 'Son', label: 'Son' },
-    { value: 'Daughter', label: 'Daughter' },
-    { value: 'Grandma', label: 'Grandma' },
-    { value: 'Grandpa', label: 'Grandpa' },
-    { value: 'Aunt', label: 'Aunt' },
-    { value: 'Uncle', label: 'Uncle' },
-    { value: 'Cousin', label: 'Cousin' },
-    { value: 'Guardian', label: 'Guardian' },
-    { value: 'Friend', label: 'Friend' },
-    { value: 'Custom', label: 'Custom' },
-  ];
+  const relationshipOptions = RELATIONSHIP_ROLE_OPTIONS;
 
   const renderStep = () => {
     switch (step) {
