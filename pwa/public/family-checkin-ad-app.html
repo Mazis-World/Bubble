@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Family Bubble Check-In</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 1920px; height: 1080px; overflow: hidden; background: #020617; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background:
+        radial-gradient(900px 520px at 18% 18%, rgba(59,130,246,0.22), transparent 55%),
+        radial-gradient(800px 480px at 88% 82%, rgba(168,85,247,0.16), transparent 50%),
+        #020617;
+    }
+    .stage { width: 1920px; height: 1080px; display: flex; align-items: center; justify-content: center; }
+    .phone { width: 430px; height: 900px; padding: 12px; background: #0b1220; border-radius: 54px;
+      box-shadow: 0 40px 90px rgba(0,0,0,0.55), 0 0 0 4px #1f2937; position: relative; }
+    .island { position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+      width: 118px; height: 28px; background: #020617; border-radius: 18px; z-index: 20; }
+    .screen { height: 100%; border-radius: 42px; overflow: hidden; background: #030712;
+      position: relative; display: flex; flex-direction: column; }
+    .status { height: 44px; display: flex; align-items: flex-end; justify-content: space-between;
+      padding: 0 22px 4px; font-size: 13px; font-weight: 700; color: #e5e7eb; z-index: 6; }
+    header { display: flex; align-items: center; justify-content: space-between;
+      padding: 4px 12px 10px; z-index: 6; background: rgba(15,23,42,0.45); }
+    .brand { display: flex; align-items: center; gap: 8px; }
+    .logo { width: 28px; height: 28px; border-radius: 10px;
+      background: linear-gradient(135deg, #a855f7, #3b82f6, #ec4899); display: grid; place-items: center; }
+    .logo span { width: 11px; height: 14px; border-radius: 50%; border: 2.5px solid #fff; }
+    .brand-name { font-weight: 800; font-size: 16px;
+      background: linear-gradient(135deg, #c4b5fd, #93c5fd, #f9a8d4);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .map { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+    .earth {
+      position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+      width: 280px; height: 280px; border-radius: 50%;
+      background: radial-gradient(circle at 32% 30%, #60a5fa, #1d4ed8 42%, #0f172a 78%);
+      box-shadow: 0 0 50px rgba(59,130,246,0.35), inset -24px -16px 40px rgba(0,0,0,0.45);
+    }
+    .ring { position: absolute; left: 50%; top: 38%; border-radius: 50%; border: 1px solid rgba(96,165,250,0.28);
+      transform: translate(-50%, -50%); pointer-events: none; }
+    .feature {
+      position: absolute; left: 14px; right: 14px; bottom: 18px; z-index: 8;
+      background: rgba(17,24,39,0.92); border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 22px; padding: 16px 16px 14px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.4);
+    }
+    .feature.glow { box-shadow: 0 0 0 3px rgba(96,165,250,0.55), 0 16px 36px rgba(0,0,0,0.4); }
+    .feature.press { transform: scale(0.97); }
+    .kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #93c5fd; }
+    .feature h2 {
+      font-size: 22px; font-weight: 800; line-height: 1.15; margin: 6px 0 8px;
+      background: linear-gradient(135deg, #c4b5fd, #93c5fd, #f9a8d4);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .feature p { color: #cbd5e1; font-size: 13px; line-height: 1.35; margin-bottom: 12px; }
+    .cta {
+      width: 100%; border: 0; border-radius: 14px; padding: 12px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 15px; font-weight: 800; color: #fff;
+      background: linear-gradient(90deg, #3b82f6, #a855f7);
+    }
+    .cta.busy { background: rgba(15,23,42,0.95); border: 1px solid rgba(255,255,255,0.14); }
+    .cta.done { background: linear-gradient(90deg, #10b981, #059669); }
+    .sheet {
+      position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 14;
+      background: rgba(17,24,39,0.96); border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 24px; padding: 16px 14px 14px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+      opacity: 0; visibility: hidden; transform: translateY(18px) scale(0.96);
+      transition: opacity 0.32s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .sheet.on { opacity: 1; visibility: visible; transform: none; }
+    .sheet h2 {
+      font-size: 20px; font-weight: 800; margin: 4px 0 12px;
+      background: linear-gradient(135deg, #c4b5fd, #93c5fd, #f9a8d4);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .member { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-radius: 14px; }
+    .member.on { background: rgba(59,130,246,0.12); }
+    .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+      font-weight: 900; font-size: 14px; }
+    .av.you { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+    .av.liam { background: linear-gradient(135deg, #22d3ee, #0284c7); }
+    .av.maya { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+    .av.jordan { background: linear-gradient(135deg, #6366f1, #4338ca); }
+    .name { font-weight: 800; font-size: 14px; flex: 1; }
+    .box { width: 22px; height: 22px; border-radius: 7px; border: 2px solid rgba(148,163,184,0.8);
+      display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 900; }
+    .box.checked { background: #3b82f6; border-color: #3b82f6; }
+    .hint { color: #94a3b8; font-size: 12px; margin: 4px 0 10px; }
+    .tap { position: absolute; z-index: 16; width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(255,255,255,0.92); border: 3px solid rgba(96,165,250,0.9);
+      opacity: 0; pointer-events: none; }
+    .tap.flash { animation: tap 0.6s ease-out forwards; }
+    @keyframes tap {
+      0% { opacity: 0; transform: scale(0.4); }
+      30% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.7); }
+    }
+    .spin { width: 16px; height: 16px; border: 2.4px solid #93c5fd; border-right-color: transparent;
+      border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="phone">
+      <div class="island"></div>
+      <div class="screen">
+        <div class="status"><span>11:42</span><span>5G 🔋</span></div>
+        <header>
+          <div class="brand"><div class="logo"><span></span></div><span class="brand-name">FamilyBubble</span></div>
+        </header>
+        <div class="map">
+          <div class="earth"></div>
+          <div class="ring" style="width:180px;height:180px"></div>
+          <div class="ring" style="width:250px;height:250px"></div>
+          <div class="feature glow" id="feature">
+            <p class="kicker">Family check-in</p>
+            <h2>Family Bubble Check-In</h2>
+            <p>One check-in. Everyone included.</p>
+            <button class="cta" id="openCta">Check in</button>
+          </div>
+          <div class="tap" id="tap"></div>
+          <section class="sheet" id="sheet">
+            <p class="kicker">Family Bubble Check-In</p>
+            <h2>Select your family</h2>
+            <p class="hint" id="hint">Check everyone in together.</p>
+            <div class="member on" id="m-you"><div class="av you">Y</div><div class="name">You</div><div class="box checked" id="b-you">✓</div></div>
+            <div class="member" id="m-liam"><div class="av liam">L</div><div class="name">Liam</div><div class="box" id="b-liam"></div></div>
+            <div class="member" id="m-maya"><div class="av maya">M</div><div class="name">Maya</div><div class="box" id="b-maya"></div></div>
+            <div class="member" id="m-jordan"><div class="av jordan">J</div><div class="name">Jordan</div><div class="box" id="b-jordan"></div></div>
+            <button class="cta" id="cta" style="margin-top:10px"><span id="ctaLabel">Check in</span></button>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const feature = document.getElementById('feature');
+    const sheet = document.getElementById('sheet');
+    const tap = document.getElementById('tap');
+    const cta = document.getElementById('cta');
+    const ctaLabel = document.getElementById('ctaLabel');
+    const hint = document.getElementById('hint');
+    const flash = (el) => {
+      const phone = document.querySelector('.screen').getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      tap.style.left = `${r.left - phone.left + r.width / 2 - 11}px`;
+      tap.style.top = `${r.top - phone.top + r.height / 2 - 11}px`;
+      tap.classList.remove('flash'); void tap.offsetWidth; tap.classList.add('flash');
+    };
+    const check = (id) => {
+      document.getElementById('m-' + id).classList.add('on');
+      const box = document.getElementById('b-' + id);
+      box.classList.add('checked');
+      box.textContent = '✓';
+    };
+    let phase = 'home';
+    const start = performance.now();
+    const tick = (now) => {
+      const t = now - start;
+      if (t < 4200) { requestAnimationFrame(tick); return; }
+      if (t < 4800) {
+        if (phase !== 'tap') { phase = 'tap'; feature.classList.add('press'); flash(document.getElementById('openCta')); }
+        requestAnimationFrame(tick); return;
+      }
+      if (t < 5400) {
+        if (phase !== 'sheet') {
+          phase = 'sheet';
+          feature.classList.remove('glow','press');
+          feature.style.visibility = 'hidden';
+          sheet.classList.add('on');
+        }
+        requestAnimationFrame(tick); return;
+      }
+      if (t < 6000) { if (phase !== 'liam') { phase = 'liam'; check('liam'); flash(document.getElementById('m-liam')); } requestAnimationFrame(tick); return; }
+      if (t < 6600) { if (phase !== 'maya') { phase = 'maya'; check('maya'); flash(document.getElementById('m-maya')); } requestAnimationFrame(tick); return; }
+      if (t < 7200) { if (phase !== 'jordan') { phase = 'jordan'; check('jordan'); flash(document.getElementById('m-jordan')); } requestAnimationFrame(tick); return; }
+      if (t < 7800) { if (phase !== 'cta') { phase = 'cta'; flash(cta); } requestAnimationFrame(tick); return; }
+      if (t < 9200) {
+        if (phase !== 'busy') {
+          phase = 'busy';
+          cta.className = 'cta busy';
+          ctaLabel.textContent = 'Checking in…';
+          hint.textContent = 'Checking everyone in…';
+        }
+        requestAnimationFrame(tick); return;
+      }
+      if (phase !== 'done') {
+        phase = 'done';
+        cta.className = 'cta done';
+        ctaLabel.textContent = 'Checked in';
+        hint.textContent = 'The whole family is checked in.';
+      }
+    };
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
